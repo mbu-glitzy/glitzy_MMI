@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '병원 생성 실패' }, { status: 500 })
   }
   const [c1, c2, c3] = clinics
+  const clinicsList = [c1, c2, c3]
 
   // 2. 사용자(users) 생성
   const hash = await bcrypt.hash('password123', 10)
@@ -37,21 +38,21 @@ export async function POST(req: Request) {
 
   // 3. 광고 유입 고객(customers) - 병원당 5명
   const adCustomersData = [
-    { clinic_id: c1.id, phone_number: '010-1111-0001', name: '김민지', first_source: 'Meta', first_campaign_id: 'meta_001' },
+    { clinic_id: c1.id, phone_number: '010-1111-0001', name: '김민지', first_source: 'Meta',   first_campaign_id: 'meta_001' },
     { clinic_id: c1.id, phone_number: '010-1111-0002', name: '이수진', first_source: 'Google', first_campaign_id: 'google_001' },
-    { clinic_id: c1.id, phone_number: '010-1111-0003', name: '박지현', first_source: 'Meta', first_campaign_id: 'meta_002' },
+    { clinic_id: c1.id, phone_number: '010-1111-0003', name: '박지현', first_source: 'Meta',   first_campaign_id: 'meta_002' },
     { clinic_id: c1.id, phone_number: '010-1111-0004', name: '정하은', first_source: 'TikTok', first_campaign_id: 'tiktok_001' },
     { clinic_id: c1.id, phone_number: '010-1111-0005', name: '최서연', first_source: 'Google', first_campaign_id: 'google_002' },
-    { clinic_id: c2.id, phone_number: '010-2222-0001', name: '윤아름', first_source: 'Meta', first_campaign_id: 'meta_003' },
-    { clinic_id: c2.id, phone_number: '010-2222-0002', name: '강나연', first_source: 'Meta', first_campaign_id: 'meta_004' },
+    { clinic_id: c2.id, phone_number: '010-2222-0001', name: '윤아름', first_source: 'Meta',   first_campaign_id: 'meta_003' },
+    { clinic_id: c2.id, phone_number: '010-2222-0002', name: '강나연', first_source: 'Meta',   first_campaign_id: 'meta_004' },
     { clinic_id: c2.id, phone_number: '010-2222-0003', name: '임소희', first_source: 'Google', first_campaign_id: 'google_003' },
     { clinic_id: c2.id, phone_number: '010-2222-0004', name: '한예은', first_source: 'TikTok', first_campaign_id: 'tiktok_002' },
-    { clinic_id: c2.id, phone_number: '010-2222-0005', name: '신유리', first_source: 'Meta', first_campaign_id: 'meta_005' },
+    { clinic_id: c2.id, phone_number: '010-2222-0005', name: '신유리', first_source: 'Meta',   first_campaign_id: 'meta_005' },
     { clinic_id: c3.id, phone_number: '010-3333-0001', name: '오준서', first_source: 'Google', first_campaign_id: 'google_004' },
-    { clinic_id: c3.id, phone_number: '010-3333-0002', name: '배민준', first_source: 'Meta', first_campaign_id: 'meta_006' },
+    { clinic_id: c3.id, phone_number: '010-3333-0002', name: '배민준', first_source: 'Meta',   first_campaign_id: 'meta_006' },
     { clinic_id: c3.id, phone_number: '010-3333-0003', name: '권지호', first_source: 'Google', first_campaign_id: 'google_005' },
     { clinic_id: c3.id, phone_number: '010-3333-0004', name: '장태양', first_source: 'TikTok', first_campaign_id: 'tiktok_003' },
-    { clinic_id: c3.id, phone_number: '010-3333-0005', name: '류성민', first_source: 'Meta', first_campaign_id: 'meta_007' },
+    { clinic_id: c3.id, phone_number: '010-3333-0005', name: '류성민', first_source: 'Meta',   first_campaign_id: 'meta_007' },
   ]
 
   const { data: adCustomers } = await supabase
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
   if (!adCustomers) return NextResponse.json({ error: '고객 생성 실패' }, { status: 500 })
 
   // 4. 콘텐츠 유입 고객 - 병원당 10명 (utm_campaign으로 구분)
+  // youtube:3, insta_feed:2, insta_reels:2, tiktok:2, naver_blog:1
   const contentCampaigns = [
     { campaign: '2026_brand_youtube',       source: 'YouTube',   count: 3 },
     { campaign: '2026_brand_insta_feed',    source: 'Instagram', count: 2 },
@@ -74,7 +76,6 @@ export async function POST(req: Request) {
     ['채지수', '공유나', '변민경', '연다은', '방소연', '엄지현', '고나은', '심유리', '표은지', '노세린'],
     ['탁민준', '음성호', '강태양', '라진호', '마성현', '사도현', '하준혁', '유재원', '조태한', '백민서'],
   ]
-  const clinicsList = [c1, c2, c3]
 
   const contentCustomersData: any[] = []
   clinicsList.forEach((clinic, ci) => {
@@ -101,7 +102,9 @@ export async function POST(req: Request) {
 
   const allCustomers = [...adCustomers, ...(contentCustomers || [])]
 
-  // 5. 리드 생성
+  // 5. 리드 생성 (광고+콘텐츠 전체)
+  const clinicIds = clinicsList.map(c => c.id)
+  await supabase.from('leads').delete().in('clinic_id', clinicIds)
   const leadsData = allCustomers.map((c, i) => ({
     clinic_id: c.clinic_id,
     customer_id: c.id,
@@ -110,22 +113,78 @@ export async function POST(req: Request) {
     chatbot_sent: i % 3 !== 0,
     chatbot_sent_at: i % 3 !== 0 ? new Date(Date.now() - i * 2 * 24 * 60 * 60 * 1000).toISOString() : null,
   }))
-  await supabase.from('leads').upsert(leadsData, { onConflict: 'customer_id' })
+  await supabase.from('leads').insert(leadsData)
 
-  // 6. 예약(bookings) 생성 - 광고 유입 고객 기준
-  const statuses = ['confirmed', 'visited', 'cancelled', 'noshow', 'confirmed']
+  // 6. 기존 bookings/consultations/payments 삭제 후 재생성 (멱등성)
+  await supabase.from('payments').delete().in('clinic_id', clinicIds)
+  await supabase.from('consultations').delete().in('clinic_id', clinicIds)
+  await supabase.from('bookings').delete().in('clinic_id', clinicIds)
+
+  // 7. 광고 유입 고객 예약 - 시술확정(treatment_confirmed)만 결제
+  // 총 15명, 인덱스별 상태
+  const AD_BOOKING_STATUSES = [
+    'treatment_confirmed', // 0: 김민지
+    'treatment_confirmed', // 1: 이수진
+    'treatment_confirmed', // 2: 박지현
+    'visited',             // 3: 정하은
+    'confirmed',           // 4: 최서연
+    'treatment_confirmed', // 5: 윤아름
+    'treatment_confirmed', // 6: 강나연
+    'visited',             // 7: 임소희
+    'noshow',              // 8: 한예은
+    'cancelled',           // 9: 신유리
+    'treatment_confirmed', // 10: 오준서
+    'treatment_confirmed', // 11: 배민준
+    'visited',             // 12: 권지호
+    'noshow',              // 13: 장태양
+    'cancelled',           // 14: 류성민
+  ]
+  const adCustomerStatusMap: Record<number, string> = {}
+  adCustomers.forEach((c, i) => { adCustomerStatusMap[c.id] = AD_BOOKING_STATUSES[i] || 'confirmed' })
+
   const treatments = ['쌍꺼풀', '코 성형', '보톡스', '필러', '레이저', '임플란트', '미백']
-  const bookingsData = adCustomers.map((c, i) => ({
+  const adBookingsData = adCustomers.map((c, i) => ({
     clinic_id: c.clinic_id,
     customer_id: c.id,
     booking_datetime: new Date(Date.now() + (i - 7) * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000).toISOString(),
-    status: statuses[i % statuses.length],
+    status: AD_BOOKING_STATUSES[i] || 'confirmed',
     notes: `${treatments[i % treatments.length]} 상담 예약`,
     chatbot_confirmed_at: new Date(Date.now() - i * 3 * 60 * 60 * 1000).toISOString(),
   }))
-  await supabase.from('bookings').insert(bookingsData)
 
-  // 7. 상담 생성
+  // 8. 콘텐츠 유입 고객 예약 - youtube/insta/reels → 시술확정, tiktok/blog → 미전환
+  // 각 클리닉 10명: youtube(3명)→시술확정, insta_feed(2명)→시술확정, insta_reels(2명)→시술확정
+  //                  tiktok(2명)→방문완료/예약확정, naver_blog(1명)→노쇼
+  const CONTENT_CAMPAIGN_STATUSES: Record<string, string[]> = {
+    '2026_brand_youtube':       ['treatment_confirmed', 'treatment_confirmed', 'treatment_confirmed'],
+    '2026_brand_insta_feed':    ['treatment_confirmed', 'treatment_confirmed'],
+    '2026_brand_insta_reels':   ['treatment_confirmed', 'treatment_confirmed'],
+    '2026_brand_tiktok':        ['visited', 'confirmed'],
+    '2026_brand_blog':          ['noshow'],
+  }
+
+  const clinicCampaignIdx: Record<string, number> = {}
+  const contentCustomerStatusMap: Record<number, string> = {}
+  for (const c of (contentCustomers || [])) {
+    const key = `${c.clinic_id}_${c.first_campaign_id}`
+    const idx = clinicCampaignIdx[key] ?? 0
+    const statuses = CONTENT_CAMPAIGN_STATUSES[c.first_campaign_id] || ['confirmed']
+    contentCustomerStatusMap[c.id] = statuses[idx % statuses.length]
+    clinicCampaignIdx[key] = idx + 1
+  }
+
+  const contentBookingsData = (contentCustomers || []).map((c, i) => ({
+    clinic_id: c.clinic_id,
+    customer_id: c.id,
+    booking_datetime: new Date(Date.now() - (i + 5) * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000).toISOString(),
+    status: contentCustomerStatusMap[c.id] || 'confirmed',
+    notes: `${treatments[i % treatments.length]} 콘텐츠 유입 상담`,
+    chatbot_confirmed_at: new Date(Date.now() - (i + 5) * 3 * 60 * 60 * 1000).toISOString(),
+  }))
+
+  await supabase.from('bookings').insert([...adBookingsData, ...contentBookingsData])
+
+  // 9. 상담 기록 (광고 유입 고객 12명)
   const consultStatuses = ['예약완료', '방문완료', '노쇼', '상담중', '취소']
   const consultData = adCustomers.slice(0, 12).map((c, i) => ({
     clinic_id: c.clinic_id,
@@ -136,9 +195,12 @@ export async function POST(req: Request) {
   }))
   await supabase.from('consultations').insert(consultData)
 
-  // 8. 결제 - 광고 유입 고객 (10건) + 콘텐츠 유입 고객 (7건/클리닉)
+  // 10. 결제 - 시술확정(treatment_confirmed) 고객에게만
   const paymentAmounts = [1500000, 800000, 350000, 2200000, 550000, 1800000, 950000]
-  const adPayments = adCustomers.slice(0, 10).map((c, i) => ({
+
+  const adTreatmentConfirmed = adCustomers.filter(c => adCustomerStatusMap[c.id] === 'treatment_confirmed')
+  // ad treatment_confirmed: 인덱스 0,1,2,5,6,10,11 → 7명
+  const adPayments = adTreatmentConfirmed.map((c, i) => ({
     clinic_id: c.clinic_id,
     customer_id: c.id,
     treatment_name: treatments[i % treatments.length],
@@ -146,26 +208,19 @@ export async function POST(req: Request) {
     payment_date: new Date(Date.now() - i * 3 * 24 * 60 * 60 * 1000).toISOString(),
   }))
 
-  // 콘텐츠 유입 결제 - 각 클리닉의 콘텐츠 고객 중 7명
-  const contentPayments: any[] = []
-  if (contentCustomers) {
-    const perClinic = 10 // contentCampaigns 합산 count
-    clinicsList.forEach((clinic, ci) => {
-      const slice = contentCustomers.filter(c => c.clinic_id === clinic.id).slice(0, 7)
-      slice.forEach((c, i) => {
-        contentPayments.push({
-          clinic_id: c.clinic_id,
-          customer_id: c.id,
-          treatment_name: treatments[(ci * 7 + i) % treatments.length],
-          payment_amount: paymentAmounts[(ci * 7 + i) % paymentAmounts.length],
-          payment_date: new Date(Date.now() - (ci * 10 + i) * 2 * 24 * 60 * 60 * 1000).toISOString(),
-        })
-      })
-    })
-  }
+  const contentTreatmentConfirmed = (contentCustomers || []).filter(c => contentCustomerStatusMap[c.id] === 'treatment_confirmed')
+  // content treatment_confirmed: youtube(3)+insta_feed(2)+insta_reels(2) per clinic × 3 clinics = 21명
+  const contentPayments = contentTreatmentConfirmed.map((c, i) => ({
+    clinic_id: c.clinic_id,
+    customer_id: c.id,
+    treatment_name: treatments[i % treatments.length],
+    payment_amount: paymentAmounts[i % paymentAmounts.length],
+    payment_date: new Date(Date.now() - i * 2 * 24 * 60 * 60 * 1000).toISOString(),
+  }))
+
   await supabase.from('payments').insert([...adPayments, ...contentPayments])
 
-  // 9. 광고 통계 생성
+  // 11. 광고 통계 생성
   const platforms = ['Meta', 'Google', 'TikTok']
   const adStats: any[] = []
   for (const clinic of clinicsList) {
@@ -188,15 +243,23 @@ export async function POST(req: Request) {
   }
   await supabase.from('ad_campaign_stats').upsert(adStats, { onConflict: 'platform,campaign_id,stat_date' })
 
-  // 10. 브랜드 콘텐츠 + 통계
+  // 12. 브랜드 콘텐츠 + 통계
   let contentPostCount = 0
   let contentStatCount = 0
 
   try {
-    const budgetByPlatform: Record<string, number> = {
+    // 플랫폼별 총예산 / 포스트 수로 나눠서 per-post 예산 계산
+    const totalBudgetByPlatform: Record<string, number> = {
       youtube: 500000, instagram_feed: 200000, instagram_reels: 300000,
       tiktok: 250000, naver_blog: 150000,
     }
+    const contentPlatforms = [
+      { platform: 'youtube',          count: 3 },
+      { platform: 'instagram_feed',   count: 3 },
+      { platform: 'instagram_reels',  count: 2 },
+      { platform: 'tiktok',           count: 2 },
+      { platform: 'naver_blog',       count: 2 },
+    ]
     const utmCampaigns: Record<string, string> = {
       youtube: '2026_brand_youtube', instagram_feed: '2026_brand_insta_feed',
       instagram_reels: '2026_brand_insta_reels', tiktok: '2026_brand_tiktok', naver_blog: '2026_brand_blog',
@@ -215,19 +278,13 @@ export async function POST(req: Request) {
       [c2.id]: ['레이저 토닝 효과 비교', '피부과 시술 종류 소개', '여드름 흉터 제거 전후', '피부 관리 루틴 공개', '보톡스 시술 브이로그'],
       [c3.id]: ['임플란트 시술 과정', '치아 미백 전후 비교', '교정 완성 후기 인터뷰', '스케일링 Q&A', '라미네이트 변신 사례'],
     }
-    const contentPlatforms = [
-      { platform: 'youtube', count: 3 },
-      { platform: 'instagram_feed', count: 3 },
-      { platform: 'instagram_reels', count: 2 },
-      { platform: 'tiktok', count: 2 },
-      { platform: 'naver_blog', count: 2 },
-    ]
 
     const allPosts: any[] = []
     for (const clinic of clinicsList) {
       const titles = clinicTitles[clinic.id]
       let titleIdx = 0
       for (const { platform, count } of contentPlatforms) {
+        const perPostBudget = Math.round(totalBudgetByPlatform[platform] / count)
         for (let i = 0; i < count; i++) {
           const daysAgo = Math.floor(Math.random() * 60) + 1
           allPosts.push({
@@ -241,7 +298,7 @@ export async function POST(req: Request) {
             utm_medium: utmMediums[platform],
             utm_campaign: utmCampaigns[platform],
             utm_content: `${clinic.slug}_${platform}_content${i + 1}`,
-            budget: budgetByPlatform[platform],
+            budget: perPostBudget,
             is_api_synced: false,
           })
           titleIdx++
@@ -291,12 +348,15 @@ export async function POST(req: Request) {
     success: true,
     message: '더미데이터 생성 완료',
     counts: {
-      clinics: 3, users: 4,
+      clinics: 3,
+      users: 4,
       adCustomers: adCustomers.length,
       contentCustomers: contentCustomers?.length || 0,
-      bookings: bookingsData.length,
+      adBookings: adBookingsData.length,
+      contentBookings: contentBookingsData.length,
       consultations: consultData.length,
-      payments: adPayments.length + contentPayments.length,
+      adPayments: adPayments.length,
+      contentPayments: contentPayments.length,
       adStats: adStats.length,
       contentPosts: contentPostCount,
       contentStats: contentStatCount,

@@ -90,7 +90,9 @@ export default function DashboardPage() {
     { label: 'ROAS (광고비 대비 매출)', value: `${(kpi.roas * 100).toFixed(0)}%` },
     { label: '예약 전환율', value: `${kpi.bookingRate}%` },
     { label: '총 결제 매출', value: `₩${kpi.totalRevenue?.toLocaleString()}` },
-  ] : Array(4).fill({ label: '로딩 중...', value: '-' })
+    { label: 'CAC (고객 획득 비용)', value: `₩${kpi.cac?.toLocaleString()}` },
+    { label: 'ARPC (결제 고객 평균 매출)', value: `₩${kpi.arpc?.toLocaleString()}` },
+  ] : Array(6).fill({ label: '로딩 중...', value: '-' })
 
   // 시술 비중
   const treatmentPie = leads
@@ -130,7 +132,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-8">
         {kpiCards.map((d, i) => <KpiCard key={i} {...d} loading={loading} />)}
       </div>
 

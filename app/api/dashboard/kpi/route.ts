@@ -16,18 +16,30 @@ export async function GET(req: Request) {
 
   const ac = (q: any) => clinicId ? q.eq('clinic_id', clinicId) : q
 
-  const [adStatsRes, leadsRes, paymentsRes, consultRes] = await Promise.all([
+  const [adStatsRes, leadsRes, paymentsRes, consultRes, contentBudgetRes] = await Promise.all([
     ac(supabase.from('ad_campaign_stats').select('spend_amount').gte('stat_date', start).lte('stat_date', end)),
     ac(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)),
-    ac(supabase.from('payments').select('payment_amount').gte('payment_date', start).lte('payment_date', end)),
+    ac(supabase.from('payments').select('customer_id, payment_amount').gte('payment_date', start).lte('payment_date', end)),
     ac(supabase.from('consultations').select('*', { count: 'exact', head: true })
       .in('status', ['예약완료', '방문완료']).gte('created_at', start).lte('created_at', end)),
+    ac(supabase.from('content_posts').select('budget')),
   ])
 
   const totalSpend = adStatsRes.data?.reduce((s, r) => s + Number(r.spend_amount), 0) || 0
   const totalLeads = leadsRes.count || 0
   const totalRevenue = paymentsRes.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
   const bookedCount = consultRes.count || 0
+  const contentBudget = contentBudgetRes.data?.reduce((s, p) => s + (p.budget || 0), 0) || 0
+
+  // 결제 완료 고객 수 (distinct customer_id)
+  const payingCustomerCount = new Set(paymentsRes.data?.map(p => p.customer_id) || []).size
+
+  // CAC: (광고비 + 콘텐츠 예산) / 결제 완료 고객 수
+  const totalMarketingCost = totalSpend + contentBudget
+  const cac = payingCustomerCount > 0 ? Math.round(totalMarketingCost / payingCustomerCount) : 0
+
+  // ARPC: 총 결제 금액 / 결제 완료 고객 수
+  const arpc = payingCustomerCount > 0 ? Math.round(totalRevenue / payingCustomerCount) : 0
 
   return NextResponse.json({
     cpl: totalLeads > 0 ? Math.round(totalSpend / totalLeads) : 0,
@@ -36,5 +48,8 @@ export async function GET(req: Request) {
     totalRevenue,
     totalLeads,
     totalSpend,
+    cac,
+    arpc,
+    payingCustomerCount,
   })
 }

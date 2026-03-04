@@ -5,10 +5,11 @@ import { useClinic } from '@/components/ClinicContext'
 
 // ─── 상수 ────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  confirmed: { label: '예약확정', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  visited:   { label: '방문완료', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  cancelled: { label: '취소',     color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
-  noshow:    { label: '노쇼',     color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  confirmed:             { label: '예약확정', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  visited:               { label: '방문완료', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  treatment_confirmed:   { label: '시술확정', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  cancelled:             { label: '취소',     color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+  noshow:                { label: '노쇼',     color: 'bg-red-500/20 text-red-400 border-red-500/30' },
 }
 
 // ─── Toast ───────────────────────────────────────────────
@@ -327,7 +328,7 @@ export default function PatientsPage() {
 
   const stats = {
     total: bookings.length,
-    visited: bookings.filter(b => b.status === 'visited').length,
+    treatmentConfirmed: bookings.filter(b => b.status === 'treatment_confirmed').length,
     noshow: bookings.filter(b => b.status === 'noshow').length,
     revenue: bookings.reduce((s, b) => s + (b.customer?.payments || []).reduce((ps: number, p: any) => ps + Number(p.payment_amount), 0), 0),
   }
@@ -368,7 +369,7 @@ export default function PatientsPage() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
           { label: '전체 예약', value: stats.total },
-          { label: '방문완료', value: stats.visited },
+          { label: '시술확정', value: stats.treatmentConfirmed },
           { label: '노쇼', value: stats.noshow },
           { label: '총 결제액', value: `₩${stats.revenue.toLocaleString()}` },
         ].map(({ label, value }) => (

@@ -14,6 +14,7 @@ export default function AdsPage() {
   const { selectedClinicId } = useClinic()
   const [stats, setStats] = useState<any[]>([])
   const [channelData, setChannelData] = useState<any[]>([])
+  const [kpi, setKpi] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<any>(null)
@@ -26,12 +27,15 @@ export default function AdsPage() {
     try {
       const qs = new URLSearchParams({ days: String(days) })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
-      const [statsRes, channelRes] = await Promise.allSettled([
+      const clinicQs = selectedClinicId ? `?clinic_id=${selectedClinicId}` : ''
+      const [statsRes, channelRes, kpiRes] = await Promise.allSettled([
         fetch(`/api/ads/stats?${qs}`).then(r => r.json()),
-        fetch(`/api/dashboard/channel${selectedClinicId ? `?clinic_id=${selectedClinicId}` : ''}`).then(r => r.json()),
+        fetch(`/api/dashboard/channel${clinicQs}`).then(r => r.json()),
+        fetch(`/api/dashboard/kpi${clinicQs}`).then(r => r.json()),
       ])
       if (statsRes.status === 'fulfilled') setStats(Array.isArray(statsRes.value) ? statsRes.value : [])
       if (channelRes.status === 'fulfilled') setChannelData(Array.isArray(channelRes.value) ? channelRes.value : [])
+      if (kpiRes.status === 'fulfilled') setKpi(kpiRes.value)
     } finally {
       setLoading(false)
     }
@@ -122,12 +126,14 @@ export default function AdsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-8">
         {[
           { label: '총 광고비', value: `₩${Math.round(totalSpend).toLocaleString()}` },
           { label: '총 클릭', value: totalClicks.toLocaleString() },
           { label: '총 노출', value: totalImpressions.toLocaleString() },
           { label: platformFilter === 'all' ? '활성 매체' : '캠페인 수', value: platformFilter === 'all' ? `${platforms.length - 1}개` : `${filteredStats.length}건` },
+          { label: 'CAC (고객 획득 비용)', value: kpi ? `₩${kpi.cac?.toLocaleString()}` : '-' },
+          { label: 'ARPC (결제 고객 평균 매출)', value: kpi ? `₩${kpi.arpc?.toLocaleString()}` : '-' },
         ].map(({ label, value }) => (
           <div key={label} className="glass-card p-5">
             <p className="text-xs text-slate-400 uppercase tracking-widest mb-2">{label}</p>
