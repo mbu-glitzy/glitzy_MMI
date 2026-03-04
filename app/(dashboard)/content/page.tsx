@@ -388,7 +388,7 @@ export default function ContentPage() {
       {/* ── 대시보드 영역 ── */}
 
       {/* KPI 카드 */}
-      <div className="grid grid-cols-7 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-5">
         {[
           { label: '총 조회수',    value: totalViews.toLocaleString(),                                                    color: 'text-white' },
           { label: '총 참여수',    value: totalEngagement.toLocaleString(),                                               color: 'text-white' },
@@ -469,7 +469,8 @@ export default function ContentPage() {
         ) : detailAnalytics.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-sm">분석 데이터가 없습니다.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
                 {['구분', '포스트', '예산', 'DB 유입', '결제 매출', 'CPL', 'ROAS'].map(h => (
@@ -494,6 +495,7 @@ export default function ContentPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -520,7 +522,8 @@ export default function ContentPage() {
             <p className="text-slate-400 text-sm">{searchQuery ? '검색 결과가 없습니다.' : '콘텐츠 데이터가 없습니다.'}</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead>
               <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-white/5">
                 {['플랫폼', '제목 / UTM', '발행일', '조회수', '참여수', '예산', ''].map((h, i) => (
@@ -532,6 +535,7 @@ export default function ContentPage() {
               {filteredPosts.map(p => <ContentRow key={p.id} post={p} onDelete={handleDelete} onRefresh={fetchPosts} />)}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

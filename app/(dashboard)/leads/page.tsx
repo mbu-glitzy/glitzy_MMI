@@ -234,9 +234,9 @@ export default function LeadsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-5 gap-4">
-        {/* 고객 목록 */}
-        <div className="col-span-2 space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* 고객 목록 — 모바일에서 선택 시 숨김 */}
+        <div className={`md:col-span-2 space-y-2 ${selected ? 'hidden md:block' : ''}`}>
           {loading
             ? Array(8).fill(0).map((_, i) => <div key={i} className="glass-card h-16 animate-pulse" />)
             : displayed.map(lead => {
@@ -284,11 +284,19 @@ export default function LeadsPage() {
           )}
         </div>
 
-        {/* 상세 패널 */}
-        <div className="col-span-3">
-          {selected
-            ? <CustomerDetail lead={selected} />
-            : (
+        {/* 상세 패널 — 모바일에서 선택 시에만 표시 */}
+        <div className={`md:col-span-3 ${!selected ? 'hidden md:block' : ''}`}>
+          {selected ? (
+            <div>
+              <button
+                onClick={() => setSelected(null)}
+                className="md:hidden mb-3 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                ← 목록으로
+              </button>
+              <CustomerDetail lead={selected} />
+            </div>
+          ) : (
               <div className="glass-card p-12 text-center">
                 <Star size={32} className="text-slate-600 mx-auto mb-3" />
                 <p className="text-slate-500 text-sm">좌측 목록에서 고객을 선택하면<br />전체 여정 및 시술 이력을 확인할 수 있습니다.</p>

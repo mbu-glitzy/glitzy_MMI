@@ -7,25 +7,24 @@ import { LayoutDashboard, Users, MessageCircle, BarChart2, LogOut, Activity, Cal
 import { useClinic } from './ClinicContext'
 
 const navItems = [
-  { href: '/', label: '대시보드', icon: LayoutDashboard },
-  { href: '/leads', label: '고객(CDP) 관리', icon: Users },
-  { href: '/chatbot', label: '챗봇 현황', icon: MessageCircle },
-  { href: '/patients', label: '예약 / 결제 관리', icon: Calendar },
-  { href: '/ads', label: '광고 성과 분석', icon: BarChart2 },
-  { href: '/content', label: '브랜드 콘텐츠 분석', icon: Film },
-  { href: '/utm',     label: 'UTM 생성기',     icon: Link2    },
-  { href: '/monitor', label: '콘텐츠 모니터링', icon: Scan      },
-  { href: '/press',   label: '언론보도',        icon: Newspaper },
+  { href: '/',        label: '대시보드',        icon: LayoutDashboard },
+  { href: '/leads',   label: '고객(CDP) 관리',  icon: Users           },
+  { href: '/chatbot', label: '챗봇 현황',        icon: MessageCircle   },
+  { href: '/patients',label: '예약 / 결제 관리', icon: Calendar        },
+  { href: '/ads',     label: '광고 성과 분석',   icon: BarChart2       },
+  { href: '/content', label: '브랜드 콘텐츠 분석', icon: Film          },
+  { href: '/utm',     label: 'UTM 생성기',       icon: Link2           },
+  { href: '/monitor', label: '콘텐츠 모니터링',  icon: Scan            },
+  { href: '/press',   label: '언론보도',          icon: Newspaper       },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const user = session?.user as any
   const isSuperAdmin = user?.role === 'superadmin'
 
   const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
-
   const selectedClinic = clinics.find(c => c.id === selectedClinicId)
 
   return (
@@ -80,6 +79,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
                   ? 'bg-brand-600/20 text-brand-400'
@@ -100,6 +100,7 @@ export default function Sidebar() {
             </div>
             <Link
               href="/admin"
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 pathname.startsWith('/admin')
                   ? 'bg-purple-600/20 text-purple-400'

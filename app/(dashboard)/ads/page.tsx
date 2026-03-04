@@ -126,7 +126,7 @@ export default function AdsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-8 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
         {[
           { label: '총 광고비',   value: `₩${Math.round(totalSpend).toLocaleString()}` },
           { label: 'ROAS',        value: kpi ? `${(kpi.roas * 100).toFixed(0)}%` : '-' },
@@ -218,7 +218,8 @@ export default function AdsPage() {
             {Array(5).fill(0).map((_, i) => <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />)}
           </div>
         ) : filteredStats.length > 0 ? (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead>
               <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-white/5">
                 {['매체', '캠페인명', '날짜', '지출', '클릭', '노출'].map(h => (
@@ -253,6 +254,7 @@ export default function AdsPage() {
               })}
             </tbody>
           </table>
+          </div>
         ) : (
           <div className="py-12 text-center text-slate-500">
             <p className="text-sm mb-2">광고 데이터가 없습니다.</p>

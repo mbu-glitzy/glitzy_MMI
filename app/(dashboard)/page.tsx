@@ -115,14 +115,14 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white">마케팅 성과 대시보드</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-white">마케팅 성과 대시보드</h1>
           <p className="text-sm text-slate-400 mt-1">
             {lastUpdated ? `마지막 업데이트: ${lastUpdated.toLocaleTimeString('ko')}` : '데이터 로딩 중...'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button onClick={fetchAll} disabled={loading} className="glass-card p-2.5 hover:bg-white/10 transition-all disabled:opacity-50">
             <RefreshCw size={16} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -132,13 +132,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
         {kpiCards.map((d, i) => <KpiCard key={i} {...d} loading={loading} />)}
       </div>
 
       {/* 광고비 추이 + 시술 비중 */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="col-span-2 glass-card p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold text-white">광고비 추이</h2>
             <span className="text-xs bg-brand-600/20 text-brand-500 px-3 py-1 rounded-full">최근 8주</span>
@@ -202,7 +202,7 @@ export default function DashboardPage() {
 
       {/* CPL / ROAS 차트 — 분리 (광고 + 콘텐츠 통합) */}
       {(allCplData.length > 0 || allRoasData.length > 0) && (
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* CPL 차트 */}
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-1">
@@ -272,7 +272,8 @@ export default function DashboardPage() {
             {Array(5).fill(0).map((_, i) => <div key={i} className="h-10 bg-white/5 rounded-xl animate-pulse" />)}
           </div>
         ) : leads.length > 0 ? (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-2">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-white/5">
                 {['고객명', '유입 채널', '챗봇 발송', '상담 상태', '결제 금액', '시술명'].map(h => (
@@ -306,6 +307,7 @@ export default function DashboardPage() {
               })}
             </tbody>
           </table>
+          </div>
         ) : (
           <p className="text-slate-500 text-sm text-center py-8">인입된 고객 데이터가 없습니다.</p>
         )}

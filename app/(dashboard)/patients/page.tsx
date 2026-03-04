@@ -374,7 +374,7 @@ export default function PatientsPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         {[
           { label: '전체 예약', value: stats.total },
           { label: '시술확정', value: stats.treatmentConfirmed },
@@ -415,9 +415,10 @@ export default function PatientsPage() {
               <p className="text-slate-400 text-sm">{search || statusFilter !== 'all' ? '검색 결과가 없습니다.' : '예약 데이터가 없습니다.'}</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <>
               {/* 컬럼 헤더 */}
-              <div className="flex items-center gap-4 px-5 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider border-b border-white/5 glass-card mb-1">
+              <div className="flex items-center gap-4 px-5 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider border-b border-white/5 glass-card mb-1 min-w-[640px]">
                 <div className="w-9 shrink-0" />
                 <div className="flex-1 min-w-0">고객명</div>
                 <div className="w-44 shrink-0">예약 일시</div>
@@ -426,12 +427,13 @@ export default function PatientsPage() {
                 <div className="w-28 shrink-0 text-right">결제 금액</div>
                 <div className="w-4 shrink-0" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-[640px]">
                 {filtered.map(b => (
                   <BookingRow key={b.id} booking={b} onToast={(msg, type) => setToast({ msg, type })} onRefresh={fetchBookings} />
                 ))}
               </div>
             </>
+            </div>
           )}
         </>
       ) : (
