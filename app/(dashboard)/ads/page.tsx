@@ -70,12 +70,12 @@ export default function AdsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">광고 성과 분석</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-white">광고 성과 분석</h1>
           <p className="text-sm text-slate-400 mt-1">Meta / Google / TikTok 광고 지출 및 성과 데이터.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={days}
             onChange={e => setDays(Number(e.target.value))}
@@ -151,41 +151,45 @@ export default function AdsPage() {
             매체별 CPL / ROAS 비교
             {platformFilter !== 'all' && <span className="ml-2 text-sm text-brand-400">— {platformFilter}</span>}
           </h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={platformFilter === 'all' ? channelData : filteredChannel} barGap={6}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" />
-              <XAxis dataKey="channel" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left" tickFormatter={v => `₩${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }}
-                formatter={(value: any, name: string) =>
-                  name === 'ROAS (%)' ? [`${(value * 100).toFixed(0)}%`, name] : [`₩${Number(value).toLocaleString()}`, name]
-                }
-              />
-              <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
-              <Bar yAxisId="left" dataKey="cpl" name="CPL (₩)" fill="#6366f1" radius={[6, 6, 0, 0]} />
-              <Bar yAxisId="right" dataKey="roas" name="ROAS (%)" fill="#10b981" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="overflow-x-auto -mx-2 px-2">
+            <div className="min-w-[360px]">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={platformFilter === 'all' ? channelData : filteredChannel} barGap={6}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" />
+                  <XAxis dataKey="channel" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tickFormatter={v => `₩${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }}
+                    formatter={(value: any, name: string) =>
+                      name === 'ROAS (%)' ? [`${(value * 100).toFixed(0)}%`, name] : [`₩${Number(value).toLocaleString()}`, name]
+                    }
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
+                  <Bar yAxisId="left" dataKey="cpl" name="CPL (₩)" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="roas" name="ROAS (%)" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
           {/* 매체별 수치 요약 */}
-          <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-white/5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-5 border-t border-white/5">
             {(platformFilter === 'all' ? channelData : filteredChannel).map(c => (
-              <div key={c.channel} className="text-center">
-                <p className="text-xs text-slate-500 mb-1">{c.channel}</p>
-                <div className="flex justify-center gap-4 text-sm">
-                  <span>
+              <div key={c.channel} className="flex sm:flex-col sm:text-center items-center sm:items-center gap-3 sm:gap-1">
+                <p className="text-xs text-slate-500 w-16 sm:w-auto">{c.channel}</p>
+                <div className="flex gap-4 text-sm flex-wrap">
+                  <span className="whitespace-nowrap">
                     <span className="text-slate-500 text-xs">CPL </span>
                     <span className="font-semibold text-white">₩{c.cpl.toLocaleString()}</span>
                   </span>
-                  <span>
+                  <span className="whitespace-nowrap">
                     <span className="text-slate-500 text-xs">ROAS </span>
                     <span className={`font-semibold ${c.roas >= 1 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {(c.roas * 100).toFixed(0)}%
                     </span>
                   </span>
-                  <span>
+                  <span className="whitespace-nowrap">
                     <span className="text-slate-500 text-xs">DB </span>
                     <span className="font-semibold text-slate-300">{c.leads}</span>
                   </span>

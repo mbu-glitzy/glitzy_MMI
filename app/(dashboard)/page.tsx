@@ -19,11 +19,11 @@ const MEDIA_COLORS: Record<string, string> = {
 
 function KpiCard({ label, value, loading }: { label: string; value: string; loading: boolean }) {
   return (
-    <div className="glass-card p-5 animate-fade-in-up">
-      <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+    <div className="glass-card p-4 md:p-5 animate-fade-in-up overflow-hidden">
+      <p className="text-[10px] md:text-xs text-slate-400 uppercase tracking-widest mb-1 truncate">{label}</p>
       {loading
-        ? <div className="h-9 bg-white/5 rounded-lg animate-pulse mt-2 mb-3" />
-        : <p className="text-3xl font-bold text-white mt-2 mb-3">{value}</p>
+        ? <div className="h-7 md:h-9 bg-white/5 rounded-lg animate-pulse mt-2 mb-2 md:mb-3" />
+        : <p className="text-lg md:text-3xl font-bold text-white mt-2 mb-2 md:mb-3 truncate">{value}</p>
       }
     </div>
   )
@@ -211,22 +211,36 @@ export default function DashboardPage() {
             </div>
             <p className="text-xs text-slate-500 mb-4">DB 1건 획득 비용</p>
             {allCplData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={allCplData} barSize={28}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={v => `₩${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: any) => [`₩${Number(v).toLocaleString()}`, 'CPL']}
-                  />
-                  <Bar dataKey="cpl" radius={[4, 4, 0, 0]}>
-                    {allCplData.map((entry, i) => (
-                      <Cell key={i} fill={MEDIA_COLORS[entry.name] || '#6366f1'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <>
+                {/* 모바일: 가로 막대 */}
+                <div className="block md:hidden">
+                  <ResponsiveContainer width="100%" height={allCplData.length * 44 + 20}>
+                    <BarChart layout="vertical" data={allCplData} barSize={20}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" vertical={false} />
+                      <XAxis type="number" tickFormatter={v => `₩${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
+                      <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`₩${Number(v).toLocaleString()}`, 'CPL']} />
+                      <Bar dataKey="cpl" radius={[0, 4, 4, 0]}>
+                        {allCplData.map((entry, i) => <Cell key={i} fill={MEDIA_COLORS[entry.name] || '#6366f1'} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* 데스크탑: 세로 막대 */}
+                <div className="hidden md:block">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={allCplData} barSize={28}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" />
+                      <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={v => `₩${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`₩${Number(v).toLocaleString()}`, 'CPL']} />
+                      <Bar dataKey="cpl" radius={[4, 4, 0, 0]}>
+                        {allCplData.map((entry, i) => <Cell key={i} fill={MEDIA_COLORS[entry.name] || '#6366f1'} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-slate-600 text-xs">CPL 데이터 없음</div>
             )}
@@ -240,23 +254,38 @@ export default function DashboardPage() {
             </div>
             <p className="text-xs text-slate-500 mb-4">예산 대비 매출 (100% 이상 = 흑자)</p>
             {allRoasData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={allRoasData} barSize={28}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" />
-                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={v => `${v}%`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: any) => [`${v}%`, 'ROAS']}
-                  />
-                  {/* 100% 기준선 */}
-                  <Bar dataKey="roas" radius={[4, 4, 0, 0]}>
-                    {allRoasData.map((entry, i) => (
-                      <Cell key={i} fill={entry.roas >= 100 ? (MEDIA_COLORS[entry.name] || '#10b981') : '#ef4444'} fillOpacity={entry.roas >= 100 ? 1 : 0.7} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <>
+                {/* 모바일: 가로 막대 */}
+                <div className="block md:hidden">
+                  <ResponsiveContainer width="100%" height={allRoasData.length * 44 + 20}>
+                    <BarChart layout="vertical" data={allRoasData} barSize={20}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" vertical={false} />
+                      <XAxis type="number" tickFormatter={v => `${v}%`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
+                      <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}%`, 'ROAS']} />
+                      <Bar dataKey="roas" radius={[0, 4, 4, 0]}>
+                        {allRoasData.map((entry, i) => <Cell key={i} fill={entry.roas >= 100 ? (MEDIA_COLORS[entry.name] || '#10b981') : '#ef4444'} fillOpacity={entry.roas >= 100 ? 1 : 0.7} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* 데스크탑: 세로 막대 */}
+                <div className="hidden md:block">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={allRoasData} barSize={28}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" />
+                      <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={v => `${v}%`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}%`, 'ROAS']} />
+                      <Bar dataKey="roas" radius={[4, 4, 0, 0]}>
+                        {allRoasData.map((entry, i) => (
+                          <Cell key={i} fill={entry.roas >= 100 ? (MEDIA_COLORS[entry.name] || '#10b981') : '#ef4444'} fillOpacity={entry.roas >= 100 ? 1 : 0.7} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-slate-600 text-xs">ROAS 데이터 없음</div>
             )}

@@ -49,7 +49,7 @@ function BookingEditForm({ booking, onSave }: { booking: any; onSave: (msg: stri
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3 mt-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
       <div>
         <label className="text-xs text-slate-500 mb-1 block">예약 상태</label>
         <select
@@ -81,7 +81,7 @@ function BookingEditForm({ booking, onSave }: { booking: any; onSave: (msg: stri
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500"
         />
       </div>
-      <div className="col-span-3 flex justify-end">
+      <div className="sm:col-span-3 flex justify-end">
         <button onClick={handleSave} disabled={saving} className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all">
           {saving ? '저장 중...' : '예약 저장'}
         </button>
@@ -117,7 +117,7 @@ function ConsultationForm({ customerId, current, onSave }: { customerId: number;
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3 mt-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
       <div>
         <label className="text-xs text-slate-500 mb-1 block">상담 상태</label>
         <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
@@ -137,7 +137,7 @@ function ConsultationForm({ customerId, current, onSave }: { customerId: number;
           placeholder="상담 내용 메모"
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500" />
       </div>
-      <div className="col-span-3 flex justify-end">
+      <div className="sm:col-span-3 flex justify-end">
         <button onClick={handleSave} disabled={saving} className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all">
           {saving ? '저장 중...' : '상담 저장'}
         </button>
@@ -202,7 +202,7 @@ function PaymentSection({ customerId, payments, onSave }: { customerId: number; 
           </tbody>
         </table>
       )}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="text-xs text-slate-500 mb-1 block">시술명 *</label>
           <input type="text" value={form.treatmentName}
@@ -224,7 +224,7 @@ function PaymentSection({ customerId, payments, onSave }: { customerId: number; 
           <input type="date" value={form.paymentDate} onChange={e => setForm(f => ({ ...f, paymentDate: e.target.value }))}
             className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" />
         </div>
-        <div className="col-span-3 flex justify-end">
+        <div className="sm:col-span-3 flex justify-end">
           <button onClick={handleSave} disabled={saving}
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all">
             <Plus size={14} /> {saving ? '저장 중...' : '결제 내역 추가'}

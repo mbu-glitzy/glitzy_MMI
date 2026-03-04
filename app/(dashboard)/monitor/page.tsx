@@ -94,7 +94,7 @@ function AuditRow({ post, onAnalyze }: { post: any; onAnalyze: (id: number) => P
             {audit.summary && (
               <p className="text-sm text-slate-300 mb-3 italic">"{audit.summary}"</p>
             )}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {(audit.findings || []).map((f: any, i: number) => (
                 <div key={i} className={`flex items-start gap-2 p-3 rounded-lg ${f.detected ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/[0.02] border border-white/5'}`}>
                   <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${f.detected ? 'bg-red-400' : 'bg-emerald-500'}`} />
@@ -159,22 +159,22 @@ export default function MonitorPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">콘텐츠 모니터링</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-white">콘텐츠 모니터링</h1>
           <p className="text-sm text-slate-400 mt-1">네이버 블로그 · 인스타그램 피드 텍스트의 의료광고법 저촉 여부를 AI로 분석합니다.</p>
         </div>
         <button
           onClick={fetchPosts}
           disabled={loading}
-          className="glass-card p-2.5 hover:bg-white/10 transition-all"
+          className="glass-card p-2.5 hover:bg-white/10 transition-all self-start sm:self-auto"
         >
           <RefreshCw size={16} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mb-6">
         {[
           { label: '총 콘텐츠',  value: posts.length,         color: 'text-white' },
           { label: '위험',       value: dangerPosts.length,   color: 'text-red-400' },
@@ -183,7 +183,7 @@ export default function MonitorPage() {
         ].map(({ label, value, color }) => (
           <div key={label} className="glass-card p-4">
             <p className="text-xs text-slate-500 mb-1">{label}</p>
-            <p className={`text-2xl font-bold ${color}`}>{loading ? '-' : value}</p>
+            <p className={`text-xl md:text-2xl font-bold ${color}`}>{loading ? '-' : value}</p>
           </div>
         ))}
       </div>
@@ -207,7 +207,7 @@ export default function MonitorPage() {
       </div>
 
       {/* 포스트 테이블 */}
-      <div className="glass-card p-0 overflow-hidden">
+      <div className="glass-card overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
             {Array(5).fill(0).map((_, i) => <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />)}
@@ -219,20 +219,22 @@ export default function MonitorPage() {
             <p className="text-xs">브랜드 콘텐츠 분석 메뉴에서 포스트를 먼저 등록하세요.</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-white/5">
-                {['플랫폼', '콘텐츠 제목', '위험도 점수', '등급', '마지막 분석', '액션'].map(h => (
-                  <th key={h} className="text-left py-3 px-4 font-medium">{h}</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[540px]">
+              <thead>
+                <tr className="text-xs text-slate-500 uppercase tracking-wider border-b border-white/5">
+                  {['플랫폼', '콘텐츠 제목', '위험도 점수', '등급', '마지막 분석', '액션'].map(h => (
+                    <th key={h} className="text-left py-3 px-4 font-medium whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(post => (
+                  <AuditRow key={post.id} post={post} onAnalyze={handleAnalyze} />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(post => (
-                <AuditRow key={post.id} post={post} onAnalyze={handleAnalyze} />
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

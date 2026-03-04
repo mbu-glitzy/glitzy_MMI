@@ -7,15 +7,14 @@ import { LayoutDashboard, Users, MessageCircle, BarChart2, LogOut, Activity, Cal
 import { useClinic } from './ClinicContext'
 
 const navItems = [
-  { href: '/',        label: '대시보드',        icon: LayoutDashboard },
-  { href: '/leads',   label: '고객(CDP) 관리',  icon: Users           },
-  { href: '/chatbot', label: '챗봇 현황',        icon: MessageCircle   },
-  { href: '/patients',label: '예약 / 결제 관리', icon: Calendar        },
-  { href: '/ads',     label: '광고 성과 분석',   icon: BarChart2       },
-  { href: '/content', label: '브랜드 콘텐츠 분석', icon: Film          },
-  { href: '/utm',     label: 'UTM 생성기',       icon: Link2           },
-  { href: '/monitor', label: '콘텐츠 모니터링',  icon: Scan            },
-  { href: '/press',   label: '언론보도',          icon: Newspaper       },
+  { href: '/',        label: '대시보드',          icon: LayoutDashboard },
+  { href: '/leads',   label: '고객(CDP) 관리',    icon: Users           },
+  { href: '/chatbot', label: '챗봇 현황',          icon: MessageCircle   },
+  { href: '/patients',label: '예약 / 결제 관리',   icon: Calendar        },
+  { href: '/ads',     label: '광고 성과 분석',     icon: BarChart2       },
+  { href: '/content', label: '브랜드 콘텐츠 분석', icon: Film            },
+  { href: '/monitor', label: '콘텐츠 모니터링',    icon: Scan            },
+  { href: '/press',   label: '언론보도',            icon: Newspaper       },
 ]
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -28,7 +27,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const selectedClinic = clinics.find(c => c.id === selectedClinicId)
 
   return (
-    <aside className="w-60 h-screen flex flex-col border-r border-white/5 shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
+    <aside className="w-60 h-screen flex flex-col border-r border-white/5 shrink-0 bg-[#0b0b18]">
       {/* 로고 */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/5">
         <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
@@ -98,6 +97,18 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             <div className="pt-3 pb-1">
               <p className="text-[10px] text-slate-600 uppercase tracking-widest px-3">슈퍼어드민</p>
             </div>
+            <Link
+              href="/utm"
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                pathname.startsWith('/utm')
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+              }`}
+            >
+              <Link2 size={17} />
+              UTM 생성기
+            </Link>
             <Link
               href="/admin"
               onClick={onClose}
