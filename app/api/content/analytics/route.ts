@@ -1,0 +1,129 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { serverSupabase } from '@/lib/supabase'
+import { getClinicId } from '@/lib/session'
+
+// GET /api/content/analytics?groupBy=campaign|month|post&clinic_id=X
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabase = serverSupabase()
+  const url = new URL(req.url)
+  const groupBy = url.searchParams.get('groupBy') || 'campaign'
+  const clinicId = await getClinicId(req.url)
+
+  const ac = (q: any) => clinicId ? q.eq('clinic_id', clinicId) : q
+
+  // 콘텐츠 포스트
+  const { data: posts } = await ac(
+    supabase.from('content_posts').select('id, title, platform, utm_campaign, budget, published_at')
+  )
+  if (!posts?.length) return NextResponse.json([])
+
+  // 리드 전체 조회
+  const { data: leads } = await ac(
+    supabase.from('leads').select('id, customer_id, campaign_id, created_at')
+  )
+
+  // 결제 조회 (리드 고객 기준)
+  const customerIds = [...new Set((leads || []).map((l: any) => l.customer_id))]
+  const paymentsRes = customerIds.length
+    ? await supabase.from('payments').select('customer_id, payment_amount').in('customer_id', customerIds)
+    : { data: [] }
+
+  const paymentByCustomer: Record<number, number> = {}
+  for (const p of paymentsRes.data || []) {
+    paymentByCustomer[p.customer_id] = (paymentByCustomer[p.customer_id] || 0) + Number(p.payment_amount)
+  }
+
+  // 리드 revenue 계산 헬퍼
+  const calcRevenue = (matchedLeads: any[]) =>
+    matchedLeads.reduce((s, l) => s + (paymentByCustomer[l.customer_id] || 0), 0)
+
+  let result: any[] = []
+
+  if (groupBy === 'campaign') {
+    const campaigns = [...new Set(posts.map((p: any) => p.utm_campaign).filter(Boolean))] as string[]
+
+    result = campaigns.map(campaign => {
+      const campaignPosts = posts.filter((p: any) => p.utm_campaign === campaign)
+      const budget = campaignPosts.reduce((s: number, p: any) => s + (p.budget || 0), 0)
+      const matchedLeads = (leads || []).filter((l: any) => l.campaign_id === campaign)
+      const leadCount = matchedLeads.length
+      const revenue = calcRevenue(matchedLeads)
+
+      return {
+        key: campaign,
+        label: campaign,
+        postCount: campaignPosts.length,
+        platforms: [...new Set(campaignPosts.map((p: any) => p.platform))],
+        budget,
+        leads: leadCount,
+        revenue,
+        cpl: leadCount > 0 && budget > 0 ? Math.round(budget / leadCount) : 0,
+        roas: budget > 0 ? Math.round((revenue / budget) * 100) : 0,
+      }
+    })
+
+    // 예산 있는 미분류 포스트도 포함
+    const uncategorized = posts.filter((p: any) => !p.utm_campaign && (p.budget || 0) > 0)
+    if (uncategorized.length) {
+      const budget = uncategorized.reduce((s: number, p: any) => s + (p.budget || 0), 0)
+      result.push({ key: '_none', label: '캠페인 미지정', postCount: uncategorized.length, platforms: [], budget, leads: 0, revenue: 0, cpl: 0, roas: 0 })
+    }
+
+  } else if (groupBy === 'month') {
+    const monthMap: Record<string, { posts: any[]; budget: number }> = {}
+    for (const post of posts) {
+      const month = post.published_at
+        ? new Date(post.published_at).toISOString().slice(0, 7)
+        : '9999-99'
+      if (!monthMap[month]) monthMap[month] = { posts: [], budget: 0 }
+      monthMap[month].posts.push(post)
+      monthMap[month].budget += (post.budget || 0)
+    }
+
+    result = Object.entries(monthMap)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([month, data]) => {
+        const campaigns = [...new Set(data.posts.map((p: any) => p.utm_campaign).filter(Boolean))]
+        const matchedLeads = (leads || []).filter((l: any) => campaigns.includes(l.campaign_id))
+        const leadCount = matchedLeads.length
+        const revenue = calcRevenue(matchedLeads)
+        return {
+          key: month,
+          label: month === '9999-99' ? '미분류' : `${month.slice(0, 4)}년 ${month.slice(5, 7)}월`,
+          postCount: data.posts.length,
+          platforms: [...new Set(data.posts.map((p: any) => p.platform))],
+          budget: data.budget,
+          leads: leadCount,
+          revenue,
+          cpl: leadCount > 0 && data.budget > 0 ? Math.round(data.budget / leadCount) : 0,
+          roas: data.budget > 0 ? Math.round((revenue / data.budget) * 100) : 0,
+        }
+      })
+
+  } else {
+    // groupBy === 'post'
+    result = posts.map((post: any) => {
+      const matchedLeads = (leads || []).filter((l: any) => l.campaign_id === post.utm_campaign)
+      const leadCount = matchedLeads.length
+      const revenue = calcRevenue(matchedLeads)
+      return {
+        key: String(post.id),
+        label: post.title,
+        platform: post.platform,
+        postCount: 1,
+        budget: post.budget || 0,
+        leads: leadCount,
+        revenue,
+        cpl: leadCount > 0 && post.budget > 0 ? Math.round(post.budget / leadCount) : 0,
+        roas: post.budget > 0 ? Math.round((revenue / post.budget) * 100) : 0,
+      }
+    })
+  }
+
+  return NextResponse.json(result)
+}

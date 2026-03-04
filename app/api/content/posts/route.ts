@@ -96,6 +96,26 @@ export async function PUT(req: Request) {
   return NextResponse.json(data)
 }
 
+// 예산 업데이트 (budget 필드만)
+export async function PATCH(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabase = serverSupabase()
+  const { id, budget } = await req.json()
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+  const { data, error } = await supabase
+    .from('content_posts')
+    .update({ budget: budget ?? 0 })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 // 콘텐츠 삭제
 export async function DELETE(req: Request) {
   const session = await getServerSession(authOptions)

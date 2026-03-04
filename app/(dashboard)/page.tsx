@@ -71,7 +71,7 @@ export default function DashboardPage() {
 
   const kpiCards = kpi ? [
     { label: 'CPL (DB 1건당 광고비)', value: `₩${kpi.cpl?.toLocaleString()}` },
-    { label: 'ROAS (광고비 대비 매출)', value: `${kpi.roas}x` },
+    { label: 'ROAS (광고비 대비 매출)', value: `${(kpi.roas * 100).toFixed(0)}%` },
     { label: '예약 전환율', value: `${kpi.bookingRate}%` },
     { label: '총 결제 매출', value: `₩${kpi.totalRevenue?.toLocaleString()}` },
   ] : Array(4).fill({ label: '로딩 중...', value: '-' })
@@ -181,11 +181,12 @@ export default function DashboardPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a" />
               <XAxis dataKey="channel" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="left" tickFormatter={v => `₩${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" tickFormatter={v => `${v}x`} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }} />
+              <YAxis yAxisId="right" orientation="right" tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8, fontSize: 12 }}
+                formatter={(value: any, name: string) => name === 'ROAS (%)' ? [`${(value * 100).toFixed(0)}%`, name] : [`₩${Number(value).toLocaleString()}`, name]} />
               <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
               <Bar yAxisId="left" dataKey="cpl" name="CPL (₩)" fill="#6366f1" radius={[6, 6, 0, 0]} />
-              <Bar yAxisId="right" dataKey="roas" name="ROAS (x)" fill="#10b981" radius={[6, 6, 0, 0]} />
+              <Bar yAxisId="right" dataKey="roas" name="ROAS (%)" fill="#10b981" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
