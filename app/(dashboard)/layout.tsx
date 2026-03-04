@@ -21,8 +21,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* 사이드바 — 모바일: 슬라이드인, 데스크탑: 항상 표시 */}
         <div className={`
-          fixed md:static inset-y-0 left-0 z-30
-          transform transition-transform duration-200 ease-in-out
+          w-60 shrink-0 fixed md:static inset-y-0 left-0 z-30
+          transition-transform duration-200 ease-in-out
           md:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
