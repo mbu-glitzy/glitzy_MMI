@@ -3,17 +3,32 @@
 import { useState, useEffect } from 'react'
 import { Copy, Check, Trash2, ExternalLink, ChevronDown } from 'lucide-react'
 
-const PLATFORM_PRESETS: Record<string, { source: string; medium: string; label: string }> = {
-  meta: { source: 'facebook', medium: 'cpc', label: 'Meta (Facebook/Instagram)' },
-  google: { source: 'google', medium: 'cpc', label: 'Google Ads' },
-  youtube: { source: 'youtube', medium: 'video', label: 'YouTube' },
-  instagram: { source: 'instagram', medium: 'social', label: 'Instagram (오가닉)' },
-  tiktok: { source: 'tiktok', medium: 'video', label: 'TikTok' },
-  naver: { source: 'naver', medium: 'cpc', label: '네이버 검색광고' },
-  kakao: { source: 'kakao', medium: 'cpc', label: '카카오 모먼트' },
-  blog: { source: 'naver', medium: 'blog', label: '네이버 블로그' },
-  custom: { source: '', medium: '', label: '직접 입력' },
+interface PlatformPreset {
+  source: string
+  medium: string
+  label: string
+  group: string
 }
+
+const PLATFORM_PRESETS: Record<string, PlatformPreset> = {
+  // 광고 매체
+  meta:              { source: 'meta',      medium: 'cpc',     label: 'Meta',            group: '광고 매체' },
+  google:            { source: 'google',    medium: 'cpc',     label: 'Google Ads',      group: '광고 매체' },
+  naver_sa:          { source: 'naver',     medium: 'cpc',     label: '네이버 SA',         group: '광고 매체' },
+  naver_da:          { source: 'naver',     medium: 'display', label: '네이버 DA',         group: '광고 매체' },
+  kakao:             { source: 'kakao',     medium: 'cpc',     label: '카카오 모먼트',       group: '광고 매체' },
+  // 콘텐츠 매체
+  youtube:           { source: 'youtube',   medium: 'video',   label: '유튜브',            group: '콘텐츠 매체' },
+  youtube_shorts:    { source: 'youtube',   medium: 'short',   label: '유튜브 쇼츠',        group: '콘텐츠 매체' },
+  instagram_feed:    { source: 'instagram', medium: 'social',  label: '인스타그램 피드',     group: '콘텐츠 매체' },
+  instagram_reels:   { source: 'instagram', medium: 'short',   label: '인스타그램 릴스',     group: '콘텐츠 매체' },
+  tiktok:            { source: 'tiktok',    medium: 'short',   label: '틱톡',              group: '콘텐츠 매체' },
+  naver_blog:        { source: 'naver',     medium: 'blog',    label: '네이버 블로그',       group: '콘텐츠 매체' },
+  // 기타
+  custom:            { source: '',          medium: '',        label: '직접 입력',          group: '기타' },
+}
+
+const GROUPS = ['광고 매체', '콘텐츠 매체', '기타']
 
 interface UtmHistory {
   id: string
@@ -25,7 +40,7 @@ interface UtmHistory {
 export default function UtmPage() {
   const [baseUrl, setBaseUrl] = useState('')
   const [platform, setPlatform] = useState('meta')
-  const [source, setSource] = useState('facebook')
+  const [source, setSource] = useState('meta')
   const [medium, setMedium] = useState('cpc')
   const [campaign, setCampaign] = useState('')
   const [adGroup, setAdGroup] = useState('')
@@ -52,6 +67,7 @@ export default function UtmPage() {
 
   useEffect(() => {
     buildUrl()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, source, medium, campaign, adGroup, content, term])
 
   function buildUrl() {
@@ -61,11 +77,11 @@ export default function UtmPage() {
       if (source) url.searchParams.set('utm_source', source)
       if (medium) url.searchParams.set('utm_medium', medium)
       if (campaign) url.searchParams.set('utm_campaign', campaign)
-      if (content) url.searchParams.set('utm_content', content)
+      const contentVal = adGroup && content
+        ? `${adGroup}_${content}`
+        : adGroup || content
+      if (contentVal) url.searchParams.set('utm_content', contentVal)
       if (term) url.searchParams.set('utm_term', term)
-      // 광고그룹은 utm_content의 prefix로 활용하거나 별도 파라미터로 추가
-      if (adGroup && !content) url.searchParams.set('utm_content', adGroup)
-      else if (adGroup && content) url.searchParams.set('utm_content', `${adGroup}_${content}`)
       setGeneratedUrl(url.toString())
     } catch {
       setGeneratedUrl('')
@@ -81,7 +97,7 @@ export default function UtmPage() {
 
   function handleSaveHistory() {
     if (!generatedUrl) return
-    const label = historyLabel || `${PLATFORM_PRESETS[platform]?.label || platform} - ${campaign || '무제'}`
+    const label = historyLabel || `${PLATFORM_PRESETS[platform]?.label || platform} · ${campaign || '무제'}`
     const entry: UtmHistory = {
       id: Date.now().toString(),
       url: generatedUrl,
@@ -130,6 +146,8 @@ export default function UtmPage() {
     { label: 'utm_term', value: term },
   ].filter(p => p.value)
 
+  const currentPreset = PLATFORM_PRESETS[platform]
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
@@ -155,40 +173,60 @@ export default function UtmPage() {
 
           {/* 매체 선택 */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">매체 선택</h2>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {Object.entries(PLATFORM_PRESETS).map(([key, preset]) => (
-                <button
-                  key={key}
-                  onClick={() => setPlatform(key)}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                    platform === key
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">매체 선택</h2>
 
-            <div className="grid grid-cols-2 gap-3">
+            {GROUPS.map(group => {
+              const items = Object.entries(PLATFORM_PRESETS).filter(([, p]) => p.group === group)
+              return (
+                <div key={group} className="mb-4 last:mb-0">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">{group}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {items.map(([key, preset]) => (
+                      <button
+                        key={key}
+                        onClick={() => setPlatform(key)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          platform === key
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* source / medium - 선택된 매체 기준 자동입력, 수동 수정 가능 */}
+            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">utm_source *</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  utm_source *
+                  {platform !== 'custom' && (
+                    <span className="ml-1 text-blue-400">(자동입력)</span>
+                  )}
+                </label>
                 <input
                   type="text"
                   value={source}
-                  onChange={e => setSource(e.target.value)}
-                  placeholder="facebook"
+                  onChange={e => { setSource(e.target.value); setPlatform('custom') }}
+                  placeholder="meta"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">utm_medium *</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  utm_medium *
+                  {platform !== 'custom' && (
+                    <span className="ml-1 text-blue-400">(자동입력)</span>
+                  )}
+                </label>
                 <input
                   type="text"
                   value={medium}
-                  onChange={e => setMedium(e.target.value)}
+                  onChange={e => { setMedium(e.target.value); setPlatform('custom') }}
                   placeholder="cpc"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -208,13 +246,13 @@ export default function UtmPage() {
                   type="text"
                   value={campaign}
                   onChange={e => setCampaign(e.target.value)}
-                  placeholder="예: 2024_spring_promo"
+                  placeholder="예: 2026_spring_promo"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">
-                  광고그룹 <span className="text-gray-400">(utm_content prefix로 사용)</span>
+                  광고그룹 <span className="text-gray-400">(utm_content 앞에 prefix로 결합)</span>
                 </label>
                 <input
                   type="text"
@@ -226,7 +264,7 @@ export default function UtmPage() {
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">
-                  utm_content <span className="text-gray-400">(광고소재 / 콘텐츠)</span>
+                  utm_content <span className="text-gray-400">(광고소재 / 콘텐츠명)</span>
                 </label>
                 <input
                   type="text"
@@ -236,12 +274,12 @@ export default function UtmPage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {adGroup && content && (
-                  <p className="text-xs text-blue-500 mt-1">→ utm_content = {adGroup}_{content}</p>
+                  <p className="text-xs text-blue-500 mt-1">→ utm_content = <strong>{adGroup}_{content}</strong></p>
                 )}
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">
-                  utm_term <span className="text-gray-400">(키워드)</span>
+                  utm_term <span className="text-gray-400">(키워드 — 검색광고 전용)</span>
                 </label>
                 <input
                   type="text"
@@ -362,7 +400,7 @@ export default function UtmPage() {
                         <p className="text-xs text-gray-500 truncate mt-1 font-mono">{item.url}</p>
                         <div className="flex gap-1.5 mt-2">
                           <button
-                            onClick={() => { navigator.clipboard.writeText(item.url) }}
+                            onClick={() => navigator.clipboard.writeText(item.url)}
                             className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
                           >
                             <Copy className="w-3 h-3" /> 복사
@@ -387,31 +425,43 @@ export default function UtmPage() {
             )}
           </div>
 
-          {/* 사용 가이드 */}
+          {/* 파라미터 가이드 */}
           <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 mt-4">
-            <h3 className="text-xs font-semibold text-gray-600 mb-2">파라미터 가이드</h3>
-            <dl className="space-y-1.5 text-xs text-gray-500">
+            <h3 className="text-xs font-semibold text-gray-600 mb-3">파라미터 가이드</h3>
+            <dl className="space-y-2 text-xs text-gray-500">
               <div>
                 <dt className="font-medium text-gray-600">utm_source</dt>
-                <dd>유입 출처: facebook, google, naver</dd>
+                <dd>유입 출처: meta, google, naver, tiktok</dd>
               </div>
               <div>
                 <dt className="font-medium text-gray-600">utm_medium</dt>
-                <dd>마케팅 채널: cpc, video, social, email</dd>
+                <dd>채널 유형: cpc, display, video, short, social, blog</dd>
               </div>
               <div>
                 <dt className="font-medium text-gray-600">utm_campaign</dt>
-                <dd>캠페인 이름 또는 코드</dd>
+                <dd>캠페인명 또는 코드</dd>
               </div>
               <div>
                 <dt className="font-medium text-gray-600">utm_content</dt>
-                <dd>광고소재 구분 (A/B 테스트 등)</dd>
+                <dd>광고소재 / 콘텐츠 구분</dd>
               </div>
               <div>
                 <dt className="font-medium text-gray-600">utm_term</dt>
-                <dd>검색 키워드 (검색광고)</dd>
+                <dd>검색 키워드 (SA 전용)</dd>
               </div>
             </dl>
+
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-600 mb-2">medium 기본값</h3>
+              <div className="space-y-1 text-xs text-gray-500">
+                <p><span className="text-gray-600 font-medium">cpc</span> — Meta, Google SA, 네이버SA, 카카오</p>
+                <p><span className="text-gray-600 font-medium">display</span> — 네이버 DA</p>
+                <p><span className="text-gray-600 font-medium">video</span> — 유튜브</p>
+                <p><span className="text-gray-600 font-medium">short</span> — 쇼츠, 릴스, 틱톡</p>
+                <p><span className="text-gray-600 font-medium">social</span> — 인스타 피드 (오가닉)</p>
+                <p><span className="text-gray-600 font-medium">blog</span> — 네이버 블로그</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
