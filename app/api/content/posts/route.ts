@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, apiError } from '@/lib/api-middleware'
+import { withClinicFilter, ClinicContext, apiError, apiSuccess } from '@/lib/api-middleware'
+import { canAccessContentPost, parseId } from '@/lib/security'
 
 // 콘텐츠 목록 조회 (최신 통계 포함)
 export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicContext) => {
@@ -17,8 +17,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
   if (platform && platform !== 'all') query = query.eq('platform', platform)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })
 
 // 수기 콘텐츠 추가
@@ -30,7 +30,7 @@ export const POST = withClinicFilter(async (req: Request, { clinicId }: ClinicCo
     utm_source, utm_medium, utm_campaign, utm_content, utm_term,
     views, likes, comments, shares, saves } = body
 
-  if (!title || !platform) return NextResponse.json({ error: '제목과 플랫폼을 입력해주세요.' }, { status: 400 })
+  if (!title || !platform) return apiError('제목과 플랫폼을 입력해주세요.')
 
   const { data: post, error: postErr } = await supabase
     .from('content_posts')
@@ -47,7 +47,7 @@ export const POST = withClinicFilter(async (req: Request, { clinicId }: ClinicCo
     .select()
     .single()
 
-  if (postErr) return NextResponse.json({ error: postErr.message }, { status: 500 })
+  if (postErr) return apiError(postErr.message, 500)
 
   // 초기 통계 입력
   if (views || likes || comments || shares || saves) {
@@ -63,78 +63,76 @@ export const POST = withClinicFilter(async (req: Request, { clinicId }: ClinicCo
     })
   }
 
-  return NextResponse.json(post)
+  return apiSuccess(post)
 })
 
 // 통계 수기 업데이트
-export const PUT = withClinicFilter(async (req: Request, { clinicId, user }: ClinicContext) => {
+export const PUT = withClinicFilter(async (req: Request, { user }: ClinicContext) => {
   const supabase = serverSupabase()
   const { post_id, stat_date, views, likes, comments, shares, saves } = await req.json()
 
-  if (!post_id) return apiError('post_id required')
+  const postId = parseId(post_id)
+  if (!postId) return apiError('유효한 post_id가 필요합니다.')
 
-  // 리소스 소유권 검증: clinic_admin은 자신의 병원 포스트만 수정 가능
-  if (user.role === 'clinic_admin') {
-    const { data: post } = await supabase.from('content_posts').select('clinic_id').eq('id', post_id).single()
-    if (!post || post.clinic_id !== clinicId) {
-      return apiError('권한이 없습니다.', 403)
-    }
+  // 리소스 소유권 검증
+  const accessCheck = await canAccessContentPost(postId, user)
+  if (!accessCheck.allowed) {
+    return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
   const date = stat_date || new Date().toISOString().split('T')[0]
 
   const { data, error } = await supabase
     .from('content_stats')
-    .upsert({ post_id, stat_date: date, views: views || 0, likes: likes || 0, comments: comments || 0, shares: shares || 0, saves: saves || 0 },
+    .upsert({ post_id: postId, stat_date: date, views: views || 0, likes: likes || 0, comments: comments || 0, shares: shares || 0, saves: saves || 0 },
       { onConflict: 'post_id,stat_date' })
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })
 
 // 예산 업데이트 (budget 필드만)
-export const PATCH = withClinicFilter(async (req: Request, { clinicId, user }: ClinicContext) => {
+export const PATCH = withClinicFilter(async (req: Request, { user }: ClinicContext) => {
   const supabase = serverSupabase()
   const { id, budget } = await req.json()
-  if (!id) return apiError('id required')
+
+  const postId = parseId(id)
+  if (!postId) return apiError('유효한 id가 필요합니다.')
 
   // 리소스 소유권 검증
-  if (user.role === 'clinic_admin') {
-    const { data: post } = await supabase.from('content_posts').select('clinic_id').eq('id', id).single()
-    if (!post || post.clinic_id !== clinicId) {
-      return apiError('권한이 없습니다.', 403)
-    }
+  const accessCheck = await canAccessContentPost(postId, user)
+  if (!accessCheck.allowed) {
+    return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
   const { data, error } = await supabase
     .from('content_posts')
     .update({ budget: budget ?? 0 })
-    .eq('id', id)
+    .eq('id', postId)
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })
 
 // 콘텐츠 삭제
-export const DELETE = withClinicFilter(async (req: Request, { clinicId, user }: ClinicContext) => {
+export const DELETE = withClinicFilter(async (req: Request, { user }: ClinicContext) => {
   const supabase = serverSupabase()
   const { id } = await req.json()
 
-  if (!id) return apiError('id required')
+  const postId = parseId(id)
+  if (!postId) return apiError('유효한 id가 필요합니다.')
 
   // 리소스 소유권 검증
-  if (user.role === 'clinic_admin') {
-    const { data: post } = await supabase.from('content_posts').select('clinic_id').eq('id', id).single()
-    if (!post || post.clinic_id !== clinicId) {
-      return apiError('권한이 없습니다.', 403)
-    }
+  const accessCheck = await canAccessContentPost(postId, user)
+  if (!accessCheck.allowed) {
+    return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
-  const { error } = await supabase.from('content_posts').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  const { error } = await supabase.from('content_posts').delete().eq('id', postId)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess({ success: true })
 })

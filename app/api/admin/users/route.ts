@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { serverSupabase } from '@/lib/supabase'
-import { withSuperAdmin, apiError } from '@/lib/api-middleware'
+import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString, parseId } from '@/lib/security'
 
 export const GET = withSuperAdmin(async () => {
@@ -11,8 +10,8 @@ export const GET = withSuperAdmin(async () => {
     .select('id, username, role, clinic_id, is_active, created_at, clinic:clinics(name)')
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })
 
 export const POST = withSuperAdmin(async (req: Request) => {
@@ -62,9 +61,9 @@ export const POST = withSuperAdmin(async (req: Request) => {
     if (error.message.includes('duplicate') || error.message.includes('unique')) {
       return apiError('이미 존재하는 아이디입니다.', 400)
     }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return apiError(error.message, 500)
   }
-  return NextResponse.json(data)
+  return apiSuccess(data)
 })
 
 export const PATCH = withSuperAdmin(async (req: Request) => {
@@ -87,6 +86,6 @@ export const PATCH = withSuperAdmin(async (req: Request) => {
     .select('id, username, is_active')
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })

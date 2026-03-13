@@ -220,3 +220,33 @@ export async function canAccessCustomer(
 
   return { allowed: true, clinicId: customer.clinic_id }
 }
+
+// 콘텐츠 포스트(content_posts) 접근 권한 확인
+export async function canAccessContentPost(
+  postId: number,
+  user: SessionUser
+): Promise<{ allowed: boolean; clinicId: number | null; error?: string }> {
+  const supabase = serverSupabase()
+
+  const { data: post, error } = await supabase
+    .from('content_posts')
+    .select('clinic_id')
+    .eq('id', postId)
+    .single()
+
+  if (error) {
+    console.error('[Security] DB error in canAccessContentPost:', error.message)
+    return { allowed: false, clinicId: null, error: '포스트 조회 중 오류가 발생했습니다.' }
+  }
+
+  if (!post) {
+    return { allowed: false, clinicId: null, error: '포스트를 찾을 수 없습니다.' }
+  }
+
+  const allowed = checkClinicAccess(post.clinic_id, user)
+  if (!allowed) {
+    return { allowed: false, clinicId: post.clinic_id, error: '해당 포스트에 대한 권한이 없습니다.' }
+  }
+
+  return { allowed: true, clinicId: post.clinic_id }
+}

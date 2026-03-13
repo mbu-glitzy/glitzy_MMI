@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext } from '@/lib/api-middleware'
+import { withClinicFilter, ClinicContext, apiError, apiSuccess } from '@/lib/api-middleware'
 
 export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicContext) => {
   const supabase = serverSupabase()
@@ -22,6 +21,6 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
   if (clinicId) query = query.eq('clinic_id', clinicId)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })

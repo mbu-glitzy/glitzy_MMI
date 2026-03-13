@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
+import { apiError, apiSuccess } from '@/lib/api-middleware'
 import { qstash } from '@/lib/qstash'
 import {
   isValidPhoneNumber,
@@ -22,27 +22,24 @@ export async function POST(req: Request) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: '잘못된 요청 형식입니다.' }, { status: 400 })
+    return apiError('잘못된 요청 형식입니다.', 400)
   }
 
   const { name, phoneNumber, campaignId, source, inflowUrl, clinic_id } = body
 
   // 전화번호 필수 검증
   if (!phoneNumber) {
-    return NextResponse.json({ error: '전화번호는 필수입니다.' }, { status: 400 })
+    return apiError('전화번호는 필수입니다.', 400)
   }
 
   // 전화번호 형식 검증
   if (!isValidPhoneNumber(phoneNumber)) {
-    return NextResponse.json(
-      { error: '유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678 또는 01012345678)' },
-      { status: 400 }
-    )
+    return apiError('유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678 또는 01012345678)', 400)
   }
 
   // URL 검증 (제공된 경우)
   if (inflowUrl && !isValidUrl(inflowUrl)) {
-    return NextResponse.json({ error: '유효하지 않은 URL 형식입니다.' }, { status: 400 })
+    return apiError('유효하지 않은 URL 형식입니다.', 400)
   }
 
   // clinic_id 검증 (제공된 경우)
@@ -50,7 +47,7 @@ export async function POST(req: Request) {
   if (clinic_id !== undefined && clinic_id !== null && clinic_id !== '') {
     validClinicId = parseId(clinic_id)
     if (validClinicId === null) {
-      return NextResponse.json({ error: '유효하지 않은 clinic_id입니다.' }, { status: 400 })
+      return apiError('유효하지 않은 clinic_id입니다.', 400)
     }
   }
 
@@ -112,7 +109,7 @@ export async function POST(req: Request) {
       })
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       success: true,
       message: '리드가 등록되고 5분 내 챗봇 발송 스케줄이 설정되었습니다.',
       leadId: lead.id,
@@ -120,6 +117,6 @@ export async function POST(req: Request) {
     })
   } catch (err: unknown) {
     console.error('[Webhook Error]', err)
-    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
+    return apiError('서버 오류가 발생했습니다.', 500)
   }
 }

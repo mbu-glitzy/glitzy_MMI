@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
 import { fetchMetaAds } from '@/lib/services/metaAds'
 import { fetchGoogleAds } from '@/lib/services/googleAds'
 import { fetchTikTokAds } from '@/lib/services/tiktokAds'
+import { apiError, apiSuccess } from '@/lib/api-middleware'
 
 export const maxDuration = 60
 
@@ -9,7 +9,7 @@ export const maxDuration = 60
 export async function GET(req: Request) {
   // Vercel Cron 인증 확인
   if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return apiError('Unauthorized', 401)
   }
 
   const yesterday = new Date()
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   ])
 
   console.log('[CronJob] 광고 데이터 자동 수집 완료')
-  return NextResponse.json({
+  return apiSuccess({
     success: true,
     results: {
       meta: metaResult.status === 'fulfilled' ? metaResult.value.count : 'failed',

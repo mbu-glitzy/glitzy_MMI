@@ -1,16 +1,13 @@
-import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { serverSupabase } from '@/lib/supabase'
+import { apiError, apiSuccess } from '@/lib/api-middleware'
 
 // POST /api/seed?secret=YOUR_CRON_SECRET
 // 프로덕션 환경에서는 사용 불가
 export async function POST(req: Request) {
   // 프로덕션 환경 차단
   if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { error: 'Seed endpoint is disabled in production' },
-      { status: 403 }
-    )
+    return apiError('Seed endpoint is disabled in production', 403)
   }
 
   // 시크릿 검증 (Authorization 헤더 우선, 쿼리 파라미터 폴백)
@@ -21,7 +18,7 @@ export async function POST(req: Request) {
 
   const providedSecret = bearerToken || querySecret
   if (!providedSecret || providedSecret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return apiError('Forbidden', 403)
   }
 
   const supabase = serverSupabase()
@@ -37,7 +34,7 @@ export async function POST(req: Request) {
     .select()
 
   if (!clinics || clinics.length < 3) {
-    return NextResponse.json({ error: '병원 생성 실패' }, { status: 500 })
+    return apiError('병원 생성 실패', 500)
   }
   const [c1, c2, c3] = clinics
   const clinicsList = [c1, c2, c3]
@@ -75,7 +72,7 @@ export async function POST(req: Request) {
     .upsert(adCustomersData, { onConflict: 'phone_number' })
     .select()
 
-  if (!adCustomers) return NextResponse.json({ error: '고객 생성 실패' }, { status: 500 })
+  if (!adCustomers) return apiError('고객 생성 실패', 500)
 
   // 4. 콘텐츠 유입 고객 - 병원당 10명 (utm_campaign으로 구분)
   // youtube:3, insta_feed:2, insta_reels:2, tiktok:2, naver_blog:1
@@ -359,7 +356,7 @@ export async function POST(req: Request) {
     console.warn('[Seed] content 테이블 오류:', e)
   }
 
-  return NextResponse.json({
+  return apiSuccess({
     success: true,
     message: '더미데이터 생성 완료',
     counts: {

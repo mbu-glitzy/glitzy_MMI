@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
-import { withSuperAdmin, AuthContext, apiError } from '@/lib/api-middleware'
+import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString } from '@/lib/security'
 
 export const GET = withSuperAdmin(async () => {
@@ -10,8 +9,8 @@ export const GET = withSuperAdmin(async () => {
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })
 
 export const POST = withSuperAdmin(async (req: Request) => {
@@ -37,6 +36,6 @@ export const POST = withSuperAdmin(async (req: Request) => {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 })

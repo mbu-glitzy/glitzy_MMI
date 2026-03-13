@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
 import { getClinicId } from '@/lib/session'
+import { apiError, apiSuccess } from '@/lib/api-middleware'
 import {
   getSessionUser,
   canModifyBooking,
@@ -12,7 +13,7 @@ import {
 
 export async function GET(req: Request) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return apiError('Unauthorized', 401)
 
   const supabase = serverSupabase()
   const clinicId = await getClinicId(req.url)
@@ -25,14 +26,14 @@ export async function GET(req: Request) {
   if (clinicId) query = query.eq('clinic_id', clinicId)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 }
 
 // 예약 정보 수정 (상태, 일시, 메모)
 export async function PUT(req: Request) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return apiError('Unauthorized', 401)
 
   const body = await req.json()
   const { id, status, notes, booking_datetime } = body
@@ -40,25 +41,25 @@ export async function PUT(req: Request) {
   // ID 파싱 (문자열/숫자 모두 허용)
   const bookingId = parseId(id)
   if (!bookingId) {
-    return NextResponse.json({ error: '유효한 예약 ID가 필요합니다.' }, { status: 400 })
+    return apiError('유효한 예약 ID가 필요합니다.')
   }
 
   // 상태값 검증
   if (status !== undefined && !isValidBookingStatus(status)) {
-    return NextResponse.json({ error: '유효하지 않은 예약 상태입니다.' }, { status: 400 })
+    return apiError('유효하지 않은 예약 상태입니다.')
   }
 
   // 날짜 검증
   if (booking_datetime !== undefined && booking_datetime !== null && booking_datetime !== '') {
     if (!isValidDate(booking_datetime)) {
-      return NextResponse.json({ error: '유효하지 않은 날짜 형식입니다.' }, { status: 400 })
+      return apiError('유효하지 않은 날짜 형식입니다.')
     }
   }
 
   // 권한 검증: 해당 booking의 clinic_id에 접근 가능한지 확인
   const accessCheck = await canModifyBooking(bookingId, user)
   if (!accessCheck.allowed) {
-    return NextResponse.json({ error: accessCheck.error }, { status: 403 })
+    return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
   const supabase = serverSupabase()
@@ -74,14 +75,14 @@ export async function PUT(req: Request) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 }
 
 // 예약 상태만 빠르게 변경
 export async function PATCH(req: Request) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return apiError('Unauthorized', 401)
 
   const body = await req.json()
   const { id, status } = body
@@ -89,17 +90,17 @@ export async function PATCH(req: Request) {
   // ID 파싱 (문자열/숫자 모두 허용)
   const bookingId = parseId(id)
   if (!bookingId) {
-    return NextResponse.json({ error: '유효한 예약 ID가 필요합니다.' }, { status: 400 })
+    return apiError('유효한 예약 ID가 필요합니다.')
   }
 
   if (!status || !isValidBookingStatus(status)) {
-    return NextResponse.json({ error: '유효하지 않은 예약 상태입니다.' }, { status: 400 })
+    return apiError('유효하지 않은 예약 상태입니다.')
   }
 
   // 권한 검증
   const accessCheck = await canModifyBooking(bookingId, user)
   if (!accessCheck.allowed) {
-    return NextResponse.json({ error: accessCheck.error }, { status: 403 })
+    return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
   const supabase = serverSupabase()
@@ -110,6 +111,6 @@ export async function PATCH(req: Request) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
 }

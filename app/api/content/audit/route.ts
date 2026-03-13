@@ -11,9 +11,9 @@
 //   unique(post_id)
 // );
 
-import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext } from '@/lib/api-middleware'
+import { withClinicFilter, ClinicContext, apiError, apiSuccess } from '@/lib/api-middleware'
+import { checkClinicAccess, parseId } from '@/lib/security'
 
 // GET /api/content/audit  — list posts with their latest audit
 export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicContext) => {
@@ -31,7 +31,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
   if (clinicId) query = query.eq('clinic_id', clinicId)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return apiError(error.message, 500)
 
   // Flatten latest audit
   const posts = (data || []).map((p: any) => {
@@ -40,16 +40,18 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
     return { ...p, audit: latest }
   })
 
-  return NextResponse.json(posts)
+  return apiSuccess(posts)
 })
 
 // POST /api/content/audit  — analyze a single post
-export const POST = withClinicFilter(async (req: Request, { clinicId, user }: ClinicContext) => {
+export const POST = withClinicFilter(async (req: Request, { user }: ClinicContext) => {
   const { post_id } = await req.json()
-  if (!post_id) return NextResponse.json({ error: 'post_id required' }, { status: 400 })
+
+  const postId = parseId(post_id)
+  if (!postId) return apiError('유효한 post_id가 필요합니다.')
 
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 })
+  if (!apiKey) return apiError('ANTHROPIC_API_KEY not set', 500)
 
   const supabase = serverSupabase()
 
@@ -57,14 +59,14 @@ export const POST = withClinicFilter(async (req: Request, { clinicId, user }: Cl
   const { data: post, error: postError } = await supabase
     .from('content_posts')
     .select('*')
-    .eq('id', post_id)
+    .eq('id', postId)
     .single()
 
-  if (postError || !post) return NextResponse.json({ error: '포스트를 찾을 수 없습니다.' }, { status: 404 })
+  if (postError || !post) return apiError('포스트를 찾을 수 없습니다.', 404)
 
-  // 리소스 소유권 검증: clinic_admin은 자신의 병원 포스트만 분석 가능
-  if (user.role === 'clinic_admin' && post.clinic_id !== clinicId) {
-    return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
+  // 리소스 소유권 검증
+  if (!checkClinicAccess(post.clinic_id, user)) {
+    return apiError('해당 포스트에 대한 권한이 없습니다.', 403)
   }
 
   const prompt = `당신은 한국 의료광고법 전문가입니다. 다음 의료 마케팅 콘텐츠를 분석해주세요.
@@ -109,7 +111,7 @@ URL: ${post.post_url || '없음'}
 
     if (!aiRes.ok) {
       const err = await aiRes.text()
-      return NextResponse.json({ error: `AI 분석 실패: ${err}` }, { status: 500 })
+      return apiError(`AI 분석 실패: ${err}`, 500)
     }
 
     const aiData = await aiRes.json()
@@ -122,7 +124,7 @@ URL: ${post.post_url || '없음'}
       .from('content_audits')
       .upsert({
         clinic_id:   post.clinic_id,
-        post_id,
+        post_id: postId,
         risk_score:  parsed.risk_score  ?? 0,
         risk_level:  parsed.risk_level  ?? 'safe',
         findings:    parsed.findings    ?? [],
@@ -132,11 +134,11 @@ URL: ${post.post_url || '없음'}
       .select()
       .single()
 
-    if (auditError) return NextResponse.json({ error: auditError.message }, { status: 500 })
-    return NextResponse.json(audit)
+    if (auditError) return apiError(auditError.message, 500)
+    return apiSuccess(audit)
 
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return apiError(message, 500)
   }
 })

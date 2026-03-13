@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
+import { apiError, apiSuccess } from '@/lib/api-middleware'
 import {
   getSessionUser,
   canAccessCustomer,
@@ -11,17 +11,17 @@ import {
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return apiError('Unauthorized', 401)
 
   const customerId = parseId(params.id)
   if (!customerId) {
-    return NextResponse.json({ error: '유효한 고객 ID가 필요합니다.' }, { status: 400 })
+    return apiError('유효한 고객 ID가 필요합니다.', 400)
   }
 
   // 권한 검증: 해당 고객의 clinic_id에 접근 가능한지 확인
   const accessCheck = await canAccessCustomer(customerId, user)
   if (!accessCheck.allowed) {
-    return NextResponse.json({ error: accessCheck.error }, { status: 403 })
+    return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
   const { status, notes, consultationDate } = await req.json()
@@ -29,14 +29,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   // 상태값 검증
   if (status !== undefined && status !== null && status !== '') {
     if (!isValidConsultationStatus(status)) {
-      return NextResponse.json({ error: '유효하지 않은 상담 상태입니다.' }, { status: 400 })
+      return apiError('유효하지 않은 상담 상태입니다.', 400)
     }
   }
 
   // 날짜 검증
   if (consultationDate !== undefined && consultationDate !== null && consultationDate !== '') {
     if (!isValidDate(consultationDate)) {
-      return NextResponse.json({ error: '유효하지 않은 날짜 형식입니다.' }, { status: 400 })
+      return apiError('유효하지 않은 날짜 형식입니다.', 400)
     }
   }
 
@@ -78,6 +78,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .single()
   }
 
-  if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 })
-  return NextResponse.json(result.data)
+  if (result.error) return apiError(result.error.message, 500)
+  return apiSuccess(result.data)
 }

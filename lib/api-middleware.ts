@@ -32,14 +32,6 @@ type AuthHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
 type ClinicHandler = (req: Request, context: ClinicContext) => Promise<NextResponse>
 type SuperAdminHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
 
-// 동적 라우트 파라미터 타입
-export interface RouteParams {
-  params: Record<string, string>
-}
-
-type AuthHandlerWithParams = (req: Request, context: AuthContext & RouteParams) => Promise<NextResponse>
-type ClinicHandlerWithParams = (req: Request, context: ClinicContext & RouteParams) => Promise<NextResponse>
-
 // 인증 실패 응답
 const UNAUTHORIZED = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 const FORBIDDEN_SUPERADMIN = NextResponse.json({ error: 'Forbidden: superadmin only' }, { status: 403 })
@@ -67,17 +59,6 @@ export function withAuth(handler: AuthHandler) {
 }
 
 /**
- * 인증 + 동적 라우트 파라미터 래퍼
- */
-export function withAuthParams(handler: AuthHandlerWithParams) {
-  return async (req: Request, routeParams: RouteParams): Promise<NextResponse> => {
-    const user = await getAuthUser()
-    if (!user) return UNAUTHORIZED
-    return handler(req, { user, params: routeParams.params })
-  }
-}
-
-/**
  * 인증 + clinic_id 필터 래퍼
  * - clinicId가 자동으로 추출됨
  * - superadmin은 ?clinic_id=X 파라미터로 특정 병원 조회 가능
@@ -90,19 +71,6 @@ export function withClinicFilter(handler: ClinicHandler) {
 
     const clinicId = await getClinicId(req.url)
     return handler(req, { user, clinicId })
-  }
-}
-
-/**
- * 인증 + clinic_id 필터 + 동적 라우트 파라미터 래퍼
- */
-export function withClinicFilterParams(handler: ClinicHandlerWithParams) {
-  return async (req: Request, routeParams: RouteParams): Promise<NextResponse> => {
-    const user = await getAuthUser()
-    if (!user) return UNAUTHORIZED
-
-    const clinicId = await getClinicId(req.url)
-    return handler(req, { user, clinicId, params: routeParams.params })
   }
 }
 

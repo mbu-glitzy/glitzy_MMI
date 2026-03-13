@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
+import { apiError, apiSuccess } from '@/lib/api-middleware'
 
 export async function POST(req: Request) {
   // QStash 서명 검증
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const signature = req.headers.get('Upstash-Signature') || ''
     const rawBody = await req.text()
     const isValid = await receiver.verify({ signature, body: rawBody }).catch(() => false)
-    if (!isValid) return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    if (!isValid) return apiError('Invalid signature', 401)
 
     const { leadId, phoneNumber, name } = JSON.parse(rawBody)
     return handleJob(leadId, phoneNumber, name)
@@ -51,9 +51,9 @@ async function handleJob(leadId: number, phoneNumber: string, name: string) {
       .update({ chatbot_sent: true, chatbot_sent_at: new Date().toISOString() })
       .eq('id', leadId)
 
-    return NextResponse.json({ success: true })
+    return apiSuccess({ success: true })
   } catch (err) {
     console.error('[QStash Chatbot Error]', err)
-    return NextResponse.json({ error: '챗봇 발송 실패' }, { status: 500 })
+    return apiError('챗봇 발송 실패', 500)
   }
 }
