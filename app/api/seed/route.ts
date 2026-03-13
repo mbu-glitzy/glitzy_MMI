@@ -3,9 +3,24 @@ import bcrypt from 'bcryptjs'
 import { serverSupabase } from '@/lib/supabase'
 
 // POST /api/seed?secret=YOUR_CRON_SECRET
+// 프로덕션 환경에서는 사용 불가
 export async function POST(req: Request) {
+  // 프로덕션 환경 차단
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Seed endpoint is disabled in production' },
+      { status: 403 }
+    )
+  }
+
+  // 시크릿 검증 (Authorization 헤더 우선, 쿼리 파라미터 폴백)
+  const authHeader = req.headers.get('Authorization')
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
   const url = new URL(req.url)
-  if (url.searchParams.get('secret') !== process.env.CRON_SECRET) {
+  const querySecret = url.searchParams.get('secret')
+
+  const providedSecret = bearerToken || querySecret
+  if (!providedSecret || providedSecret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
