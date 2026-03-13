@@ -1,24 +1,34 @@
-import NextAuth, { DefaultSession } from 'next-auth'
+import 'next-auth'
+import 'next-auth/jwt'
+
+// 사용자 역할 타입
+type UserRole = 'superadmin' | 'clinic_admin'
 
 declare module 'next-auth' {
   interface Session {
     user: {
       id: string
       username: string
-      role: 'superadmin' | 'clinic_admin'
+      role: UserRole
       clinic_id: number | null
-    } & DefaultSession['user']
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
   }
 
   interface User {
-    role: 'superadmin' | 'clinic_admin'
+    id: string
+    role: UserRole
     clinic_id: number | null
+    username: string
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    role: 'superadmin' | 'clinic_admin'
+    sub?: string
+    role: UserRole
     clinic_id: number | null
     username: string
   }

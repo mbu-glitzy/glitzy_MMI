@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
-import { requireSuperAdmin } from '@/lib/session'
+import { withSuperAdmin, AuthContext, apiError } from '@/lib/api-middleware'
+import { sanitizeString } from '@/lib/security'
 
-export async function GET() {
-  const isSuperAdmin = await requireSuperAdmin()
-  if (!isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
+export const GET = withSuperAdmin(async () => {
   const supabase = serverSupabase()
   const { data, error } = await supabase
     .from('clinics')
@@ -14,22 +12,31 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
-}
+})
 
-export async function POST(req: Request) {
-  const isSuperAdmin = await requireSuperAdmin()
-  if (!isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
+export const POST = withSuperAdmin(async (req: Request) => {
   const { name, slug } = await req.json()
-  if (!name || !slug) return NextResponse.json({ error: '병원명과 슬러그를 입력해주세요.' }, { status: 400 })
+
+  if (!name || !slug) {
+    return apiError('병원명과 슬러그를 입력해주세요.', 400)
+  }
+
+  // 슬러그 형식 검증
+  const slugPattern = /^[a-z0-9-]{2,50}$/
+  if (!slugPattern.test(slug)) {
+    return apiError('슬러그는 영문 소문자, 숫자, 하이픈만 사용 가능합니다. (2-50자)', 400)
+  }
 
   const supabase = serverSupabase()
   const { data, error } = await supabase
     .from('clinics')
-    .insert({ name, slug })
+    .insert({
+      name: sanitizeString(name, 100),
+      slug: slug.toLowerCase(),
+    })
     .select()
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
-}
+})
