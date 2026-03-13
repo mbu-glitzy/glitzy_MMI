@@ -94,3 +94,74 @@ query.eq('clinic_id', clinicId)
 - `CRON_SECRET` (Cron Job 인증)
 - 광고 API: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*`
 - 콘텐츠 API: `YOUTUBE_API_KEY`, `KAKAO_REST_API_KEY`
+
+## 환경 분리 운영
+
+### 브랜치 전략
+```
+main (프로덕션)
+  └── develop (개발/스테이징)
+        └── feature/* (기능 개발)
+```
+
+| 브랜치 | 용도 | Vercel 환경 | 도메인 |
+|--------|------|-------------|--------|
+| `main` | 프로덕션 배포 | Production | 커스텀 도메인 |
+| `develop` | 개발/테스트 | Preview | `*.vercel.app` (자동) |
+| `feature/*` | 기능 개발 | Preview (PR 생성 시) | `*.vercel.app` (자동) |
+
+### Vercel 환경변수 분리
+
+Vercel Dashboard → Settings → Environment Variables에서 환경별 값 설정:
+
+| 환경변수 | Production | Preview | Development |
+|----------|------------|---------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | prod DB URL | dev DB URL | local URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | prod key | dev key | local key |
+| `NEXTAUTH_URL` | https://도메인 | (자동 설정) | http://localhost:3000 |
+| `CRON_SECRET` | prod secret | dev secret | local secret |
+
+### Supabase 프로젝트 분리 (권장)
+```
+Supabase Organization
+├── mmi-production (프로덕션 데이터)
+└── mmi-development (개발/테스트 데이터)
+```
+
+스키마 동기화:
+```bash
+# 프로덕션 스키마를 개발로 복사 (데이터 제외)
+supabase db dump --schema-only > schema.sql
+supabase db push --db-url $DEV_DB_URL
+```
+
+### Cron Job 테스트
+
+vercel.json의 cron은 Production 환경에서만 실행됩니다.
+개발 환경에서 수동 테스트:
+```bash
+curl -X POST http://localhost:3000/api/cron/sync-ads \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+### 개발 워크플로우
+```
+1. feature/xxx 브랜치에서 개발
+2. develop으로 PR → Preview 환경에서 테스트
+3. develop 머지 → Preview 자동 배포
+4. QA 완료 후 main으로 PR
+5. main 머지 → Production 자동 배포
+```
+
+### GitHub 브랜치 보호 규칙
+
+Settings → Branches → Add rule:
+
+**main 브랜치:**
+- ✅ Require a pull request before merging
+- ✅ Require approvals (최소 1명)
+- ✅ Require status checks to pass before merging
+- ✅ Include administrators
+
+**develop 브랜치:**
+- ✅ Require status checks to pass before merging (선택)
