@@ -1,8 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { Search, User, Phone, Calendar, TrendingUp, Users, Star, Tag, Filter, CalendarCheck, CreditCard } from 'lucide-react'
+import { Search, User, Phone, Calendar, TrendingUp, Users, Star, Filter } from 'lucide-react'
 import { useClinic } from '@/components/ClinicContext'
-import { getUtmSourceLabel, getUtmMediumLabel } from '@/lib/utm'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +20,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { PageHeader, StatsCard, ChannelBadge, StatusBadge } from '@/components/common'
+import { PageHeader, ChannelBadge, CustomerJourney } from '@/components/common'
 
 // 퍼널 단계 정의
 type FunnelStage = 'lead' | 'booked' | 'visited' | 'consulted' | 'paid'
@@ -77,7 +76,7 @@ function CustomerDetail({ lead }: { lead: any }) {
   const payments: any[] = c?.payments || []
   const consultations: any[] = c?.consultations || []
   const bookings: any[] = c?.bookings || []
-  const allLeads: any[] = lead.leads || [lead]
+  const allLeads: any[] = lead.leads?.length ? lead.leads : [lead]
   const totalPayment = payments.reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
   const grade = getGrade(totalPayment, payments.length)
   const gradeStyle = GRADE_CONFIG[grade]
@@ -155,132 +154,13 @@ function CustomerDetail({ lead }: { lead: any }) {
         </div>
       )}
 
-      {/* 유입 이력 */}
-      {leadCount > 1 && (
-        <div className="mb-5 p-4 bg-brand-500/10 rounded-xl border border-brand-500/20">
-          <p className="text-xs font-semibold text-brand-400 mb-3 flex items-center gap-2">
-            <TrendingUp size={12} /> 유입 이력 ({leadCount}회)
-          </p>
-          <div className="space-y-2">
-            {allLeads.map((l: any, idx: number) => (
-              <div key={l.id} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 text-[10px] font-bold flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <ChannelBadge channel={l.utm_source || 'Unknown'} className="text-[10px] px-1.5 py-0.5" />
-                  {l.utm_campaign && (
-                    <span className="text-slate-400">{l.utm_campaign}</span>
-                  )}
-                </div>
-                <span className="text-slate-500">{new Date(l.created_at).toLocaleDateString('ko')}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* 여정 타임라인 */}
-      <div className="space-y-3">
-        {allLeads.map((l: any, idx: number) => (
-          <div key={`lead-${l.id}`}>
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 rounded-full bg-brand-500 mt-1.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-slate-300">
-                  광고 인입 {leadCount > 1 && <span className="text-slate-500">#{idx + 1}</span>}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {getUtmSourceLabel(l.utm_source || c?.first_source)}
-                  {l.utm_medium && <span className="text-slate-600"> / {getUtmMediumLabel(l.utm_medium)}</span>}
-                  {l.utm_campaign && (
-                    <span className="text-brand-400"> · {l.utm_campaign}</span>
-                  )}
-                </p>
-                {l.utm_content && (
-                  <p className="text-xs text-slate-600 mt-0.5 flex items-center gap-1">
-                    <Tag size={10} /> {l.utm_content}
-                  </p>
-                )}
-              </div>
-              <span className="ml-auto text-xs text-slate-600 shrink-0">{new Date(l.created_at).toLocaleDateString('ko')}</span>
-            </div>
-
-            <div className="flex items-start gap-3 mt-3">
-              <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${l.chatbot_sent ? 'bg-emerald-500' : 'bg-slate-600'}`} />
-              <div>
-                <p className="text-xs font-semibold text-slate-300">챗봇 발송</p>
-                <p className="text-xs text-slate-500">
-                  {l.chatbot_sent
-                    ? `발송 완료 ${l.chatbot_sent_at ? `(${new Date(l.chatbot_sent_at).toLocaleTimeString('ko')})` : ''}`
-                    : '발송 대기 중'}
-                </p>
-              </div>
-            </div>
-
-            {idx < allLeads.length - 1 && (
-              <div className="border-t border-dashed border-white/10 my-3" />
-            )}
-          </div>
-        ))}
-
-        {bookings.map((booking: any) => {
-          const statusLabels: Record<string, { text: string; color: string }> = {
-            confirmed: { text: '예약 확정', color: 'text-blue-400' },
-            visited: { text: '방문 완료', color: 'text-purple-400' },
-            noshow: { text: '노쇼', color: 'text-red-400' },
-            cancelled: { text: '취소됨', color: 'text-slate-500' },
-            treatment_confirmed: { text: '시술 확정', color: 'text-emerald-400' },
-          }
-          const statusInfo = statusLabels[booking.status] || { text: booking.status, color: 'text-slate-400' }
-          const isCancelled = booking.status === 'cancelled'
-          return (
-            <div key={booking.id} className={`flex items-start gap-3 ${isCancelled ? 'opacity-50' : ''}`}>
-              <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${isCancelled ? 'bg-slate-600' : 'bg-blue-500'}`} />
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <CalendarCheck size={11} />
-                  예약
-                </p>
-                <p className={`text-xs ${statusInfo.color}`}>
-                  {statusInfo.text}
-                  {booking.booking_datetime && (
-                    <span className="text-slate-500"> · {new Date(booking.booking_datetime).toLocaleDateString('ko')} {new Date(booking.booking_datetime).toLocaleTimeString('ko', { hour: '2-digit', minute: '2-digit' })}</span>
-                  )}
-                </p>
-                {booking.notes && (
-                  <p className="text-xs text-slate-600 mt-0.5">{booking.notes}</p>
-                )}
-              </div>
-              <span className="text-xs text-slate-600 shrink-0">{new Date(booking.created_at).toLocaleDateString('ko')}</span>
-            </div>
-          )
-        })}
-
-        {consultations.map((consult: any) => (
-          <div key={consult.id} className="flex items-start gap-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-slate-300">상담</p>
-              <p className="text-xs text-slate-500">{consult.status} — {consult.notes || '메모 없음'}</p>
-            </div>
-            {consult.consultation_date && (
-              <span className="ml-auto text-xs text-slate-600">{new Date(consult.consultation_date).toLocaleDateString('ko')}</span>
-            )}
-          </div>
-        ))}
-
-        {payments.map((p: any) => (
-          <div key={p.id} className="flex items-start gap-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-slate-300">결제</p>
-              <p className="text-xs text-slate-500">{p.treatment_name} — ₩{Number(p.payment_amount).toLocaleString()}</p>
-            </div>
-            <span className="ml-auto text-xs text-slate-600">{new Date(p.payment_date).toLocaleDateString('ko')}</span>
-          </div>
-        ))}
-      </div>
+      <CustomerJourney
+        leads={allLeads}
+        bookings={bookings}
+        consultations={consultations}
+        payments={payments}
+      />
     </Card>
   )
 }
