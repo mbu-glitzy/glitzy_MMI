@@ -26,6 +26,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
       `)
       .eq('utm_campaign', campaign)
       .order('created_at', { ascending: false })
+      .limit(500)
 
     if (clinicId) query = query.eq('clinic_id', clinicId)
     if (startDate) query = query.gte('created_at', startDate)
@@ -43,6 +44,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
     .select('id, customer_id, utm_source, utm_campaign, utm_content, landing_page_id, chatbot_sent, created_at')
     .not('utm_campaign', 'is', null)
     .order('created_at', { ascending: false })
+    .limit(2000)
 
   if (clinicId) leadsQuery = leadsQuery.eq('clinic_id', clinicId)
   if (startDate) leadsQuery = leadsQuery.gte('created_at', startDate)
@@ -61,7 +63,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
   // 캠페인별 집계
   const campaignMap: Record<string, {
     campaign: string
-    channel: string
+    channels: Record<string, number>
     lead_count: number
     chatbot_sent_count: number
     landing_pages: Set<string>
@@ -76,7 +78,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
     if (!campaignMap[name]) {
       campaignMap[name] = {
         campaign: name,
-        channel: lead.utm_source || 'Unknown',
+        channels: {},
         lead_count: 0,
         chatbot_sent_count: 0,
         landing_pages: new Set(),
@@ -85,6 +87,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
       }
     }
     const stat = campaignMap[name]
+    const ch = lead.utm_source || 'Unknown'
+    stat.channels[ch] = (stat.channels[ch] || 0) + 1
     stat.lead_count++
     if (lead.chatbot_sent) stat.chatbot_sent_count++
     if (lead.landing_page_id && lpMap.has(lead.landing_page_id)) {
@@ -95,15 +99,18 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
   }
 
   const campaigns = Object.values(campaignMap)
-    .map(s => ({
+    .map(s => {
+      // 가장 많은 채널을 대표 채널로 선택
+      const topChannel = Object.entries(s.channels).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown'
+      return {
       campaign: s.campaign,
-      channel: s.channel,
+      channel: topChannel,
       lead_count: s.lead_count,
       chatbot_sent_count: s.chatbot_sent_count,
       landing_pages: Array.from(s.landing_pages),
       latest_at: s.latest_at,
       today_count: s.today_count,
-    }))
+    }})
     .sort((a, b) => new Date(b.latest_at).getTime() - new Date(a.latest_at).getTime())
 
   return apiSuccess(campaigns)

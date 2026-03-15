@@ -111,7 +111,7 @@ function CampaignList({ campaigns, loading, onSelect, onRefresh }: {
                       <p className="text-sm font-semibold text-white truncate">{c.campaign}</p>
                       <ChannelBadge channel={c.channel} />
                       {c.today_count > 0 && (
-                        <Badge variant="success" className="text-[10px]">+{c.today_count} today</Badge>
+                        <Badge variant="success" className="text-[10px]">오늘 +{c.today_count}</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-500">
