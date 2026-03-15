@@ -100,7 +100,8 @@ export default function UtmPage() {
   // Links history state
   const [links, setLinks] = useState<UtmLink[]>([])
   const [linksLoading, setLinksLoading] = useState(true)
-  const [showHistory, setShowHistory] = useState(false)
+  const [showHistory, setShowHistory] = useState(true)
+  const [historySearch, setHistorySearch] = useState('')
 
   // QR Code dialog
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
@@ -736,9 +737,9 @@ export default function UtmPage() {
                 aria-label={`히스토리 ${showHistory ? '접기' : '펼치기'}`}
               >
                 <h2 className="text-sm font-semibold text-slate-300">
-                  URL 히스토리
+                  생성된 UTM 목록
                   {links.length > 0 && (
-                    <span className="ml-2 px-1.5 py-0.5 text-xs bg-white/10 text-slate-400 rounded-full">
+                    <span className="ml-2 px-1.5 py-0.5 text-xs bg-brand-500/20 text-brand-400 rounded-full">
                       {links.length}
                     </span>
                   )}
@@ -757,6 +758,18 @@ export default function UtmPage() {
 
             {(showHistory || links.length === 0) && (
               <>
+                {/* 검색 필터 */}
+                {links.length > 0 && (
+                  <div className="mb-3">
+                    <Input
+                      value={historySearch}
+                      onChange={e => setHistorySearch(e.target.value)}
+                      placeholder="캠페인, 소스, 라벨 검색..."
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                )}
+
                 {linksLoading ? (
                   <div className="text-xs text-slate-500 text-center py-6">불러오는 중...</div>
                 ) : links.length === 0 ? (
@@ -765,13 +778,31 @@ export default function UtmPage() {
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                    {links.map(item => (
+                    {links
+                      .filter(item => {
+                        if (!historySearch) return true
+                        const search = historySearch.toLowerCase()
+                        return (
+                          item.label?.toLowerCase().includes(search) ||
+                          item.utm_source?.toLowerCase().includes(search) ||
+                          item.utm_campaign?.toLowerCase().includes(search) ||
+                          item.utm_content?.toLowerCase().includes(search) ||
+                          item.utm_medium?.toLowerCase().includes(search)
+                        )
+                      })
+                      .map(item => (
                       <div key={item.id} className="border border-white/5 rounded-lg p-3 hover:bg-white/[0.03] transition-colors">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-slate-300 truncate">{item.label || '무제'}</p>
-                            <p className="text-xs text-slate-600 mt-0.5">
-                              {new Date(item.created_at).toLocaleDateString('ko-KR')}
+                            <p className="text-xs font-medium text-white truncate">{item.label || '무제'}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              {new Date(item.created_at).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </p>
                           </div>
                           <button
@@ -782,24 +813,70 @@ export default function UtmPage() {
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
-                        <p className="text-xs text-slate-500 truncate mt-1 font-mono">{item.original_url}</p>
-                        <div className="flex gap-1.5 mt-2">
+
+                        {/* UTM 파라미터 표시 */}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {item.utm_source && (
+                            <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] rounded">
+                              {item.utm_source}
+                            </span>
+                          )}
+                          {item.utm_medium && (
+                            <span className="px-1.5 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] rounded">
+                              {item.utm_medium}
+                            </span>
+                          )}
+                          {item.utm_campaign && (
+                            <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded truncate max-w-[100px]" title={item.utm_campaign}>
+                              {item.utm_campaign}
+                            </span>
+                          )}
+                          {item.utm_content && (
+                            <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] rounded truncate max-w-[80px]" title={item.utm_content}>
+                              {item.utm_content}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-[10px] text-slate-600 truncate mt-2 font-mono">{item.original_url}</p>
+                        <div className="flex gap-2 mt-2 pt-2 border-t border-white/5">
                           <button
                             onClick={() => { navigator.clipboard.writeText(item.original_url); toast.success('복사됨') }}
                             className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"
                           >
                             <Copy className="w-3 h-3" /> 복사
                           </button>
-                          <span className="text-slate-700">|</span>
                           <button
                             onClick={() => handleLoadLink(item)}
-                            className="text-xs text-slate-500 hover:text-slate-300"
+                            className="flex items-center gap-1 text-xs text-slate-400 hover:text-white"
                           >
-                            불러오기
+                            <RefreshCw className="w-3 h-3" /> 불러오기
                           </button>
+                          <a
+                            href={item.original_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+                          >
+                            <ExternalLink className="w-3 h-3" /> 열기
+                          </a>
                         </div>
                       </div>
                     ))}
+                    {links.length > 0 && historySearch && links.filter(item => {
+                      const search = historySearch.toLowerCase()
+                      return (
+                        item.label?.toLowerCase().includes(search) ||
+                        item.utm_source?.toLowerCase().includes(search) ||
+                        item.utm_campaign?.toLowerCase().includes(search) ||
+                        item.utm_content?.toLowerCase().includes(search) ||
+                        item.utm_medium?.toLowerCase().includes(search)
+                      )
+                    }).length === 0 && (
+                      <p className="text-xs text-slate-500 text-center py-4">
+                        검색 결과가 없습니다.
+                      </p>
+                    )}
                   </div>
                 )}
               </>
