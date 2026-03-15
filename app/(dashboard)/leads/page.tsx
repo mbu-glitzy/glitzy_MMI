@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { Search, User, Phone, Calendar, TrendingUp, Users, Star, Filter } from 'lucide-react'
+import { Search, User, Phone, Calendar, TrendingUp, Users, Star, Filter, FileText, Info } from 'lucide-react'
 import { useClinic } from '@/components/ClinicContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -85,6 +85,10 @@ function CustomerDetail({ lead }: { lead: any }) {
   const stageConfig = FUNNEL_STAGES[funnelStage]
   const leadCount = allLeads.length
 
+  // 랜딩 페이지 및 설문 응답 정보
+  const landingPage = lead.landing_page
+  const customData = lead.custom_data
+
   const treatmentMap: Record<string, { count: number; total: number }> = {}
   payments.forEach((p: any) => {
     const name = p.treatment_name || '기타'
@@ -129,6 +133,39 @@ function CustomerDetail({ lead }: { lead: any }) {
           </div>
         )}
       </div>
+
+      {/* 랜딩 페이지 및 설문 응답 */}
+      {(landingPage || (customData && Object.keys(customData).length > 0)) && (
+        <div className="mb-5 p-4 bg-white/[0.03] rounded-xl border border-white/5">
+          {landingPage && (
+            <div className="flex items-center gap-2 mb-3">
+              <FileText size={12} className="text-brand-400" />
+              <span className="text-xs font-semibold text-slate-400">유입 랜딩 페이지:</span>
+              <span className="text-sm text-brand-400">{landingPage.name}</span>
+            </div>
+          )}
+          {customData?.survey && Object.keys(customData.survey).length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-2">
+                <Info size={12} /> 설문 응답
+              </p>
+              <div className="space-y-1.5">
+                {Object.entries(customData.survey).map(([key, value]) => (
+                  <div key={key} className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">{key}</span>
+                    <span className="text-slate-300">{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+              {customData.marketing_consent !== undefined && (
+                <p className="text-xs text-slate-500 mt-2 pt-2 border-t border-white/5">
+                  마케팅 수신 동의: {customData.marketing_consent ? '동의' : '미동의'}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 시술 이력 */}
       {Object.keys(treatmentMap).length > 0 && (

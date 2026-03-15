@@ -14,12 +14,12 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
   const limitParam = url.searchParams.get('limit')
   const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 100, 500) : 100
 
-  // 고객 기준으로 조회, leads를 포함
+  // 고객 기준으로 조회, leads를 포함 (landing_page 정보 포함)
   let query = supabase
     .from('customers')
     .select(`
       *,
-      leads(*),
+      leads(*, landing_page:landing_pages(id, name)),
       consultations(*),
       payments(*),
       bookings(*)
@@ -63,6 +63,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicCon
         utm_content: latestLead?.utm_content,
         chatbot_sent: latestLead?.chatbot_sent,
         chatbot_sent_at: latestLead?.chatbot_sent_at,
+        landing_page: latestLead?.landing_page,
+        custom_data: latestLead?.custom_data,
 
         // 전체 유입 이력
         leads: sortedLeads,

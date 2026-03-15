@@ -1,14 +1,46 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Copy, Check, Trash2, ExternalLink, ChevronDown, Link2, QrCode, RefreshCw, Database } from 'lucide-react'
+import { Copy, Check, Trash2, ExternalLink, ChevronDown, Link2, QrCode, RefreshCw, Database, FileText, Image } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { TemplateSelector, UtmTemplate, TemplateFormData } from './components/TemplateSelector'
 import { QRCodeDialog } from './components/QRCodeDialog'
+
+interface LandingPage {
+  id: number
+  name: string
+  file_name: string
+  clinic_id: number | null
+  is_active: boolean
+  clinic?: { id: number; name: string } | null
+}
+
+interface AdCreative {
+  id: number
+  name: string
+  utm_content: string
+  utm_source: string | null
+  utm_medium: string | null
+  utm_campaign: string | null
+  utm_term: string | null
+  platform: string | null
+  clinic_id: number
+  landing_page_id: number | null
+  is_active: boolean
+  clinic?: { id: number; name: string } | null
+  landing_page?: { id: number; name: string } | null
+}
 
 interface PlatformPreset {
   source: string
@@ -73,6 +105,51 @@ export default function UtmPage() {
   // QR Code dialog
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
 
+  // Landing pages state
+  const [landingPages, setLandingPages] = useState<LandingPage[]>([])
+  const [landingPagesLoading, setLandingPagesLoading] = useState(true)
+  const [selectedLandingPage, setSelectedLandingPage] = useState<string>('')
+
+  // Ad creatives state
+  const [adCreatives, setAdCreatives] = useState<AdCreative[]>([])
+  const [adCreativesLoading, setAdCreativesLoading] = useState(true)
+  const [selectedCreative, setSelectedCreative] = useState<string>('')
+  const [selectedClinicId, setSelectedClinicId] = useState<number | null>(null)
+
+  // Fetch landing pages
+  const fetchLandingPages = useCallback(async () => {
+    setLandingPagesLoading(true)
+    try {
+      const res = await fetch('/api/admin/landing-pages')
+      if (res.ok) {
+        const data = await res.json()
+        // 활성화된 랜딩 페이지만 필터링
+        const activePages = (Array.isArray(data) ? data : []).filter((lp: LandingPage) => lp.is_active)
+        setLandingPages(activePages)
+      }
+    } catch (err) {
+      console.error('랜딩 페이지 로드 실패:', err)
+    } finally {
+      setLandingPagesLoading(false)
+    }
+  }, [])
+
+  // Fetch ad creatives
+  const fetchAdCreatives = useCallback(async () => {
+    setAdCreativesLoading(true)
+    try {
+      const res = await fetch('/api/admin/ad-creatives?active=true')
+      if (res.ok) {
+        const data = await res.json()
+        setAdCreatives(Array.isArray(data) ? data : [])
+      }
+    } catch (err) {
+      console.error('광고 소재 로드 실패:', err)
+    } finally {
+      setAdCreativesLoading(false)
+    }
+  }, [])
+
   // Fetch templates
   const fetchTemplates = useCallback(async () => {
     setTemplatesLoading(true)
@@ -115,7 +192,9 @@ export default function UtmPage() {
   useEffect(() => {
     fetchTemplates()
     fetchLinks()
-  }, [fetchTemplates, fetchLinks])
+    fetchLandingPages()
+    fetchAdCreatives()
+  }, [fetchTemplates, fetchLinks, fetchLandingPages, fetchAdCreatives])
 
   // Platform preset effect
   useEffect(() => {
@@ -176,6 +255,7 @@ export default function UtmPage() {
           utm_content: contentVal || null,
           utm_term: term || null,
           label,
+          clinic_id: selectedClinicId, // 소재에서 선택된 clinic_id 사용
         }),
       })
 
@@ -280,6 +360,68 @@ export default function UtmPage() {
     setTerm('')
     setGeneratedUrl('')
     setSelectedTemplateId(null)
+    setSelectedLandingPage('')
+    setSelectedCreative('')
+  }
+
+  function handleLandingPageSelect(lpId: string) {
+    setSelectedLandingPage(lpId)
+    setSelectedCreative('') // 소재 선택 해제
+    if (lpId && lpId !== 'manual') {
+      // 현재 도메인 기준으로 랜딩 페이지 URL 설정
+      const lpUrl = `${window.location.origin}/lp?id=${lpId}`
+      setBaseUrl(lpUrl)
+    }
+  }
+
+  function handleCreativeSelect(creativeId: string) {
+    setSelectedCreative(creativeId)
+    if (creativeId && creativeId !== 'manual') {
+      const creative = adCreatives.find(c => c.id === Number(creativeId))
+      if (creative) {
+        // clinic_id 저장 (링크 저장 시 사용)
+        setSelectedClinicId(creative.clinic_id)
+
+        // utm_content 자동 설정
+        setContent(creative.utm_content)
+        setAdGroup('') // 광고그룹 초기화 (소재에서 직접 설정하므로)
+
+        // 소재에 설정된 UTM 파라미터 자동 적용
+        if (creative.utm_source) {
+          setSource(creative.utm_source)
+          // platform을 custom으로 설정하여 source/medium 직접 입력 모드로
+          setPlatform('custom')
+        }
+        if (creative.utm_medium) {
+          setMedium(creative.utm_medium)
+        }
+        if (creative.utm_campaign) {
+          setCampaign(creative.utm_campaign)
+        }
+        if (creative.utm_term) {
+          setTerm(creative.utm_term)
+        }
+
+        // 연결된 랜딩 페이지가 있으면 자동 선택
+        if (creative.landing_page_id) {
+          setSelectedLandingPage(String(creative.landing_page_id))
+          const lpUrl = `${window.location.origin}/lp?id=${creative.landing_page_id}`
+          setBaseUrl(lpUrl)
+        }
+
+        // 플랫폼이 설정되어 있고, UTM source가 없으면 플랫폼 프리셋 적용
+        if (creative.platform && PLATFORM_PRESETS[creative.platform] && !creative.utm_source) {
+          setPlatform(creative.platform)
+          const preset = PLATFORM_PRESETS[creative.platform]
+          setSource(preset.source)
+          setMedium(preset.medium)
+        }
+
+        toast.success(`"${creative.name}" 소재가 적용되었습니다.`)
+      }
+    } else {
+      setSelectedClinicId(null)
+    }
   }
 
   const currentFormData: TemplateFormData = {
@@ -336,12 +478,83 @@ export default function UtmPage() {
             />
           </Card>
 
+          {/* 광고 소재 선택 */}
+          {adCreatives.length > 0 && (
+            <Card variant="glass" className="p-5 border-brand-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Image size={14} className="text-brand-400" />
+                <h2 className="text-sm font-semibold text-slate-300">광고 소재 선택</h2>
+                <span className="text-xs text-slate-500">(utm_content + 랜딩 페이지 자동 연결)</span>
+              </div>
+              <Select
+                value={selectedCreative}
+                onValueChange={handleCreativeSelect}
+                disabled={adCreativesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="소재 선택 시 utm_content와 랜딩 페이지가 자동 설정됩니다" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">직접 입력</SelectItem>
+                  {adCreatives.map(creative => (
+                    <SelectItem key={creative.id} value={String(creative.id)}>
+                      {creative.name} → {creative.utm_content}
+                      {creative.landing_page && ` (${creative.landing_page.name})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedCreative && (
+                <p className="text-xs text-emerald-400 mt-2">
+                  → utm_content와 랜딩 페이지가 자동으로 설정되었습니다
+                </p>
+              )}
+            </Card>
+          )}
+
+          {/* 랜딩 페이지 선택 */}
+          {landingPages.length > 0 && (
+            <Card variant="glass" className="p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText size={14} className="text-brand-400" />
+                <h2 className="text-sm font-semibold text-slate-300">랜딩 페이지 선택</h2>
+                {selectedCreative && <span className="text-xs text-emerald-400">(소재에서 자동 설정됨)</span>}
+              </div>
+              <Select
+                value={selectedLandingPage}
+                onValueChange={handleLandingPageSelect}
+                disabled={landingPagesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="랜딩 페이지 선택 (선택 시 기본 URL 자동 입력)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">직접 입력</SelectItem>
+                  {landingPages.map(lp => (
+                    <SelectItem key={lp.id} value={String(lp.id)}>
+                      {lp.name} {lp.clinic?.name ? `(${lp.clinic.name})` : '(미배정)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedLandingPage && (
+                <p className="text-xs text-brand-400 mt-2">
+                  → 기본 URL이 자동으로 설정되었습니다: /lp?id={selectedLandingPage}
+                </p>
+              )}
+            </Card>
+          )}
+
           {/* 기본 URL */}
           <Card variant="glass" className="p-5">
             <h2 className="text-sm font-semibold text-slate-300 mb-3">기본 URL</h2>
             <Input
               value={baseUrl}
-              onChange={e => setBaseUrl(e.target.value)}
+              onChange={e => {
+                setBaseUrl(e.target.value)
+                // 수동 입력 시 랜딩 페이지 선택 해제
+                if (selectedLandingPage) setSelectedLandingPage('')
+              }}
               placeholder="https://example.com/landing"
             />
           </Card>

@@ -29,6 +29,9 @@ export async function POST(req: Request) {
     utm_campaign?: string
     utm_content?: string
     utm_term?: string
+    // 랜딩 페이지 연동
+    landing_page_id?: number | string
+    custom_data?: Record<string, unknown>
   }
 
   try {
@@ -50,6 +53,9 @@ export async function POST(req: Request) {
     utm_campaign,
     utm_content,
     utm_term,
+    // 랜딩 페이지 연동
+    landing_page_id,
+    custom_data,
   } = body
 
   // 전화번호 필수 검증
@@ -131,6 +137,12 @@ export async function POST(req: Request) {
       customer = newCustomer
     }
 
+    // landing_page_id 유효성 검증
+    let validLandingPageId: number | null = null
+    if (landing_page_id) {
+      validLandingPageId = parseId(landing_page_id)
+    }
+
     // 2. 리드 기록 생성 (UTM 필드 포함)
     const { data: lead, error: leadError } = await supabase
       .from('leads')
@@ -147,6 +159,9 @@ export async function POST(req: Request) {
         campaign_id: sanitizedCampaignId,
         inflow_url: inflowUrl ? sanitizeString(inflowUrl, 500) : null,
         chatbot_sent: false,
+        // 랜딩 페이지 연동
+        landing_page_id: validLandingPageId,
+        custom_data: custom_data || {},
       })
       .select()
       .single()

@@ -31,10 +31,10 @@ npm run analyze  # 번들 크기 분석 (브라우저에서 시각화)
 
 | 문서 | 설명 |
 |------|------|
-| [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI 컴포넌트 사용 가이드 |
-| [docs/API.md](docs/API.md) | REST API 엔드포인트 문서 |
 | [docs/SPEC.md](docs/SPEC.md) | 프로젝트 요구사항 명세 |
-| [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 (UI/UX 개선, 최적화) |
+| [docs/API.md](docs/API.md) | REST API 엔드포인트 문서 |
+| [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI 컴포넌트 사용 가이드 |
+| [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 |
 
 ## 아키텍처
 
@@ -267,29 +267,19 @@ main (프로덕션) → Production 배포
 curl -X POST http://localhost:3000/api/cron/sync-ads -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-## AI 협업 인프라 (.claude/)
+## 주의사항
 
-### Skills (가이드라인)
-| 스킬 | 모드 | 트리거 키워드 |
-|------|------|---------------|
-| `nextjs-guidelines` | suggest | API, route, 페이지, component |
-| `supabase-guidelines` | suggest | DB, 쿼리, supabase, 테이블 |
-| `multitenant-guidelines` | **block** | 병원, clinic, 권한, role |
-| `ads-sync-guidelines` | suggest | 광고, ads, 동기화, sync |
-| `security-guidelines` | **block** | 보안, 인증, 검증, XSS |
+### 코드 작성 시 필수 체크리스트
+1. **멀티테넌트 격리**: 모든 DB 쿼리에 `clinic_id` 필터 적용 확인
+2. **역할 검증**: superadmin 전용 기능은 `withSuperAdmin` 래퍼 사용
+3. **보안**: 사용자 입력은 `sanitizeString`, ID는 `parseId`로 검증
+4. **타입 안전**: TypeScript strict 모드 준수
 
-### Agents
-| 에이전트 | 용도 |
-|----------|------|
-| `planner` | 구현 계획 수립 (코드 작성 금지) |
-| `plan-reviewer` | 계획 검증, 멀티테넌트/보안 체크 |
-| `mmi-api-developer` | API 개발 전문 |
-| `multitenant-auditor` | clinic_id 격리 위반 검사 |
-| `auto-error-resolver` | 빌드/타입 에러 자동 해결 |
+### 테스트 방법
+```bash
+# 빌드 검증 (타입 에러 검출)
+npm run build
 
-### Hooks
-| 훅 | 동작 |
-|----|------|
-| `UserPromptSubmit` | 키워드 기반 스킬 자동 활성화 |
-| `PostToolUse (Edit\|Write)` | 파일 변경 추적, 감사 권장 |
-| `Stop` | TypeScript/ESLint 검사 |
+# ESLint 검사
+npm run lint
+```

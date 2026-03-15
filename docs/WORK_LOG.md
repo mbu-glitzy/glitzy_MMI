@@ -632,6 +632,266 @@ function formatDate(dateStr: string | undefined | null): string {
 
 ---
 
+## P7: 랜딩 페이지 관리 및 리드 수집 연동 (2026-03-15)
+
+### 목표
+- 기존 HTML 랜딩 페이지 파일들을 프로젝트에서 서빙
+- 슈퍼관리자가 각 랜딩 페이지에 병원(clinic_id) 배정
+- URL에 `?id=고유번호`로 랜딩 페이지 식별
+- 폼 제출 시 `/api/webhook/lead` API로 리드 + 설문 응답(JSONB) 수집
+
+### URL 형식
+```
+/lp?id=1001&utm_source=meta&utm_medium=cpc&utm_campaign=march_promo
+
+구성요소:
+- /lp: 공통 랜딩 라우트
+- id=1001: 랜딩 페이지 고유 번호 (landing_pages.id)
+- utm_*: 기존 UTM 파라미터들
+```
+
+### 데이터베이스 변경
+
+#### landing_pages 테이블 (신규)
+```sql
+CREATE TABLE landing_pages (
+  id SERIAL PRIMARY KEY,
+  clinic_id INTEGER REFERENCES clinics(id) ON DELETE SET NULL,
+  name VARCHAR(100) NOT NULL,           -- "세레아 3월 프로모션"
+  file_name VARCHAR(100) NOT NULL,      -- "lp_A1.html"
+  description TEXT,                      -- 관리자 메모
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### leads 테이블 수정
+```sql
+ALTER TABLE leads ADD COLUMN custom_data JSONB DEFAULT '{}';
+ALTER TABLE leads ADD COLUMN landing_page_id INTEGER REFERENCES landing_pages(id);
+```
+
+### 파일 구조
+```
+프로젝트 루트/
+├── public/landing/                    # HTML 파일 저장
+│   └── lp_A1.html
+├── app/lp/page.tsx                    # 동적 랜딩 페이지 라우트
+├── app/api/admin/landing-pages/       # 관리 API
+│   ├── route.ts                       # GET, POST
+│   └── [id]/route.ts                  # GET, PUT, DELETE
+└── supabase/migrations/
+    └── 20260315_landing_pages.sql     # 마이그레이션 파일
+```
+
+### 수정된 파일
+
+| 파일 | 작업 |
+|------|------|
+| `middleware.ts` | `/lp` 경로 인증 제외 |
+| `public/landing/lp_A1.html` | submitForm API 호출 추가, custom_data 전송 |
+| `app/lp/page.tsx` | 신규 - 동적 랜딩 페이지 서빙 |
+| `app/api/admin/landing-pages/route.ts` | 신규 - GET, POST API |
+| `app/api/admin/landing-pages/[id]/route.ts` | 신규 - GET, PUT, DELETE API |
+| `app/api/webhook/lead/route.ts` | custom_data, landing_page_id 필드 추가 |
+| `app/api/leads/route.ts` | landing_page 정보 JOIN 추가 |
+| `app/(dashboard)/admin/page.tsx` | 랜딩 페이지 탭 추가 |
+| `app/(dashboard)/leads/page.tsx` | 랜딩 페이지/설문 응답 표시 |
+| `app/(dashboard)/utm/page.tsx` | 랜딩 페이지 + 광고 소재 선택 드롭다운 추가 |
+| `components/ui/textarea.tsx` | 신규 - shadcn/ui 스타일 |
+| `components/ui/switch.tsx` | 신규 - shadcn/ui 스타일 |
+
+### 광고 소재 관리 추가 (P7-B)
+
+#### ad_creatives 테이블
+```sql
+CREATE TABLE ad_creatives (
+  id SERIAL PRIMARY KEY,
+  clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
+  landing_page_id INTEGER REFERENCES landing_pages(id) ON DELETE SET NULL,
+  name VARCHAR(100) NOT NULL,           -- "3월 프로모션 영상 30초"
+  description TEXT,
+  utm_content VARCHAR(100) NOT NULL,    -- UTM에 사용될 값
+  platform VARCHAR(50),                  -- "meta", "google" 등
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### 추가 파일
+| 파일 | 작업 |
+|------|------|
+| `supabase/migrations/20260315_ad_creatives.sql` | 신규 - 마이그레이션 |
+| `app/api/admin/ad-creatives/route.ts` | 신규 - GET, POST |
+| `app/api/admin/ad-creatives/[id]/route.ts` | 신규 - GET, PUT, DELETE |
+| `app/(dashboard)/admin/page.tsx` | 광고 소재 탭 추가 |
+| `app/(dashboard)/utm/page.tsx` | 소재 선택 드롭다운 추가 |
+
+### 주요 기능
+
+1. **광고 소재 관리** (admin 페이지 > 광고 소재 탭)
+   - 소재 CRUD (이름, UTM Content, 플랫폼)
+   - 병원 배정
+   - 랜딩 페이지 연결
+   - 활성/비활성 토글
+
+2. **랜딩 페이지 관리** (admin 페이지)
+   - 랜딩 페이지 CRUD
+   - 병원 배정
+   - 활성/비활성 토글
+   - URL 복사 및 미리보기
+
+3. **동적 랜딩 페이지 서빙** (/lp?id=X)
+   - HTML 파일 동적 로드
+   - clinic_id, landing_page_id 자동 주입
+   - UTM 파라미터 전달
+
+4. **리드 수집** (webhook/lead API)
+   - 설문 응답을 custom_data JSONB로 저장
+   - landing_page_id 연결
+
+5. **UTM 페이지 연동**
+   - 광고 소재 선택 → utm_content + 랜딩 페이지 자동 설정
+   - 랜딩 페이지 선택 드롭다운
+   - 선택 시 기본 URL 자동 입력
+
+6. **고객 상세** (leads 페이지)
+   - 유입 랜딩 페이지 표시
+   - 설문 응답 표시
+   - 마케팅 수신 동의 표시
+
+### 빌드 결과
+```
+✓ Build 성공
+✓ TypeScript 타입 검사 통과
+✓ ESLint 통과
+
+/lp           143 B (총 87.7 kB)  ← 동적 라우트
+/admin       13.4 kB (총 160 kB)  ← 랜딩 페이지 + 광고 소재 탭 추가
+/utm         17.4 kB (총 162 kB)  ← 소재 + 랜딩 페이지 선택 추가
+```
+
+### 다음 단계
+⚠️ **DB 마이그레이션 필요**:
+1. `supabase/migrations/20260315_landing_pages.sql` 실행
+2. `supabase/migrations/20260315_ad_creatives.sql` 실행
+
+---
+
+## P8: 광고 소재 UTM 확장 및 어드민 메뉴 분리 (2026-03-15)
+
+### 목표
+1. 광고 소재에 전체 UTM 파라미터 저장 기능 추가
+2. 어드민 관리 탭들을 별도 페이지로 분리 (UTM 생성기와 동일 위계)
+
+### 데이터베이스 변경
+
+#### ad_creatives 테이블 컬럼 추가
+```sql
+ALTER TABLE ad_creatives ADD COLUMN IF NOT EXISTS utm_source VARCHAR(100);
+ALTER TABLE ad_creatives ADD COLUMN IF NOT EXISTS utm_medium VARCHAR(100);
+ALTER TABLE ad_creatives ADD COLUMN IF NOT EXISTS utm_campaign VARCHAR(100);
+ALTER TABLE ad_creatives ADD COLUMN IF NOT EXISTS utm_term VARCHAR(100);
+```
+
+### 신규/수정 파일
+
+| 파일 | 작업 |
+|------|------|
+| `supabase/migrations/20260315_ad_creatives_utm.sql` | 신규 - UTM 컬럼 추가 마이그레이션 |
+| `app/api/admin/ad-creatives/route.ts` | 수정 - UTM 파라미터 처리 추가 |
+| `app/api/admin/ad-creatives/[id]/route.ts` | 수정 - UTM 파라미터 처리 추가 |
+| `app/(dashboard)/admin/clinics/page.tsx` | 신규 - 병원 관리 페이지 |
+| `app/(dashboard)/admin/users/page.tsx` | 신규 - 계정 관리 페이지 |
+| `app/(dashboard)/admin/landing-pages/page.tsx` | 신규 - 랜딩 페이지 관리 |
+| `app/(dashboard)/admin/ad-creatives/page.tsx` | 신규 - 광고 소재 관리 |
+| `app/(dashboard)/admin/page.tsx` | 수정 - /admin/ad-creatives로 리다이렉트 |
+| `app/(dashboard)/utm/page.tsx` | 수정 - 소재 선택 시 전체 UTM 자동 적용, clinic_id 저장 |
+| `components/Sidebar.tsx` | 수정 - 메뉴 구조 변경 |
+
+### 메뉴 구조 변경
+
+**변경 전:**
+```
+슈퍼어드민
+├── UTM 생성기
+└── 어드민 관리 (탭: 병원/계정/랜딩페이지/소재)
+```
+
+**변경 후:**
+```
+슈퍼어드민
+├── UTM 생성기
+├── 광고 소재
+├── 랜딩 페이지
+├── 병원 관리
+└── 계정 관리
+```
+
+### 주요 기능
+
+#### 1. 광고 소재 전체 UTM 저장
+- 소재 등록 시 utm_source, utm_medium, utm_campaign, utm_term 입력 가능
+- UTM 생성기에서 소재 선택 시 모든 UTM 값 자동 적용
+
+#### 2. UTM 생성기 개선
+- 소재 선택 시 clinic_id 자동 저장 (링크 히스토리 저장에 사용)
+- 소재에 설정된 UTM 파라미터 전체 자동 적용
+
+#### 3. 페이지 분리 및 코드 품질 개선
+- 각 관리 기능을 독립 페이지로 분리
+- 로딩 상태 표시 추가
+- API 에러 핸들링 추가
+- toggleUser 에러 핸들링 추가
+
+### 코드 리뷰 후 수정
+
+| 우선순위 | 문제 | 수정 내용 |
+|---------|------|----------|
+| 높음 | toggleUser 에러 핸들링 없음 | try-catch 및 toast 메시지 추가 |
+| 높음 | fetchData 에러 핸들링 없음 | try-catch 및 toast 에러 메시지 추가 |
+| 중간 | 로딩 상태 없음 | loading 상태 및 "로딩 중..." 표시 추가 |
+
+### 빌드 결과
+```
+/admin                 147 B (리다이렉트)
+/admin/ad-creatives   3.77 kB (총 156 kB)
+/admin/clinics        4.62 kB (총 134 kB)
+/admin/landing-pages  3.1 kB (총 155 kB)
+/admin/users          5.79 kB (총 153 kB)
+/utm                  17.3 kB (총 162 kB)
+
+✓ Build 성공
+✓ TypeScript 타입 검사 통과
+```
+
+### 전체 플로우 (완성)
+```
+1. 광고 소재 등록 (/admin/ad-creatives)
+   └─ UTM 파라미터 전체 입력 (source, medium, campaign, content, term)
+   └─ 랜딩 페이지 연결
+        ↓
+2. UTM 생성기에서 소재 선택 (/utm)
+   └─ 모든 UTM 값 자동 적용
+   └─ clinic_id 자동 설정
+        ↓
+3. 링크 생성 & 저장
+   └─ 생성된 URL 복사/QR 생성
+   └─ 히스토리에 저장 (clinic_id 포함)
+        ↓
+4. 랜딩 페이지 유입 → 리드 수집
+   └─ 설문 응답 custom_data JSONB 저장
+   └─ landing_page_id 연결
+        ↓
+5. 리드 관리 (/leads)
+   └─ 유입 랜딩 페이지 확인
+   └─ 설문 응답 확인
+```
+
+---
+
 ## 향후 작업 가능 항목
 
 1. **추가 컴포넌트**: Popover, Tooltip, Progress, Slider
