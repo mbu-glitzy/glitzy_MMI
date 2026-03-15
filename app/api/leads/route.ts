@@ -1,26 +1,94 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, apiError, apiSuccess } from '@/lib/api-middleware'
 
+/**
+ * 고객 기준 리드 조회 API (하이브리드 방식)
+ * - 고객당 1행
+ * - 각 고객의 모든 유입(leads) 이력 포함
+ * - startDate 파라미터로 기간 필터링 가능
+ */
 export const GET = withClinicFilter(async (req: Request, { clinicId }: ClinicContext) => {
   const supabase = serverSupabase()
+  const url = new URL(req.url)
+  const startDate = url.searchParams.get('startDate')
+  const limitParam = url.searchParams.get('limit')
+  const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 100, 500) : 100
 
+  // 고객 기준으로 조회, leads를 포함 (landing_page 정보 포함)
   let query = supabase
-    .from('leads')
+    .from('customers')
     .select(`
       *,
-      customer:customers(
-        *,
-        consultations(*),
-        payments(*),
-        bookings(*)
-      )
+      leads(*, landing_page:landing_pages(id, name)),
+      consultations(*),
+      payments(*),
+      bookings(*)
     `)
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(limit)
 
   if (clinicId) query = query.eq('clinic_id', clinicId)
+  if (startDate) query = query.gte('created_at', startDate)
 
-  const { data, error } = await query
+  const { data: customers, error } = await query
+
   if (error) return apiError(error.message, 500)
-  return apiSuccess(data)
+
+  // leads가 있는 고객만 필터링 + 정렬 (최근 리드 기준)
+  const customersWithLeads = (customers || [])
+    .filter(c => c.leads && c.leads.length > 0)
+    .map(c => {
+      // leads를 최신순 정렬
+      const sortedLeads = [...c.leads].sort(
+        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      const latestLead = sortedLeads[0]
+
+      return {
+        // 고객 정보
+        id: c.id,
+        customer_id: c.id,
+        phone_number: c.phone_number,
+        name: c.name,
+        first_source: c.first_source,
+        first_campaign_id: c.first_campaign_id,
+        clinic_id: c.clinic_id,
+        created_at: c.created_at,
+
+        // 최신 리드 정보 (목록 표시용)
+        latest_lead: latestLead,
+        utm_source: latestLead?.utm_source,
+        utm_medium: latestLead?.utm_medium,
+        utm_campaign: latestLead?.utm_campaign,
+        utm_content: latestLead?.utm_content,
+        chatbot_sent: latestLead?.chatbot_sent,
+        chatbot_sent_at: latestLead?.chatbot_sent_at,
+        landing_page: latestLead?.landing_page,
+        custom_data: latestLead?.custom_data,
+
+        // 전체 유입 이력
+        leads: sortedLeads,
+        lead_count: sortedLeads.length,
+
+        // 고객 정보 (기존 구조 호환)
+        customer: {
+          id: c.id,
+          phone_number: c.phone_number,
+          name: c.name,
+          first_source: c.first_source,
+          first_campaign_id: c.first_campaign_id,
+          consultations: c.consultations || [],
+          payments: c.payments || [],
+          bookings: c.bookings || [],
+        },
+      }
+    })
+    .sort((a, b) => {
+      // 최신 리드 기준 정렬
+      const aTime = new Date(a.latest_lead?.created_at || a.created_at).getTime()
+      const bTime = new Date(b.latest_lead?.created_at || b.created_at).getTime()
+      return bTime - aTime
+    })
+
+  return apiSuccess(customersWithLeads)
 })

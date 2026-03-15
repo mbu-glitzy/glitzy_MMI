@@ -1,0 +1,172 @@
+import { serverSupabase } from '@/lib/supabase'
+import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
+import { sanitizeString, parseId } from '@/lib/security'
+
+function getCreativeIdFromUrl(req: Request): number | null {
+  const url = new URL(req.url)
+  const pathParts = url.pathname.split('/')
+  const idStr = pathParts[pathParts.length - 1]
+  return parseId(idStr)
+}
+
+export const GET = withSuperAdmin(async (req: Request) => {
+  const creativeId = getCreativeIdFromUrl(req)
+  if (creativeId === null) {
+    return apiError('유효하지 않은 ID입니다.', 400)
+  }
+
+  const supabase = serverSupabase()
+  const { data, error } = await supabase
+    .from('ad_creatives')
+    .select(`
+      *,
+      clinic:clinics(id, name),
+      landing_page:landing_pages(id, name, file_name)
+    `)
+    .eq('id', creativeId)
+    .single()
+
+  if (error || !data) {
+    return apiError('광고 소재를 찾을 수 없습니다.', 404)
+  }
+
+  return apiSuccess(data)
+})
+
+export const PUT = withSuperAdmin(async (req: Request) => {
+  const creativeId = getCreativeIdFromUrl(req)
+  if (creativeId === null) {
+    return apiError('유효하지 않은 ID입니다.', 400)
+  }
+
+  const body = await req.json()
+  const {
+    name, description, utm_content, utm_source, utm_medium, utm_campaign, utm_term,
+    platform, clinic_id, landing_page_id, is_active
+  } = body
+
+  const supabase = serverSupabase()
+
+  // 기존 데이터 확인
+  const { data: existing } = await supabase
+    .from('ad_creatives')
+    .select('id, clinic_id')
+    .eq('id', creativeId)
+    .single()
+
+  if (!existing) {
+    return apiError('광고 소재를 찾을 수 없습니다.', 404)
+  }
+
+  // clinic_id 변경 시 유효성 검증
+  let validClinicId: number | undefined = undefined
+  if (clinic_id !== undefined) {
+    validClinicId = parseId(clinic_id) ?? undefined
+    if (validClinicId) {
+      const { data: clinic } = await supabase
+        .from('clinics')
+        .select('id')
+        .eq('id', validClinicId)
+        .single()
+
+      if (!clinic) {
+        return apiError('존재하지 않는 병원입니다.', 400)
+      }
+    }
+  }
+
+  // landing_page_id 유효성 검증
+  let validLandingPageId: number | null | undefined = undefined
+  if (landing_page_id !== undefined) {
+    if (landing_page_id === null || landing_page_id === '') {
+      validLandingPageId = null
+    } else {
+      validLandingPageId = parseId(landing_page_id)
+      if (validLandingPageId) {
+        const { data: lp } = await supabase
+          .from('landing_pages')
+          .select('id')
+          .eq('id', validLandingPageId)
+          .single()
+
+        if (!lp) {
+          return apiError('존재하지 않는 랜딩 페이지입니다.', 400)
+        }
+      }
+    }
+  }
+
+  // utm_content 중복 검사 (변경 시, 같은 병원 내, 자기 자신 제외)
+  if (utm_content) {
+    const checkClinicId = validClinicId ?? existing.clinic_id
+    const { data: duplicate } = await supabase
+      .from('ad_creatives')
+      .select('id')
+      .eq('clinic_id', checkClinicId)
+      .eq('utm_content', utm_content)
+      .neq('id', creativeId)
+      .maybeSingle()
+
+    if (duplicate) {
+      return apiError('이미 동일한 UTM Content 값이 존재합니다.', 400)
+    }
+  }
+
+  const updateData: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (name !== undefined) updateData.name = sanitizeString(name, 100)
+  if (description !== undefined) updateData.description = description ? sanitizeString(description, 500) : null
+  if (utm_content !== undefined) updateData.utm_content = sanitizeString(utm_content, 100)
+  if (utm_source !== undefined) updateData.utm_source = utm_source ? sanitizeString(utm_source, 100) : null
+  if (utm_medium !== undefined) updateData.utm_medium = utm_medium ? sanitizeString(utm_medium, 100) : null
+  if (utm_campaign !== undefined) updateData.utm_campaign = utm_campaign ? sanitizeString(utm_campaign, 100) : null
+  if (utm_term !== undefined) updateData.utm_term = utm_term ? sanitizeString(utm_term, 100) : null
+  if (platform !== undefined) updateData.platform = platform ? sanitizeString(platform, 50) : null
+  if (validClinicId !== undefined) updateData.clinic_id = validClinicId
+  if (validLandingPageId !== undefined) updateData.landing_page_id = validLandingPageId
+  if (is_active !== undefined) updateData.is_active = is_active
+
+  const { data, error } = await supabase
+    .from('ad_creatives')
+    .update(updateData)
+    .eq('id', creativeId)
+    .select(`
+      *,
+      clinic:clinics(id, name),
+      landing_page:landing_pages(id, name, file_name)
+    `)
+    .single()
+
+  if (error) return apiError(error.message, 500)
+  return apiSuccess(data)
+})
+
+export const DELETE = withSuperAdmin(async (req: Request) => {
+  const creativeId = getCreativeIdFromUrl(req)
+  if (creativeId === null) {
+    return apiError('유효하지 않은 ID입니다.', 400)
+  }
+
+  const supabase = serverSupabase()
+
+  // 존재 여부 확인
+  const { data: existing } = await supabase
+    .from('ad_creatives')
+    .select('id')
+    .eq('id', creativeId)
+    .single()
+
+  if (!existing) {
+    return apiError('광고 소재를 찾을 수 없습니다.', 404)
+  }
+
+  const { error } = await supabase
+    .from('ad_creatives')
+    .delete()
+    .eq('id', creativeId)
+
+  if (error) return apiError(error.message, 500)
+  return apiSuccess({ deleted: true })
+})

@@ -3,18 +3,62 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
-import { LayoutDashboard, Users, MessageCircle, BarChart2, LogOut, Activity, Calendar, Shield, ChevronDown, Film, Link2, Scan, Newspaper } from 'lucide-react'
+import { LayoutDashboard, Users, MessageCircle, BarChart2, LogOut, Activity, Calendar, Film, Link2, Scan, Newspaper, Settings, ChevronUp, User, FileEdit, LucideIcon, Building2, UserCog, FileText, Image } from 'lucide-react'
 import { useClinic } from './ClinicContext'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-const navItems = [
-  { href: '/',        label: '대시보드',          icon: LayoutDashboard },
-  { href: '/leads',   label: '고객(CDP) 관리',    icon: Users           },
-  { href: '/chatbot', label: '챗봇 현황',          icon: MessageCircle   },
-  { href: '/patients',label: '예약 / 결제 관리',   icon: Calendar        },
-  { href: '/ads',     label: '광고 성과 분석',     icon: BarChart2       },
-  { href: '/content', label: '브랜드 콘텐츠 분석', icon: Film            },
-  { href: '/monitor', label: '콘텐츠 모니터링',    icon: Scan            },
-  { href: '/press',   label: '언론보도',            icon: Newspaper       },
+// 메뉴 타입 정의
+interface MenuItem {
+  href: string
+  label: string
+  icon: LucideIcon
+}
+
+interface MenuGroup {
+  label?: string
+  items: MenuItem[]
+}
+
+// 그룹별 메뉴 구조
+const menuGroups: MenuGroup[] = [
+  {
+    items: [
+      { href: '/', label: '대시보드', icon: LayoutDashboard },
+    ]
+  },
+  {
+    label: '고객 관리',
+    items: [
+      { href: '/leads', label: '고객(CDP)', icon: Users },
+      { href: '/patients', label: '예약/결제', icon: Calendar },
+      { href: '/chatbot', label: '챗봇 현황', icon: MessageCircle },
+      { href: '/lead-form', label: '리드 등록', icon: FileEdit },
+    ]
+  },
+  {
+    label: '마케팅 분석',
+    items: [
+      { href: '/ads', label: '광고 성과', icon: BarChart2 },
+      { href: '/content', label: '콘텐츠 분석', icon: Film },
+      { href: '/monitor', label: '콘텐츠 모니터링', icon: Scan },
+      { href: '/press', label: '언론보도', icon: Newspaper },
+    ]
+  },
 ]
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -43,19 +87,20 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       {isSuperAdmin && (
         <div className="px-3 py-3 border-b border-white/5">
           <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2 px-1">병원 선택</p>
-          <div className="relative">
-            <select
-              value={selectedClinicId ?? ''}
-              onChange={e => setSelectedClinicId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 pr-8"
-            >
-              <option value="" className="bg-slate-900">전체 병원</option>
+          <Select
+            value={selectedClinicId?.toString() ?? 'all'}
+            onValueChange={v => setSelectedClinicId(v === 'all' ? null : Number(v))}
+          >
+            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white text-sm">
+              <SelectValue placeholder="전체 병원" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 병원</SelectItem>
               {clinics.map(c => (
-                <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>
+                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
               ))}
-            </select>
-            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
+            </SelectContent>
+          </Select>
           {selectedClinic && (
             <p className="text-[10px] text-brand-400 mt-1.5 px-1">{selectedClinic.name} 데이터 조회 중</p>
           )}
@@ -71,73 +116,147 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       )}
 
       {/* 네비게이션 */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-brand-600/20 text-brand-400'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
-              }`}
-            >
-              <Icon size={17} />
-              {label}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        {menuGroups.map((group, groupIndex) => (
+          <div key={groupIndex}>
+            {/* 그룹 헤더 */}
+            {group.label && (
+              <div className="pt-4 pb-1">
+                <p className="text-[10px] text-slate-600 uppercase tracking-widest px-3">
+                  {group.label}
+                </p>
+              </div>
+            )}
+            {/* 그룹 아이템 */}
+            <div className="space-y-1">
+              {group.items.map(({ href, label, icon: Icon }) => {
+                const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={onClose}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-brand-600/20 text-brand-400'
+                        : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <Icon size={17} />
+                    {label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
 
         {/* 슈퍼어드민 전용 메뉴 */}
         {isSuperAdmin && (
           <>
-            <div className="pt-3 pb-1">
+            <div className="pt-4 pb-1">
               <p className="text-[10px] text-slate-600 uppercase tracking-widest px-3">슈퍼어드민</p>
             </div>
-            <Link
-              href="/utm"
-              onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                pathname.startsWith('/utm')
-                  ? 'bg-brand-600/20 text-brand-400'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
-              }`}
-            >
-              <Link2 size={17} />
-              UTM 생성기
-            </Link>
-            <Link
-              href="/admin"
-              onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                pathname.startsWith('/admin')
-                  ? 'bg-purple-600/20 text-purple-400'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
-              }`}
-            >
-              <Shield size={17} />
-              어드민 관리
-            </Link>
+            <div className="space-y-1">
+              <Link
+                href="/utm"
+                onClick={onClose}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  pathname.startsWith('/utm')
+                    ? 'bg-brand-600/20 text-brand-400'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                <Link2 size={17} />
+                UTM 생성기
+              </Link>
+              <Link
+                href="/admin/ad-creatives"
+                onClick={onClose}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  pathname === '/admin/ad-creatives'
+                    ? 'bg-brand-600/20 text-brand-400'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                <Image size={17} />
+                광고 소재
+              </Link>
+              <Link
+                href="/admin/landing-pages"
+                onClick={onClose}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  pathname === '/admin/landing-pages'
+                    ? 'bg-brand-600/20 text-brand-400'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                <FileText size={17} />
+                랜딩 페이지
+              </Link>
+              <Link
+                href="/admin/clinics"
+                onClick={onClose}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  pathname === '/admin/clinics'
+                    ? 'bg-brand-600/20 text-brand-400'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                <Building2 size={17} />
+                병원 관리
+              </Link>
+              <Link
+                href="/admin/users"
+                onClick={onClose}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  pathname === '/admin/users'
+                    ? 'bg-brand-600/20 text-brand-400'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                <UserCog size={17} />
+                계정 관리
+              </Link>
+            </div>
           </>
         )}
       </nav>
 
-      {/* 사용자 정보 + 로그아웃 */}
+      {/* 사용자 메뉴 */}
       <div className="px-3 pb-4 border-t border-white/5 pt-3">
-        <div className="px-3 mb-2">
-          <p className="text-xs text-white font-medium">{user?.name || user?.username}</p>
-          <p className="text-[10px] text-slate-500">{isSuperAdmin ? '슈퍼어드민' : '병원 어드민'}</p>
-        </div>
-        <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-white hover:bg-white/[0.05] transition-all"
-        >
-          <LogOut size={17} />
-          로그아웃
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.05] transition-colors text-left" aria-label="사용자 메뉴">
+              <div className="w-8 h-8 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 font-semibold text-sm shrink-0">
+                {(user?.name || user?.username)?.[0]?.toUpperCase() || <User size={14} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-medium truncate">{user?.name || user?.username}</p>
+                <p className="text-[10px] text-slate-500">{isSuperAdmin ? '슈퍼어드민' : '병원 어드민'}</p>
+              </div>
+              <ChevronUp size={14} className="text-slate-500 shrink-0" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-52">
+            <DropdownMenuLabel>
+              {user?.name || user?.username}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="opacity-50">
+              <Settings size={14} />
+              설정 (준비 중)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="text-red-400 hover:text-red-300 focus:text-red-300"
+            >
+              <LogOut size={14} />
+              로그아웃
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   )

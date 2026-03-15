@@ -14,6 +14,7 @@ npm run dev      # 개발 서버 (http://localhost:3000)
 npm run build    # 프로덕션 빌드
 npm run lint     # ESLint 검사
 npm run start    # 프로덕션 서버 실행
+npm run analyze  # 번들 크기 분석 (브라우저에서 시각화)
 ```
 
 ## 기술 스택
@@ -21,8 +22,19 @@ npm run start    # 프로덕션 서버 실행
 - **프레임워크**: Next.js 14 (App Router)
 - **인증**: NextAuth.js (Credentials Provider, JWT 전략)
 - **데이터베이스**: Supabase (PostgreSQL)
-- **스타일링**: Tailwind CSS
-- **차트**: Recharts
+- **스타일링**: Tailwind CSS + shadcn/ui
+- **차트**: Recharts (코드 스플리팅 래퍼 사용)
+- **토스트**: Sonner
+- **작업 큐**: Upstash QStash
+
+## 문서
+
+| 문서 | 설명 |
+|------|------|
+| [docs/SPEC.md](docs/SPEC.md) | 프로젝트 요구사항 명세 |
+| [docs/API.md](docs/API.md) | REST API 엔드포인트 문서 |
+| [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI 컴포넌트 사용 가이드 |
+| [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 |
 
 ## 아키텍처
 
@@ -50,19 +62,20 @@ npm run start    # 프로덕션 서버 실행
 ```
 
 ### 주요 디렉토리
-- `app/(dashboard)/` - 인증된 대시보드 페이지들 (그룹 라우트)
-- `app/api/` - API 라우트
-- `lib/services/` - 외부 API 동기화 서비스
-- `lib/api-middleware.ts` - API 래퍼 함수 (withAuth, withClinicFilter, withSuperAdmin)
-- `lib/security.ts` - 입력 검증 및 권한 검증 헬퍼
-- `lib/session.ts` - 세션 헬퍼 (getClinicId, requireSuperAdmin)
-- `components/ClinicContext.tsx` - 병원 선택 상태 Context
+| 디렉토리 | 용도 |
+|---------|------|
+| `app/(dashboard)/` | 인증된 대시보드 페이지들 (그룹 라우트) |
+| `app/api/` | API 라우트 |
+| `lib/services/` | 외부 API 동기화 서비스 |
+| `lib/` | 유틸리티 모듈 (아래 상세) |
+| `components/ui/` | shadcn/ui 컴포넌트 (다크테마 커스텀) |
+| `components/common/` | 프로젝트 공용 컴포넌트 |
+| `components/charts/` | Recharts 래퍼 (코드 스플리팅) |
 
-## API 개발 패턴
+## 핵심 유틸리티 모듈
 
-### 미들웨어 래퍼 사용
+### API 미들웨어 (lib/api-middleware.ts)
 ```typescript
-// lib/api-middleware.ts의 래퍼 함수 활용
 import { withAuth, withClinicFilter, withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 
 // 인증만 필요한 경우
@@ -72,7 +85,6 @@ export const GET = withAuth(async (req, { user }) => {
 
 // clinic_id 필터링이 필요한 경우 (대부분의 API)
 export const GET = withClinicFilter(async (req, { user, clinicId }) => {
-  // clinicId가 자동으로 세션/쿼리에서 추출됨
   let query = supabase.from('table').select('*')
   if (clinicId) query = query.eq('clinic_id', clinicId)
   return apiSuccess(data)
@@ -80,48 +92,116 @@ export const GET = withClinicFilter(async (req, { user, clinicId }) => {
 
 // superadmin 전용 API
 export const POST = withSuperAdmin(async (req, { user }) => {
-  // superadmin만 접근 가능
   return apiSuccess({ created: true })
 })
 ```
 
-### 권한 검증 헬퍼 (lib/security.ts)
+### 로깅 (lib/logger.ts)
 ```typescript
-import { getSessionUser, canModifyBooking, canAccessCustomer } from '@/lib/security'
+import { createLogger } from '@/lib/logger'
 
-// 리소스 수정 전 소유권 검증
-const accessCheck = await canModifyBooking(bookingId, user)
-if (!accessCheck.allowed) {
-  return apiError(accessCheck.error || '권한이 없습니다.', 403)
+const logger = createLogger('ServiceName')
+
+logger.debug('디버그 메시지', { context: 'value' })  // 개발환경만
+logger.info('정보 로그', { clinicId, action: 'sync' })
+logger.warn('경고', { reason: 'rate limit' })
+logger.error('에러 발생', error, { userId })
+```
+- 개발환경: 읽기 쉬운 형식 출력
+- 프로덕션: JSON 형식 (로그 수집 도구 호환)
+
+### 외부 API 클라이언트 (lib/api-client.ts)
+```typescript
+import { fetchJSON, fetchWithRetry } from '@/lib/api-client'
+
+// JSON 응답 처리 (재시도 + 타임아웃 내장)
+const result = await fetchJSON<ResponseType>(url, {
+  service: 'MetaAds',  // 로깅용
+  timeout: 30000,      // 타임아웃 (기본 30초)
+  retries: 3,          // 재시도 횟수 (기본 3회)
+})
+
+if (result.success) {
+  console.log(result.data)
+} else {
+  console.error(result.error, `시도 횟수: ${result.attempts}`)
 }
 ```
+- 429 Too Many Requests: Retry-After 헤더 자동 처리
+- Exponential backoff 재시도
 
-### 입력 검증 헬퍼 (lib/security.ts)
+### UTM 파라미터 처리 (lib/utm.ts)
 ```typescript
-import { parseId, sanitizeString, isValidBookingStatus, isValidDate } from '@/lib/security'
+import { parseUtmFromUrl, sanitizeUtmParams, mergeUtmParams, getUtmSourceLabel } from '@/lib/utm'
 
-// ID 파싱 (문자열/숫자 모두 허용)
+// URL에서 UTM 추출
+const utmFromUrl = parseUtmFromUrl(inflowUrl)
+
+// sanitize (XSS 방지)
+const safeUtm = sanitizeUtmParams(requestBody)
+
+// 병합 (명시적 값 우선)
+const finalUtm = mergeUtmParams(explicit, utmFromUrl)
+
+// 표시용 라벨
+getUtmSourceLabel('meta')  // → 'Meta'
+```
+
+### 보안 헬퍼 (lib/security.ts)
+```typescript
+import { parseId, sanitizeString, isValidBookingStatus, canModifyBooking } from '@/lib/security'
+
+// ID 파싱
 const bookingId = parseId(id)
 if (!bookingId) return apiError('유효한 ID가 필요합니다.')
 
 // 상태값 검증
-if (!isValidBookingStatus(status)) return apiError('유효하지 않은 상태입니다.')
+if (!isValidBookingStatus(status)) return apiError('유효하지 않은 상태')
 
-// XSS 방지 문자열 sanitize
+// XSS 방지 sanitize
 const safeNotes = sanitizeString(notes, 1000)
+
+// 리소스 소유권 검증
+const check = await canModifyBooking(bookingId, user)
+if (!check.allowed) return apiError(check.error, 403)
 ```
+
+## UI 컴포넌트 (요약)
+
+```typescript
+// shadcn/ui 기본
+import { Button, Card, Badge, Input, Select, Dialog, Table, Skeleton } from '@/components/ui/*'
+import { toast } from 'sonner'
+
+// 커스텀 Variants
+<Card variant="glass" />      // 글래스모피즘
+<Button variant="glass" />    // 글래스 버튼
+<Badge variant="meta" />      // 채널별 색상 (meta/google/tiktok/naver/kakao)
+<Badge variant="success" />   // 상태별 색상 (success/warning/info)
+
+// 공용 컴포넌트
+import { PageHeader, ChannelBadge, StatusBadge, EmptyState } from '@/components/common'
+
+// 차트 (코드 스플리팅 적용)
+import { AreaChart, BarChart, PieChart, LineChart, ... } from '@/components/charts'
+```
+
+상세 사용법: [docs/COMPONENTS.md](docs/COMPONENTS.md)
 
 ## 데이터베이스 스키마
 
 ### 핵심 테이블
-- `clinics` - 병원 고객사
-- `users` - 로그인 계정 (role, clinic_id)
-- `customers` - 고객 정보 (clinic_id)
-- `leads` - 리드/문의 (clinic_id)
-- `bookings` - 예약 (clinic_id)
-- `payments` - 결제 (clinic_id)
-- `ad_campaign_stats` - 광고 통계 (clinic_id)
-- `clinic_api_configs` - 병원별 광고 API 키
+| 테이블 | 용도 |
+|--------|------|
+| `clinics` | 병원 고객사 |
+| `users` | 로그인 계정 (role, clinic_id) |
+| `customers` | 고객 정보 (phone_number로 식별) |
+| `leads` | 리드/문의 (UTM 파라미터 포함) |
+| `bookings` | 예약 |
+| `consultations` | 상담 |
+| `payments` | 결제 |
+| `ad_campaign_stats` | 광고 통계 |
+| `clinic_api_configs` | 병원별 광고 API 키 |
 
 ### 멀티테넌트 필터링 (필수)
 ```typescript
@@ -135,22 +215,33 @@ await supabase.from('table').insert({ clinic_id: clinicId, ...data })
 
 ## 환경변수
 
-필수 환경변수 (.env.local):
+### 필수
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
 - `CRON_SECRET` (Cron Job 인증)
+
+### 선택 (서비스별)
 - 광고 API: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*`
 - 콘텐츠 API: `YOUTUBE_API_KEY`, `KAKAO_REST_API_KEY`
+- AI: `ANTHROPIC_API_KEY`
+- 메시징: `QSTASH_*`, `KAKAO_*`
 
-## 브랜치 전략
+## 환경 분리 운영
 
+### 브랜치 전략
 ```
 main (프로덕션) → Production 배포
   └── develop (개발/스테이징) → Preview 배포
         └── feature/* (기능 개발)
 ```
 
-## Cron Jobs
+| 브랜치 | 용도 | Vercel 환경 |
+|--------|------|-------------|
+| `main` | 프로덕션 배포 | Production |
+| `develop` | 개발/테스트 | Preview |
+| `feature/*` | 기능 개발 | Preview (PR 생성 시) |
+
+### Cron Jobs
 
 | 경로 | 스케줄 | 용도 |
 |------|--------|------|
@@ -162,25 +253,19 @@ main (프로덕션) → Production 배포
 curl -X POST http://localhost:3000/api/cron/sync-ads -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-## AI 협업 인프라 (.claude/)
+## 주의사항
 
-### Skills (가이드라인)
-| 스킬 | 모드 | 트리거 키워드 |
-|------|------|---------------|
-| `nextjs-guidelines` | suggest | API, route, 페이지, component |
-| `supabase-guidelines` | suggest | DB, 쿼리, supabase, 테이블 |
-| `multitenant-guidelines` | **block** | 병원, clinic, 권한, role |
-| `ads-sync-guidelines` | suggest | 광고, ads, 동기화, sync |
-| `security-guidelines` | **block** | 보안, 인증, 검증, XSS |
+### 코드 작성 시 필수 체크리스트
+1. **멀티테넌트 격리**: 모든 DB 쿼리에 `clinic_id` 필터 적용 확인
+2. **역할 검증**: superadmin 전용 기능은 `withSuperAdmin` 래퍼 사용
+3. **보안**: 사용자 입력은 `sanitizeString`, ID는 `parseId`로 검증
+4. **타입 안전**: TypeScript strict 모드 준수
 
-### Agents
-- `planner` - 구현 계획 수립 (코드 작성 금지)
-- `plan-reviewer` - 계획 검증, 멀티테넌트/보안 체크
-- `mmi-api-developer` - API 개발 전문
-- `multitenant-auditor` - clinic_id 격리 위반 검사
-- `auto-error-resolver` - 빌드/타입 에러 자동 해결
+### 테스트 방법
+```bash
+# 빌드 검증 (타입 에러 검출)
+npm run build
 
-### Hooks
-- `UserPromptSubmit` → 키워드 기반 스킬 자동 활성화
-- `PostToolUse (Edit|Write)` → 파일 변경 추적, 감사 권장
-- `Stop` → TypeScript/ESLint 검사 (빌드는 환경변수로 제어)
+# ESLint 검사
+npm run lint
+```
