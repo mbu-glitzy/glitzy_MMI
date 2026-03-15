@@ -49,3 +49,9 @@ Thumbs.db
 
 # Windows 특수 파일
 nul
+
+# Playwright
+.auth/
+playwright-report/
+test-results/
+playwright/.cache/
