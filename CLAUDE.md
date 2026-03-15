@@ -166,20 +166,6 @@ const check = await canModifyBooking(bookingId, user)
 if (!check.allowed) return apiError(check.error, 403)
 ```
 
-### 환경변수 검증 (lib/env.ts)
-```typescript
-import { validateEnv } from '@/lib/env'
-
-// 앱 시작 시 검증
-const result = validateEnv()
-if (!result.valid) {
-  console.error('환경변수 오류:', result.errors)
-}
-if (result.warnings.length > 0) {
-  console.warn('환경변수 경고:', result.warnings)
-}
-```
-
 ## UI 컴포넌트 (요약)
 
 ```typescript
