@@ -30,7 +30,7 @@ interface CampaignLead {
   chatbot_sent_at: string | null
   created_at: string
   landing_page_id: number | null
-  custom_data: { survey?: Record<string, string>; marketing_consent?: boolean } | null
+  custom_data: { survey?: Record<string, string>; marketing_consent?: boolean; name?: string } | null
   customer: { id: number; name: string; phone_number: string; first_source: string } | null
   landing_page: { id: number; name: string } | null
 }
@@ -150,6 +150,7 @@ function LeadCard({ lead }: { lead: CampaignLead }) {
   const survey = lead.custom_data?.survey
   const surveyEntries = survey ? Object.values(survey) : []
   const marketingConsent = lead.custom_data?.marketing_consent
+  const leadName = lead.custom_data?.name || lead.customer?.name || '이름 없음'
 
   return (
     <div
@@ -159,9 +160,9 @@ function LeadCard({ lead }: { lead: CampaignLead }) {
       {/* 1행: 기본 정보 */}
       <div className="flex items-center gap-3 mb-2">
         <div className="w-8 h-8 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 font-semibold text-sm shrink-0">
-          {lead.customer?.name?.[0] || <User size={14} />}
+          {leadName[0] || <User size={14} />}
         </div>
-        <p className="text-sm font-semibold text-white shrink-0">{lead.customer?.name || '이름 없음'}</p>
+        <p className="text-sm font-semibold text-white shrink-0">{leadName}</p>
         <span className="text-xs text-slate-500 flex items-center gap-1 shrink-0">
           <Phone size={10} />
           {lead.customer?.phone_number || '-'}

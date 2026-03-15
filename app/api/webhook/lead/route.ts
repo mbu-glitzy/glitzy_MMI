@@ -161,7 +161,7 @@ export async function POST(req: Request) {
         chatbot_sent: false,
         // 랜딩 페이지 연동
         landing_page_id: validLandingPageId,
-        custom_data: custom_data || {},
+        custom_data: { ...(custom_data || {}), name: sanitizedName || undefined },
       })
       .select()
       .single()
