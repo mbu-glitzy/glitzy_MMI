@@ -167,7 +167,38 @@ export async function POST(req: Request) {
       .single()
     if (leadError) throw leadError
 
-    // 3. QStash로 5분 후 챗봇 발송 스케줄
+    // 3. 병원 담당자 알림 발송 (즉시)
+    try {
+      const { data: clinic } = await supabase
+        .from('clinics')
+        .select('notify_phone, notify_enabled, name')
+        .eq('id', customer.clinic_id || validClinicId)
+        .single()
+
+      if (clinic?.notify_enabled && clinic?.notify_phone && process.env.KAKAO_API_KEY && process.env.KAKAO_SENDER_KEY) {
+        const campaignLabel = finalUtm.utm_campaign || '직접유입'
+        const notifyParams = new URLSearchParams({
+          apikey: process.env.KAKAO_API_KEY,
+          userid: process.env.KAKAO_USER_ID || '',
+          senderkey: process.env.KAKAO_SENDER_KEY,
+          tpl_code: process.env.KAKAO_NOTIFY_TEMPLATE_CODE || process.env.KAKAO_TEMPLATE_CODE || '',
+          sender: process.env.KAKAO_SENDER_NUMBER || '',
+          receiver_1: clinic.notify_phone,
+          recvname_1: '담당자',
+          subject_1: '새 리드 유입',
+          message_1: `[${clinic.name}] 새 리드가 유입되었습니다.\n\n이름: ${sanitizedName || '미입력'}\n연락처: ${normalizedPhone}\n캠페인: ${campaignLabel}\n\nMMI에서 확인하세요.`,
+        })
+        await fetch('https://kakaoapi.aligo.in/akv10/alimtalk/send/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: notifyParams,
+        }).catch(() => {}) // 알림 실패가 리드 등록을 막지 않도록
+      }
+    } catch {
+      // 알림 발송 실패는 무시 (리드 등록은 이미 완료)
+    }
+
+    // 4. QStash로 5분 후 챗봇 발송 스케줄
     if (process.env.QSTASH_TOKEN) {
       await qstash.publishJSON({
         url: `${process.env.NEXTAUTH_URL}/api/qstash/chatbot`,
@@ -178,7 +209,7 @@ export async function POST(req: Request) {
 
     return apiSuccess({
       success: true,
-      message: '리드가 등록되고 5분 내 챗봇 발송 스케줄이 설정되었습니다.',
+      message: '리드가 등록되고 담당자 알림 및 챗봇 발송이 스케줄되었습니다.',
       leadId: lead.id,
       customerId: customer.id,
       isNewCustomer: !existingCustomer,
