@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Copy, Check, Trash2, ExternalLink, ChevronDown, Link2, QrCode, RefreshCw, Database, FileText, Image } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -78,6 +78,15 @@ interface UtmLink {
   created_at: string
 }
 
+// 날짜 포맷 옵션 상수
+const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+}
+
 export default function UtmPage() {
   // Form state
   const [baseUrl, setBaseUrl] = useState('')
@@ -116,6 +125,19 @@ export default function UtmPage() {
   const [adCreativesLoading, setAdCreativesLoading] = useState(true)
   const [selectedCreative, setSelectedCreative] = useState<string>('')
   const [selectedClinicId, setSelectedClinicId] = useState<number | null>(null)
+
+  // 필터링된 링크 목록 (메모이제이션)
+  const filteredLinks = useMemo(() => {
+    if (!historySearch) return links
+    const search = historySearch.toLowerCase()
+    return links.filter(item =>
+      item.label?.toLowerCase().includes(search) ||
+      item.utm_source?.toLowerCase().includes(search) ||
+      item.utm_campaign?.toLowerCase().includes(search) ||
+      item.utm_content?.toLowerCase().includes(search) ||
+      item.utm_medium?.toLowerCase().includes(search)
+    )
+  }, [links, historySearch])
 
   // Fetch landing pages
   const fetchLandingPages = useCallback(async () => {
@@ -288,7 +310,11 @@ export default function UtmPage() {
   function handleLoadLink(link: UtmLink) {
     try {
       const url = new URL(link.original_url)
-      setBaseUrl(url.origin + url.pathname)
+      // UTM 파라미터를 제외한 기존 쿼리 파라미터 보존 (예: ?id=X)
+      const baseParams = new URLSearchParams(url.search)
+      ;['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(p => baseParams.delete(p))
+      const baseQuery = baseParams.toString()
+      setBaseUrl(url.origin + url.pathname + (baseQuery ? '?' + baseQuery : ''))
       setSource(link.utm_source || '')
       setMedium(link.utm_medium || '')
       setCampaign(link.utm_campaign || '')
@@ -778,31 +804,13 @@ export default function UtmPage() {
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                    {links
-                      .filter(item => {
-                        if (!historySearch) return true
-                        const search = historySearch.toLowerCase()
-                        return (
-                          item.label?.toLowerCase().includes(search) ||
-                          item.utm_source?.toLowerCase().includes(search) ||
-                          item.utm_campaign?.toLowerCase().includes(search) ||
-                          item.utm_content?.toLowerCase().includes(search) ||
-                          item.utm_medium?.toLowerCase().includes(search)
-                        )
-                      })
-                      .map(item => (
+                    {filteredLinks.map(item => (
                       <div key={item.id} className="border border-white/5 rounded-lg p-3 hover:bg-white/[0.03] transition-colors">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-white truncate">{item.label || '무제'}</p>
                             <p className="text-[10px] text-slate-500 mt-0.5">
-                              {new Date(item.created_at).toLocaleDateString('ko-KR', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {new Date(item.created_at).toLocaleDateString('ko-KR', DATE_FORMAT_OPTIONS)}
                             </p>
                           </div>
                           <button
@@ -863,16 +871,7 @@ export default function UtmPage() {
                         </div>
                       </div>
                     ))}
-                    {links.length > 0 && historySearch && links.filter(item => {
-                      const search = historySearch.toLowerCase()
-                      return (
-                        item.label?.toLowerCase().includes(search) ||
-                        item.utm_source?.toLowerCase().includes(search) ||
-                        item.utm_campaign?.toLowerCase().includes(search) ||
-                        item.utm_content?.toLowerCase().includes(search) ||
-                        item.utm_medium?.toLowerCase().includes(search)
-                      )
-                    }).length === 0 && (
+                    {historySearch && filteredLinks.length === 0 && (
                       <p className="text-xs text-slate-500 text-center py-4">
                         검색 결과가 없습니다.
                       </p>
