@@ -233,25 +233,29 @@ export default function MonitoringPage() {
           {/* 요약 카드 */}
           {summary && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <Card variant="glass" className="p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">평균 순위</p>
-                <p className="text-2xl font-bold text-white">{summary.avgRank}<span className="text-sm text-slate-500 font-normal">위</span></p>
+              <Card variant="glass" className="p-5 text-center">
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">평균 순위</p>
+                <p className="text-3xl font-bold text-white">{summary.avgRank}<span className="text-base text-slate-500 font-normal ml-0.5">위</span></p>
               </Card>
-              <Card variant="glass" className="p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">TOP 3</p>
-                <p className="text-2xl font-bold text-emerald-400">{summary.top3Count}<span className="text-sm text-slate-500 font-normal"> / {summary.totalKeywords}</span></p>
+              <Card variant="glass" className="p-5 text-center">
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">TOP 3</p>
+                <p className="text-3xl font-bold text-emerald-400">{summary.top3Count}<span className="text-base text-slate-500 font-normal ml-1">/ {summary.totalKeywords}</span></p>
               </Card>
-              <Card variant="glass" className="p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">TOP 10</p>
-                <p className="text-2xl font-bold text-yellow-400">{summary.top10Count}<span className="text-sm text-slate-500 font-normal"> / {summary.totalKeywords}</span></p>
+              <Card variant="glass" className="p-5 text-center">
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">TOP 10</p>
+                <p className="text-3xl font-bold text-yellow-400">{summary.top10Count}<span className="text-base text-slate-500 font-normal ml-1">/ {summary.totalKeywords}</span></p>
               </Card>
-              <Card variant="glass" className="p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">월간 변동</p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-emerald-400 font-bold">{summary.improvedCount}</span>
-                  <span className="text-slate-600 text-xs">상승</span>
-                  <span className="text-red-400 font-bold">{summary.declinedCount}</span>
-                  <span className="text-slate-600 text-xs">하락</span>
+              <Card variant="glass" className="p-5 text-center">
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">월간 변동</p>
+                <div className="flex items-center justify-center gap-3 mt-1">
+                  <div className="text-center">
+                    <span className="text-2xl font-bold text-emerald-400">{summary.improvedCount}</span>
+                    <span className="text-xs text-slate-500 ml-1">상승</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-2xl font-bold text-red-400">{summary.declinedCount}</span>
+                    <span className="text-xs text-slate-500 ml-1">하락</span>
+                  </div>
                 </div>
               </Card>
             </div>
@@ -263,11 +267,11 @@ export default function MonitoringPage() {
             <table className="w-full text-xs border-collapse min-w-[800px]">
               <thead>
                 <tr>
-                  <th className="sticky left-0 bg-[#0f0f23] text-left px-2 py-2 text-slate-500 font-medium border-b border-white/5 min-w-[120px] z-10">키워드</th>
+                  <th className="sticky left-0 bg-[#12122a] text-left px-3 py-2.5 text-slate-400 font-semibold border-b border-white/10 min-w-[140px] z-10">키워드</th>
                   {days.map(d => (
                     <th
                       key={d}
-                      className={`text-center px-1 py-2 font-medium border-b border-white/5 min-w-[36px] ${
+                      className={`text-center px-1 py-2 font-medium border-b border-white/10 min-w-[36px] ${
                         isCurrentMonth && d === todayDay ? 'text-brand-400' : isCurrentMonth && d > todayDay ? 'text-slate-700' : 'text-slate-500'
                       }`}
                     >
@@ -291,7 +295,7 @@ export default function MonitoringPage() {
                         </tr>
                       )}
                       <tr className="border-b border-white/5">
-                        <td className="sticky left-0 bg-[#0f0f23] px-2 py-2 font-medium z-10">
+                        <td className="sticky left-0 bg-[#12122a] px-3 py-2.5 font-medium z-10">
                           <span className={kw.is_active === false ? 'text-slate-600 line-through' : 'text-slate-300'}>{kw.keyword}</span>
                           {kw.is_active === false && <span className="ml-1 text-[9px] text-slate-600">(비활성)</span>}
                         </td>

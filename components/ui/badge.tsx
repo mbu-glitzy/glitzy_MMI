@@ -16,15 +16,15 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
         // 채널별 variant
-        meta: "border-transparent bg-blue-500/20 text-blue-400",
-        google: "border-transparent bg-red-500/20 text-red-400",
-        tiktok: "border-transparent bg-pink-500/20 text-pink-400",
-        naver: "border-transparent bg-green-500/20 text-green-400",
-        kakao: "border-transparent bg-yellow-500/20 text-yellow-400",
+        meta: "border-transparent bg-blue-500/25 text-blue-300",
+        google: "border-transparent bg-red-500/25 text-red-300",
+        tiktok: "border-transparent bg-pink-500/25 text-pink-300",
+        naver: "border-transparent bg-green-500/25 text-green-300",
+        kakao: "border-transparent bg-yellow-500/25 text-yellow-300",
         // 상태별 variant
-        success: "border-transparent bg-emerald-500/20 text-emerald-400",
-        warning: "border-transparent bg-amber-500/20 text-amber-400",
-        info: "border-transparent bg-sky-500/20 text-sky-400",
+        success: "border-transparent bg-emerald-500/25 text-emerald-300",
+        warning: "border-transparent bg-amber-500/25 text-amber-300",
+        info: "border-transparent bg-sky-500/25 text-sky-300",
       },
     },
     defaultVariants: {

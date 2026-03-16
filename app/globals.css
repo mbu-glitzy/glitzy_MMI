@@ -20,7 +20,7 @@
     --secondary-foreground: 214 32% 91%;
 
     --muted: 240 10% 15%;
-    --muted-foreground: 215 20% 65%;
+    --muted-foreground: 215 20% 72%;
 
     --accent: 240 10% 15%;
     --accent-foreground: 214 32% 91%;
@@ -53,9 +53,9 @@
 
 /* 카드 글래스모피즘 효과 */
 .glass-card {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
 }
 

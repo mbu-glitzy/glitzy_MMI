@@ -236,17 +236,17 @@ export default function MonitoringInputPage() {
         <>
           {Object.entries(groupedEntries).map(([cat, items]) => (
             <Card key={cat} variant="glass" className="p-5 mb-4">
-              <h3 className="text-sm font-semibold text-white mb-4">{CATEGORY_LABELS[cat] || cat}</h3>
+              <h3 className="text-sm font-semibold text-white mb-4 pb-2 border-b border-white/10">{CATEGORY_LABELS[cat] || cat}</h3>
               <div className="space-y-3">
                 {/* 헤더 */}
-                <div className="flex items-center gap-3 text-[10px] text-slate-600 uppercase tracking-wider flex-wrap">
+                <div className="flex items-center gap-4 text-xs text-slate-400 font-semibold uppercase tracking-wider flex-wrap">
                   <span className="min-w-[140px] shrink-0">키워드</span>
                   <span className="w-[50px] text-center">전일</span>
                   <span className="w-[90px] text-center">순위</span>
                   {cat === 'smartblock' && <span className="flex-1 min-w-[200px]">URL</span>}
                 </div>
                 {items.map((entry) => (
-                  <div key={entry.keyword_id} className="flex items-center gap-3 flex-wrap">
+                  <div key={entry.keyword_id} className="flex items-center gap-4 flex-wrap py-1">
                     <span className="text-sm text-slate-300 min-w-[140px] shrink-0">{entry.keyword}</span>
                     <span className={`w-[50px] text-center text-xs font-medium ${
                       entry.prev_rank == null ? 'text-slate-700' :
