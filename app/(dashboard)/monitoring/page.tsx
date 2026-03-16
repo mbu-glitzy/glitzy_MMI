@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/select'
 import { useClinic } from '@/components/ClinicContext'
 import { PageHeader } from '@/components/common'
-import { LineChart, ResponsiveContainer, Line, XAxis, YAxis, CartesianGrid, Tooltip } from '@/components/charts'
+// 차트 숨김 처리 — 필요 시 복원
+// import { LineChart, ResponsiveContainer, Line, XAxis, YAxis, CartesianGrid, Tooltip } from '@/components/charts'
 
 const CATEGORY_LABELS: Record<string, string> = {
   place: '네이버 플레이스',
@@ -154,20 +155,7 @@ export default function MonitoringPage() {
     }
   }, [keywords, rankings, rankMap])
 
-  // 차트 데이터
-  const chartData = useMemo(() => {
-    if (keywords.length === 0) return []
-    return days.map(day => {
-      const entry: Record<string, any> = { day: `${day}일` }
-      for (const kw of keywords) {
-        const rd = rankMap[kw.id]?.[day]
-        entry[kw.keyword] = rd?.rank ?? null
-      }
-      return entry
-    })
-  }, [keywords, rankMap, days])
-
-  const COLORS = ['#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#3b82f6', '#f97316']
+  // 차트 숨김 처리 — 필요 시 복원
 
   if (user?.role === 'clinic_staff') return null
 
@@ -342,44 +330,7 @@ export default function MonitoringPage() {
             </table>
           </Card>
 
-          {/* 추이 차트 */}
-          <Card variant="glass" className="p-6">
-            <h3 className="text-sm font-semibold text-white mb-4">순위 추이 차트</h3>
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 11 }} />
-                  <YAxis reversed domain={['auto', 1]} allowDecimals={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
-                    labelStyle={{ color: '#fff' }}
-                    formatter={(value: any) => value != null ? [`${value}위`] : ['-']}
-                  />
-                  {keywords.map((kw, i) => (
-                    <Line
-                      key={kw.id}
-                      type="linear"
-                      dataKey={kw.keyword}
-                      stroke={COLORS[i % COLORS.length]}
-                      strokeWidth={kw.is_active === false ? 1 : 2}
-                      strokeDasharray={kw.is_active === false ? '4 4' : undefined}
-                      dot={{ r: kw.is_active === false ? 2 : 3 }}
-                      connectNulls
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap gap-3 mt-3">
-              {keywords.map((kw, i) => (
-                <div key={kw.id} className={`flex items-center gap-1.5 text-xs ${kw.is_active === false ? 'text-slate-600 line-through' : 'text-slate-400'}`}>
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length], opacity: kw.is_active === false ? 0.4 : 1 }} />
-                  {kw.keyword}{kw.is_active === false && ' (비활성)'}
-                </div>
-              ))}
-            </div>
-          </Card>
+          {/* 추이 차트 — 현재 숨김 처리 */}
         </>
       )}
     </>
