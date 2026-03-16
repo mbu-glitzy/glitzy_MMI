@@ -27,6 +27,7 @@ interface MenuItem {
   href: string
   label: string
   icon: LucideIcon
+  superOnly?: boolean
 }
 
 interface MenuGroup {
@@ -48,7 +49,7 @@ const menuGroups: MenuGroup[] = [
       { href: '/leads', label: '고객(CDP)', icon: Users },
       { href: '/patients', label: '예약/결제', icon: Calendar },
       { href: '/chatbot', label: '챗봇 현황', icon: MessageCircle },
-      { href: '/lead-form', label: '리드 등록', icon: FileEdit },
+      { href: '/lead-form', label: '리드 등록', icon: FileEdit, superOnly: true },
     ]
   },
   {
@@ -130,7 +131,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             )}
             {/* 그룹 아이템 */}
             <div className="space-y-1">
-              {group.items.map(({ href, label, icon: Icon }) => {
+              {group.items.filter(item => !item.superOnly || isSuperAdmin).map(({ href, label, icon: Icon }) => {
                 const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
                 return (
                   <Link
