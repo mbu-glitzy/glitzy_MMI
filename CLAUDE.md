@@ -79,7 +79,7 @@ npm run analyze  # 번들 크기 분석 (브라우저에서 시각화)
 
 ### API 미들웨어 (lib/api-middleware.ts)
 ```typescript
-import { withAuth, withClinicFilter, withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withAuth, withClinicFilter, withClinicAdmin, withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 
 // 인증만 필요한 경우
 export const GET = withAuth(async (req, { user }) => {
@@ -90,6 +90,11 @@ export const GET = withAuth(async (req, { user }) => {
 export const GET = withClinicFilter(async (req, { user, clinicId }) => {
   let query = supabase.from('table').select('*')
   if (clinicId) query = query.eq('clinic_id', clinicId)
+  return apiSuccess(data)
+})
+
+// clinic_admin 이상 (clinic_staff 차단)
+export const GET = withClinicAdmin(async (req, { user, clinicId }) => {
   return apiSuccess(data)
 })
 
@@ -191,20 +196,55 @@ import { AreaChart, BarChart, PieChart, LineChart, ... } from '@/components/char
 
 상세 사용법: [docs/COMPONENTS.md](docs/COMPONENTS.md)
 
+### 활동 추적 (lib/activity-log.ts)
+```typescript
+import { logActivity } from '@/lib/activity-log'
+
+// 데이터 변경 시 활동 로그 기록 (non-blocking, 실패해도 메인 플로우 안 막음)
+await logActivity(supabase, {
+  userId: user.id,
+  clinicId: targetClinicId,
+  action: 'booking_create',       // booking_create, booking_status_change, payment_create, lead_status_change 등
+  targetTable: 'bookings',
+  targetId: booking.id,
+  detail: { customer_id: 123, status: 'confirmed' },
+})
+```
+- bookings/payments/consultations/leads에 `created_by`/`updated_by` 컬럼으로 마지막 수정자 추적
+- `activity_logs` 테이블에 변경 이력 전체 기록
+
+### SMS 발송 (lib/solapi.ts)
+```typescript
+import { sendSmsWithLog } from '@/lib/solapi'
+
+// 발송 + DB 로그 기록, 실패 시 logId 반환하여 QStash 재시도 활용
+const { success, logId, error } = await sendSmsWithLog(supabase, {
+  to: '010-1234-5678', text: '알림 메시지',
+  clinicId: 1, leadId: 123,
+})
+```
+- `sms_send_logs` 테이블에 모든 발송 내역 기록 (status: sent/retrying/failed)
+- 실패 시 `/api/qstash/sms-retry`로 자동 재시도 (최대 3회, 3분→5분 간격)
+- 병원별 알림 연락처 최대 3개 (`clinics.notify_phones TEXT[]`)
+
 ## 데이터베이스 스키마
 
 ### 핵심 테이블
 | 테이블 | 용도 |
 |--------|------|
-| `clinics` | 병원 고객사 |
-| `users` | 로그인 계정 (role, clinic_id) |
+| `clinics` | 병원 고객사 (notify_phones, notify_enabled) |
+| `users` | 로그인 계정 (role: superadmin/clinic_admin/clinic_staff, clinic_id) |
 | `customers` | 고객 정보 (phone_number로 식별) |
-| `leads` | 리드/문의 (UTM 파라미터 포함) |
-| `bookings` | 예약 |
-| `consultations` | 상담 |
-| `payments` | 결제 |
+| `leads` | 리드/문의 (UTM 파라미터, landing_page_id, updated_by) |
+| `bookings` | 예약 (created_by, updated_by) |
+| `consultations` | 상담 (created_by, updated_by) |
+| `payments` | 결제 (created_by) |
 | `ad_campaign_stats` | 광고 통계 |
 | `clinic_api_configs` | 병원별 광고 API 키 |
+| `landing_pages` | 랜딩 페이지 (8자리 랜덤 ID) |
+| `lead_raw_logs` | 리드 원본 로그 (유실 방지, 멱등성 키) |
+| `sms_send_logs` | SMS 발송 로그 (재시도 추적) |
+| `activity_logs` | 활동 이력 (누가 무엇을 변경했는지) |
 
 ### 멀티테넌트 필터링 (필수)
 ```typescript
@@ -227,6 +267,7 @@ await supabase.from('table').insert({ clinic_id: clinicId, ...data })
 - 광고 API: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*`
 - 콘텐츠 API: `YOUTUBE_API_KEY`, `KAKAO_REST_API_KEY`
 - AI: `ANTHROPIC_API_KEY`
+- SMS: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`
 - 메시징: `QSTASH_*`, `KAKAO_*`
 
 ## 환경 분리 운영
@@ -260,9 +301,24 @@ curl -X POST http://localhost:3000/api/cron/sync-ads -H "Authorization: Bearer $
 
 ### 코드 작성 시 필수 체크리스트
 1. **멀티테넌트 격리**: 모든 DB 쿼리에 `clinic_id` 필터 적용 확인
-2. **역할 검증**: superadmin 전용 기능은 `withSuperAdmin` 래퍼 사용
-3. **보안**: 사용자 입력은 `sanitizeString`, ID는 `parseId`로 검증
-4. **타입 안전**: TypeScript strict 모드 준수
+2. **역할 검증**: API는 `withSuperAdmin`/`withClinicAdmin`/`withClinicFilter` 래퍼 사용, 페이지는 `useEffect`로 역할 가드 추가
+3. **활동 추적**: bookings/payments/consultations/leads 변경 시 `created_by`/`updated_by` + `logActivity()` 호출
+4. **보안**: 사용자 입력은 `sanitizeString`, ID는 `parseId`로 검증
+5. **타입 안전**: TypeScript strict 모드 준수
+
+### 페이지 역할 가드 패턴
+```typescript
+// superadmin 전용 페이지
+useEffect(() => {
+  if (user && user.role !== 'superadmin') router.replace('/')
+}, [user, router])
+if (user?.role !== 'superadmin') return null
+
+// clinic_admin 이상 (clinic_staff 차단)
+useEffect(() => {
+  if (user?.role === 'clinic_staff') router.replace('/patients')
+}, [user, router])
+```
 
 ### 테스트 방법
 ```bash
