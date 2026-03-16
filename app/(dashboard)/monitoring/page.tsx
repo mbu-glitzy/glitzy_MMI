@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -40,7 +40,7 @@ export default function MonitoringPage() {
   const user = session?.user as any
   const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
 
-  const [category, setCategory] = useState('place')
+  const [category, setCategory] = useState('all')
   const [month, setMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -57,7 +57,8 @@ export default function MonitoringPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const params = new URLSearchParams({ month, category })
+        const params = new URLSearchParams({ month })
+        if (category !== 'all') params.set('category', category)
         if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
         const res = await fetch(`/api/monitoring/rankings?${params}`)
         const data = await res.json()
@@ -208,6 +209,14 @@ export default function MonitoringPage() {
         <div className="space-y-1">
           <Label className="text-xs text-slate-500">카테고리</Label>
           <div className="flex gap-1">
+            <Button
+              variant={category === 'all' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCategory('all')}
+              className={category === 'all' ? 'bg-brand-600 hover:bg-brand-700 text-white' : 'text-slate-400 hover:text-white'}
+            >
+              전체
+            </Button>
             {CATEGORY_LIST.map(c => (
               <Button
                 key={c}
@@ -280,12 +289,24 @@ export default function MonitoringPage() {
                 </tr>
               </thead>
               <tbody>
-                {keywords.map(kw => (
-                  <tr key={kw.id} className="border-b border-white/5">
-                    <td className="sticky left-0 bg-[#0f0f23] px-2 py-2 font-medium z-10">
-                      <span className={kw.is_active === false ? 'text-slate-600 line-through' : 'text-slate-300'}>{kw.keyword}</span>
-                      {kw.is_active === false && <span className="ml-1 text-[9px] text-slate-600">(비활성)</span>}
-                    </td>
+                {keywords.map((kw, kwIdx) => {
+                  // 전체 보기에서 카테고리 구분 헤더
+                  const prevCategory = kwIdx > 0 ? keywords[kwIdx - 1].category : null
+                  const showCategoryHeader = category === 'all' && kw.category !== prevCategory
+                  return (
+                    <React.Fragment key={kw.id}>
+                      {showCategoryHeader && (
+                        <tr>
+                          <td colSpan={days.length + 1} className="sticky left-0 bg-[#0f0f23] px-2 pt-4 pb-1 text-[10px] text-slate-500 uppercase tracking-wider font-medium z-10">
+                            {CATEGORY_LABELS[kw.category] || kw.category}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="border-b border-white/5">
+                        <td className="sticky left-0 bg-[#0f0f23] px-2 py-2 font-medium z-10">
+                          <span className={kw.is_active === false ? 'text-slate-600 line-through' : 'text-slate-300'}>{kw.keyword}</span>
+                          {kw.is_active === false && <span className="ml-1 text-[9px] text-slate-600">(비활성)</span>}
+                        </td>
                     {days.map(d => {
                       const rd = rankMap[kw.id]?.[d]
                       const rank = rd?.rank
@@ -313,8 +334,10 @@ export default function MonitoringPage() {
                         </td>
                       )
                     })}
-                  </tr>
-                ))}
+                      </tr>
+                    </React.Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </Card>
@@ -336,7 +359,7 @@ export default function MonitoringPage() {
                   {keywords.map((kw, i) => (
                     <Line
                       key={kw.id}
-                      type="monotone"
+                      type="linear"
                       dataKey={kw.keyword}
                       stroke={COLORS[i % COLORS.length]}
                       strokeWidth={kw.is_active === false ? 1 : 2}
