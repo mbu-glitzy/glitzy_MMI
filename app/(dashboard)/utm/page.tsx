@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import { TemplateSelector, UtmTemplate, TemplateFormData } from './components/TemplateSelector'
 import { QRCodeDialog } from './components/QRCodeDialog'
+import { ConfirmDialog, PageHeader } from '@/components/common'
 
 interface LandingPage {
   id: number
@@ -103,6 +104,7 @@ export default function UtmPage() {
   const [linksLoading, setLinksLoading] = useState(true)
   const [historySearch, setHistorySearch] = useState('')
   const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
   const fetchLinks = useCallback(async () => {
     setLinksLoading(true)
@@ -146,15 +148,20 @@ export default function UtmPage() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('이 링크를 삭제하시겠습니까?')) return
-    const res = await fetch(`/api/utm/links/${id}`, { method: 'DELETE' })
+  const handleDelete = (id: number) => {
+    setDeleteTarget(id)
+  }
+
+  const confirmDelete = async () => {
+    if (deleteTarget === null) return
+    const res = await fetch(`/api/utm/links/${deleteTarget}`, { method: 'DELETE' })
     if (res.ok) {
       toast.success('삭제되었습니다.')
-      setLinks(prev => prev.filter(l => l.id !== id))
+      setLinks(prev => prev.filter(l => l.id !== deleteTarget))
     } else {
       toast.error('삭제 실패')
     }
+    setDeleteTarget(null)
   }
 
   if (user?.role !== 'superadmin') return null
@@ -165,15 +172,23 @@ export default function UtmPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">UTM 생성</h1>
-          <p className="text-sm text-slate-400 mt-1">생성된 UTM 링크 목록 및 관리</p>
-        </div>
-        <Button onClick={() => setView('generator')} className="bg-brand-600 hover:bg-brand-700">
-          <Link2 size={14} /> UTM 생성
-        </Button>
-      </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="삭제 확인"
+        description="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+        onConfirm={confirmDelete}
+      />
+      <PageHeader
+        icon={Link2}
+        title="UTM 생성"
+        description="생성된 UTM 링크 목록 및 관리"
+        actions={
+          <Button onClick={() => setView('generator')} className="bg-brand-600 hover:bg-brand-700">
+            <Link2 size={14} /> UTM 생성
+          </Button>
+        }
+      />
 
       {/* 검색 */}
       <Card variant="glass" className="flex items-center px-3 py-2 mb-4">

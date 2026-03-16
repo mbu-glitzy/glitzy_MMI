@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { ConfirmDialog, EmptyState, PageHeader } from '@/components/common'
 
 interface LandingPage {
   id: number
@@ -77,11 +79,11 @@ function getCreativeUrl(fileName: string): string {
   return `${SUPABASE_URL}/storage/v1/object/public/creatives/${fileName}`
 }
 
-function CreativeThumbnail({ creative }: { creative: AdCreative }) {
+function CreativeThumbnail({ creative, onClick }: { creative: AdCreative; onClick?: () => void }) {
   if (!creative.file_name) {
     return (
-      <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-slate-600">
-        <Image size={20} />
+      <div className="w-[100px] h-[100px] rounded-lg bg-white/5 flex items-center justify-center text-slate-600">
+        <Image size={28} />
       </div>
     )
   }
@@ -91,10 +93,10 @@ function CreativeThumbnail({ creative }: { creative: AdCreative }) {
 
   if (isVideo) {
     return (
-      <div className="w-12 h-12 rounded-lg bg-white/5 overflow-hidden relative group">
+      <div className="w-[100px] h-[100px] rounded-lg bg-white/5 overflow-hidden relative cursor-pointer" onClick={onClick}>
         <video src={src} className="w-full h-full object-cover" muted preload="metadata" />
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-          <Film size={16} className="text-white/80" />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
+          <Film size={24} className="text-white/80" />
         </div>
       </div>
     )
@@ -104,7 +106,8 @@ function CreativeThumbnail({ creative }: { creative: AdCreative }) {
     <img
       src={src}
       alt={creative.name}
-      className="w-12 h-12 rounded-lg object-cover bg-white/5"
+      className="w-[100px] h-[100px] rounded-lg object-cover bg-white/5 cursor-pointer hover:opacity-80 transition-opacity"
+      onClick={onClick}
     />
   )
 }
@@ -130,6 +133,10 @@ export default function AdCreativesPage() {
   const [uploading, setUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewType, setPreviewType] = useState<string | null>(null)
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null)
+  const [viewerType, setViewerType] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
   useEffect(() => {
     if (user && user.role !== 'superadmin') router.replace('/')
@@ -265,16 +272,21 @@ export default function AdCreativesPage() {
     setDialogOpen(true)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('이 광고 소재를 삭제하시겠습니까?')) return
+  const handleDelete = (id: number) => {
+    setDeleteTarget(id)
+  }
+
+  const confirmDelete = async () => {
+    if (deleteTarget === null) return
     try {
-      const res = await fetch(`/api/admin/ad-creatives/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/ad-creatives/${deleteTarget}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('삭제 실패')
       toast.success('삭제되었습니다.')
       fetchData()
     } catch {
       toast.error('삭제 실패')
     }
+    setDeleteTarget(null)
   }
 
   const filteredLandingPages = form.clinic_id
@@ -285,13 +297,14 @@ export default function AdCreativesPage() {
 
   return (
     <>
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Image className="text-brand-400" size={24} />
-          <h1 className="text-2xl font-bold text-white">광고 소재</h1>
-        </div>
-        <p className="text-sm text-slate-400">광고 소재 등록 및 UTM 파라미터 관리</p>
-      </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="삭제 확인"
+        description="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+        onConfirm={confirmDelete}
+      />
+      <PageHeader icon={Image} title="광고 소재" description="광고 소재 등록 및 UTM 파라미터 관리" />
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open)
@@ -482,6 +495,19 @@ export default function AdCreativesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* 소재 원본 보기 모달 */}
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent className="max-w-4xl p-2 bg-black/90 border-white/10">
+          {viewerSrc && (
+            viewerType?.startsWith('video/') ? (
+              <video src={viewerSrc} className="w-full max-h-[80vh] object-contain rounded-lg" controls autoPlay muted />
+            ) : (
+              <img src={viewerSrc} alt="소재 원본" className="w-full max-h-[80vh] object-contain rounded-lg" />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Card variant="glass" className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -493,14 +519,14 @@ export default function AdCreativesPage() {
           </Button>
         </div>
         {loading ? (
-          <p className="text-slate-500 text-sm py-4 text-center">로딩 중...</p>
+          <div className="space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>
         ) : adCreatives.length === 0 ? (
-          <p className="text-slate-500 text-sm py-4 text-center">등록된 광고 소재가 없습니다.</p>
+          <EmptyState icon={Image} title="등록된 광고 소재가 없습니다." />
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-b border-white/5 hover:bg-transparent">
-                <TableHead className="text-xs text-slate-500 font-medium w-[60px]">소재</TableHead>
+                <TableHead className="text-xs text-slate-500 font-medium w-[116px]">소재</TableHead>
                 <TableHead className="text-xs text-slate-500 font-medium">소재명</TableHead>
                 <TableHead className="text-xs text-slate-500 font-medium">UTM Content</TableHead>
                 <TableHead className="text-xs text-slate-500 font-medium">플랫폼</TableHead>
@@ -514,7 +540,16 @@ export default function AdCreativesPage() {
               {adCreatives.map((creative) => (
                 <TableRow key={creative.id} className="border-b border-white/5">
                   <TableCell>
-                    <CreativeThumbnail creative={creative} />
+                    <CreativeThumbnail
+                      creative={creative}
+                      onClick={() => {
+                        if (creative.file_name) {
+                          setViewerSrc(getCreativeUrl(creative.file_name))
+                          setViewerType(creative.file_type)
+                          setViewerOpen(true)
+                        }
+                      }}
+                    />
                   </TableCell>
                   <TableCell className="text-white font-medium">{creative.name}</TableCell>
                   <TableCell>

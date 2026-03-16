@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useClinic } from '@/components/ClinicContext'
+import { PageHeader } from '@/components/common'
 import { LineChart, ResponsiveContainer, Line, XAxis, YAxis, CartesianGrid, Tooltip } from '@/components/charts'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -171,13 +172,7 @@ export default function MonitoringPage() {
 
   return (
     <>
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <TrendingUp className="text-brand-400" size={24} />
-          <h1 className="text-2xl font-bold text-white">순위 모니터링</h1>
-        </div>
-        <p className="text-sm text-slate-400">네이버 플레이스 · 웹사이트 · 스마트블록 순위 추적</p>
-      </div>
+      <PageHeader icon={TrendingUp} title="순위 모니터링" description="네이버 플레이스 · 웹사이트 · 스마트블록 순위 추적" />
 
       {/* 필터 */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">
@@ -295,13 +290,20 @@ export default function MonitoringPage() {
                       return (
                         <td key={d} className={`text-center px-1 py-2 ${isFuture ? 'opacity-20' : ''}`}>
                           {rank != null ? (
-                            <span
-                              className={`inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-bold ${getRankColor(rank)} ${rd?.url ? 'cursor-pointer' : ''}`}
-                              title={rd?.url || undefined}
-                              onClick={() => rd?.url && window.open(rd.url, '_blank')}
-                            >
-                              {rank}
-                            </span>
+                            rd?.url ? (
+                              <a
+                                href={rd.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-bold ${getRankColor(rank)} cursor-pointer hover:opacity-80`}
+                              >
+                                {rank}
+                              </a>
+                            ) : (
+                              <span className={`inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-bold ${getRankColor(rank)}`}>
+                                {rank}
+                              </span>
+                            )
                           ) : (
                             <span className="text-slate-700">-</span>
                           )}

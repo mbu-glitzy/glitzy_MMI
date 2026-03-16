@@ -27,6 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { PageHeader, StatsCard, ChannelBadge } from '@/components/common'
+import { formatDate } from '@/lib/date'
 
 const PLATFORM_COLORS: Record<string, string> = {
   Meta: '#6366f1',
@@ -115,7 +116,7 @@ export default function AdsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="glass" size="icon" onClick={fetchData} disabled={loading}>
+            <Button variant="ghost" size="icon" onClick={fetchData} disabled={loading}>
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             </Button>
             <Button onClick={handleSync} disabled={syncing} className="bg-brand-600 hover:bg-brand-700">
@@ -130,7 +131,7 @@ export default function AdsPage() {
         {platforms.map(p => (
           <Button
             key={p}
-            variant={platformFilter === p ? 'default' : 'glass'}
+            variant={platformFilter === p ? 'default' : 'ghost'}
             onClick={() => setPlatformFilter(p)}
             className={platformFilter === p ? 'bg-brand-600 border-brand-600' : ''}
           >
@@ -260,7 +261,7 @@ export default function AdsPage() {
                     <TableCell className="text-slate-300 max-w-[200px] truncate">{row.campaign_name || row.campaign_id}</TableCell>
                     <TableCell className="text-slate-400 text-xs">
                       <span className="flex items-center gap-1">
-                        <Calendar size={11} />{new Date(row.stat_date).toLocaleDateString('ko')}
+                        <Calendar size={11} />{formatDate(row.stat_date)}
                       </span>
                     </TableCell>
                     <TableCell className="font-semibold text-white">₩{Number(row.spend_amount).toLocaleString()}</TableCell>
