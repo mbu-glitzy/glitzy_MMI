@@ -71,6 +71,12 @@ const PLATFORM_OPTIONS = [
   { value: 'other', label: '기타' },
 ]
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+
+function getCreativeUrl(fileName: string): string {
+  return `${SUPABASE_URL}/storage/v1/object/public/creatives/${fileName}`
+}
+
 function CreativeThumbnail({ creative }: { creative: AdCreative }) {
   if (!creative.file_name) {
     return (
@@ -80,7 +86,7 @@ function CreativeThumbnail({ creative }: { creative: AdCreative }) {
     )
   }
 
-  const src = `/creatives/${creative.file_name}`
+  const src = getCreativeUrl(creative.file_name)
   const isVideo = creative.file_type?.startsWith('video/')
 
   if (isVideo) {
@@ -253,7 +259,7 @@ export default function AdCreativesPage() {
       file_type: creative.file_type,
     })
     if (creative.file_name) {
-      setPreviewUrl(`/creatives/${creative.file_name}`)
+      setPreviewUrl(getCreativeUrl(creative.file_name))
       setPreviewType(creative.file_type)
     }
     setDialogOpen(true)

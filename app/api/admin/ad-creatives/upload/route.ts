@@ -1,6 +1,5 @@
+import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
-import fs from 'fs'
-import path from 'path'
 
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -11,9 +10,10 @@ const ALLOWED_TYPES: Record<string, string> = {
   'video/webm': '.webm',
 }
 const MAX_SIZE = 50 * 1024 * 1024 // 50MB
+const BUCKET = 'creatives'
 
 function sanitizeFileName(raw: string, mimeType: string): string {
-  const nameOnly = path.basename(raw, path.extname(raw))
+  const nameOnly = raw.replace(/\.[^.]+$/, '')
   const safe = nameOnly.replace(/[^a-zA-Z0-9가-힣_-]/g, '_').replace(/_{2,}/g, '_')
   const ext = ALLOWED_TYPES[mimeType] || '.bin'
   return (safe || 'creative') + ext
@@ -36,27 +36,31 @@ export const POST = withSuperAdmin(async (req: Request) => {
       return apiError('파일 크기는 50MB 이하여야 합니다.', 400)
     }
 
-    const fileName = sanitizeFileName(file.name, file.type)
-    const uploadDir = path.join(process.cwd(), 'public', 'creatives')
+    const supabase = serverSupabase()
+    const fileName = `${Date.now()}_${sanitizeFileName(file.name, file.type)}`
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(fileName, buffer, {
+        contentType: file.type,
+        upsert: false,
+      })
+
+    if (error) {
+      return apiError('파일 업로드 실패: ' + error.message, 500)
     }
 
-    // 중복 파일명 처리
-    let finalName = fileName
-    const ext = path.extname(finalName)
-    const baseName = path.basename(finalName, ext)
-    let counter = 1
-    while (fs.existsSync(path.join(uploadDir, finalName))) {
-      finalName = `${baseName}_${counter}${ext}`
-      counter++
-    }
+    // public URL 생성
+    const { data: urlData } = supabase.storage
+      .from(BUCKET)
+      .getPublicUrl(fileName)
 
-    const content = await file.arrayBuffer()
-    fs.writeFileSync(path.join(uploadDir, finalName), Buffer.from(content))
-
-    return apiSuccess({ fileName: finalName, fileType: file.type })
+    return apiSuccess({
+      fileName,
+      fileType: file.type,
+      publicUrl: urlData.publicUrl,
+    })
   } catch (e: any) {
     return apiError('파일 업로드 실패: ' + (e.message || String(e)), 500)
   }
