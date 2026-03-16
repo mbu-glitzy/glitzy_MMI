@@ -2,13 +2,21 @@ import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import fs from 'fs'
 import path from 'path'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm']
+const ALLOWED_TYPES: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+}
 const MAX_SIZE = 50 * 1024 * 1024 // 50MB
 
-function sanitizeFileName(raw: string): string {
-  const ext = path.extname(raw).toLowerCase()
+function sanitizeFileName(raw: string, mimeType: string): string {
   const nameOnly = path.basename(raw, path.extname(raw))
   const safe = nameOnly.replace(/[^a-zA-Z0-9가-힣_-]/g, '_').replace(/_{2,}/g, '_')
+  // MIME 타입에서 확장자를 결정 (클라이언트 확장자 무시)
+  const ext = ALLOWED_TYPES[mimeType] || '.bin'
   return (safe || 'creative') + ext
 }
 
@@ -20,7 +28,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
     return apiError('파일이 첨부되지 않았습니다.', 400)
   }
 
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (!ALLOWED_TYPES[file.type]) {
     return apiError('이미지(JPG, PNG, GIF, WebP) 또는 동영상(MP4, WebM)만 업로드 가능합니다.', 400)
   }
 
@@ -28,7 +36,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
     return apiError('파일 크기는 50MB 이하여야 합니다.', 400)
   }
 
-  const fileName = sanitizeFileName(file.name)
+  const fileName = sanitizeFileName(file.name, file.type)
   const uploadDir = path.join(process.cwd(), 'public', 'creatives')
 
   if (!fs.existsSync(uploadDir)) {

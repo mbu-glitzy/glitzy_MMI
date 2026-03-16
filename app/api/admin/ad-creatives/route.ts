@@ -114,7 +114,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
       clinic_id: validClinicId,
       landing_page_id: validLandingPageId,
       is_active: is_active !== false,
-      file_name: file_name ? sanitizeString(file_name, 200) : null,
+      file_name: file_name ? sanitizeString(String(file_name).replace(/[/\\:*?"<>|]/g, ''), 200) : null,
       file_type: file_type ? sanitizeString(file_type, 50) : null,
     })
     .select(`

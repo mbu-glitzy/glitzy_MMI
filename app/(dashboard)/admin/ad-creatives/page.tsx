@@ -181,6 +181,7 @@ export default function AdCreativesPage() {
   }
 
   const clearFile = () => {
+    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
     setForm(f => ({ ...f, file_name: null, file_type: null }))
     setPreviewUrl(null)
     setPreviewType(null)
@@ -222,6 +223,7 @@ export default function AdCreativesPage() {
   }
 
   const resetForm = () => {
+    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
     setForm({
       name: '', description: '', utm_content: '', utm_source: '', utm_medium: '', utm_campaign: '', utm_term: '',
       platform: '', clinic_id: '', landing_page_id: '', is_active: true, file_name: null, file_type: null,
