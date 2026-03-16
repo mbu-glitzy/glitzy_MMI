@@ -10,6 +10,7 @@ import {
   parseId,
   sanitizeString,
 } from '@/lib/security'
+import { logActivity } from '@/lib/activity-log'
 
 export async function GET(req: Request) {
   const user = await getSessionUser()
@@ -79,11 +80,18 @@ export async function POST(req: Request) {
       status: 'confirmed',
       booking_datetime: booking_datetime || new Date().toISOString(),
       notes: notes ? sanitizeString(notes, 1000) : null,
+      created_by: Number(user.id),
     })
     .select('*, customer:customers(id, name, phone_number)')
     .single()
 
   if (bookingError) return apiError(bookingError.message, 500)
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: targetClinicId,
+    action: 'booking_create', targetTable: 'bookings', targetId: booking.id,
+    detail: { customer_id: customerId, status: 'confirmed' },
+  })
 
   return apiSuccess(booking, 201)
 }
@@ -121,7 +129,7 @@ export async function PUT(req: Request) {
   }
 
   const supabase = serverSupabase()
-  const update: Record<string, unknown> = {}
+  const update: Record<string, unknown> = { updated_by: Number(user.id) }
   if (status !== undefined) update.status = status
   if (notes !== undefined) update.notes = sanitizeString(notes, 1000)
   if (booking_datetime !== undefined) update.booking_datetime = booking_datetime || null
@@ -134,6 +142,13 @@ export async function PUT(req: Request) {
     .single()
 
   if (error) return apiError(error.message, 500)
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: data.clinic_id,
+    action: 'booking_update', targetTable: 'bookings', targetId: bookingId,
+    detail: { status, notes: notes !== undefined, booking_datetime: booking_datetime !== undefined },
+  })
+
   return apiSuccess(data)
 }
 
@@ -164,11 +179,18 @@ export async function PATCH(req: Request) {
   const supabase = serverSupabase()
   const { data, error } = await supabase
     .from('bookings')
-    .update({ status })
+    .update({ status, updated_by: Number(user.id) })
     .eq('id', bookingId)
     .select()
     .single()
 
   if (error) return apiError(error.message, 500)
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: data.clinic_id,
+    action: 'booking_status_change', targetTable: 'bookings', targetId: bookingId,
+    detail: { status },
+  })
+
   return apiSuccess(data)
 }

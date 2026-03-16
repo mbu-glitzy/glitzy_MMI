@@ -6,6 +6,8 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell
 } from '@/components/charts'
 import { Bell, Settings, Search, RefreshCw, Users, ArrowRight } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -52,6 +54,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export default function DashboardPage() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const sessionUser = session?.user as any
+
+  useEffect(() => {
+    if (sessionUser?.role === 'clinic_staff') router.replace('/patients')
+  }, [sessionUser, router])
+
   const [kpi, setKpi] = useState<any>(null)
   const [trend, setTrend] = useState<any[]>([])
   const [channel, setChannel] = useState<any[]>([])

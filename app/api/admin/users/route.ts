@@ -34,12 +34,12 @@ export const POST = withSuperAdmin(async (req: Request) => {
   }
 
   // 역할 검증
-  const validRoles = ['superadmin', 'clinic_admin']
+  const validRoles = ['superadmin', 'clinic_admin', 'clinic_staff']
   if (!validRoles.includes(role)) {
     return apiError('유효하지 않은 역할입니다.', 400)
   }
 
-  if (role === 'clinic_admin' && !clinic_id) {
+  if ((role === 'clinic_admin' || role === 'clinic_staff') && !clinic_id) {
     return apiError('병원을 선택해주세요.', 400)
   }
 
@@ -52,7 +52,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
       username: sanitizeString(username, 30),
       password_hash,
       role,
-      clinic_id: role === 'superadmin' ? null : clinic_id,
+      clinic_id: role === 'superadmin' ? null : (clinic_id || null),
     })
     .select('id, username, role, clinic_id, is_active, created_at')
     .single()

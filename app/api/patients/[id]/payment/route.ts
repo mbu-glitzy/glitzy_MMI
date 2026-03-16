@@ -8,6 +8,7 @@ import {
   sanitizeString,
   parseId,
 } from '@/lib/security'
+import { logActivity } from '@/lib/activity-log'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const user = await getSessionUser()
@@ -54,10 +55,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       treatment_name: sanitizeString(treatmentName, 200),
       payment_amount: amount,
       payment_date: parsedDate || new Date().toISOString(),
+      created_by: Number(user.id),
     })
     .select()
     .single()
 
   if (error) return apiError(error.message, 500)
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: accessCheck.clinicId,
+    action: 'payment_create', targetTable: 'payments', targetId: data.id,
+    detail: { customer_id: customerId, amount, treatment: treatmentName },
+  })
+
   return apiSuccess(data)
 }

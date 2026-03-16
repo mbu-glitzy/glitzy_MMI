@@ -1,0 +1,198 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { Plus, UserCog, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+
+export default function StaffPage() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const user = session?.user as any
+
+  const [staff, setStaff] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [form, setForm] = useState({ username: '', password: '' })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (user && user.role !== 'clinic_admin') router.replace('/')
+  }, [user, router])
+
+  const fetchStaff = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/staff')
+      const data = await res.json()
+      setStaff(Array.isArray(data) ? data : [])
+    } catch {
+      toast.error('데이터 로드 실패')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchStaff() }, [])
+
+  const handleSave = async () => {
+    if (!form.username || !form.password) {
+      toast.error('아이디와 비밀번호를 입력해주세요.')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error)
+      }
+      setForm({ username: '', password: '' })
+      setDialogOpen(false)
+      toast.success('담당자 계정이 생성되었습니다.')
+      fetchStaff()
+    } catch (e: any) {
+      toast.error(e.message || '생성 실패')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleStaff = async (id: number, is_active: boolean) => {
+    try {
+      const res = await fetch('/api/staff', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_active: !is_active }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error)
+      }
+      toast.success(is_active ? '계정이 비활성화되었습니다.' : '계정이 활성화되었습니다.')
+      fetchStaff()
+    } catch (e: any) {
+      toast.error(e.message || '상태 변경 실패')
+    }
+  }
+
+  if (user?.role !== 'clinic_admin') return null
+
+  return (
+    <>
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <UserCog className="text-brand-400" size={24} />
+          <h1 className="text-2xl font-bold text-white">담당자 관리</h1>
+        </div>
+        <p className="text-sm text-slate-400">병원 담당자 계정 생성 및 관리</p>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>담당자 계정 생성</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-400">아이디 *</Label>
+              <Input
+                type="text"
+                value={form.username}
+                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                placeholder="영문, 숫자, 밑줄 (3-30자)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-400">비밀번호 *</Label>
+              <Input
+                type="password"
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                placeholder="8자 이상"
+              />
+            </div>
+            <p className="text-xs text-slate-500">
+              생성된 계정은 예약/결제, 고객 조회, 캠페인 리드 메뉴에만 접근할 수 있습니다.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>취소</Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-brand-600 hover:bg-brand-700">
+              {saving ? '생성 중...' : '계정 생성'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Card variant="glass" className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-white">담당자 목록 ({staff.length})</h2>
+          <Button onClick={() => setDialogOpen(true)} size="sm" className="bg-brand-600 hover:bg-brand-700">
+            <Plus size={14} /> 담당자 추가
+          </Button>
+        </div>
+        {loading ? (
+          <p className="text-slate-500 text-sm py-4 text-center">로딩 중...</p>
+        ) : staff.length === 0 ? (
+          <p className="text-slate-500 text-sm py-4 text-center">등록된 담당자가 없습니다.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-white/5 hover:bg-transparent">
+                {['아이디', '생성일', '상태', '활성화'].map(h => (
+                  <TableHead key={h} className="text-xs text-slate-500 font-medium">{h}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staff.map((s: any) => (
+                <TableRow key={s.id} className="border-b border-white/5">
+                  <TableCell className="text-white font-medium">{s.username}</TableCell>
+                  <TableCell className="text-slate-400 text-xs">{new Date(s.created_at).toLocaleDateString('ko')}</TableCell>
+                  <TableCell>
+                    <Badge variant={s.is_active ? 'success' : 'secondary'}>
+                      {s.is_active ? '활성' : '비활성'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() => toggleStaff(s.id, s.is_active)}
+                      className="text-slate-400 hover:text-white transition-colors"
+                    >
+                      {s.is_active ? <ToggleRight size={20} className="text-emerald-400" /> : <ToggleLeft size={20} />}
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+    </>
+  )
+}

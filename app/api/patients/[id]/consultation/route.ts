@@ -8,6 +8,7 @@ import {
   sanitizeString,
   parseId,
 } from '@/lib/security'
+import { logActivity } from '@/lib/activity-log'
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const user = await getSessionUser()
@@ -53,7 +54,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   let result
   if (existing) {
-    const updateData: Record<string, unknown> = {}
+    const updateData: Record<string, unknown> = { updated_by: Number(user.id) }
     if (status !== undefined) updateData.status = status
     if (sanitizedNotes !== undefined) updateData.notes = sanitizedNotes
     if (consultationDate !== undefined) updateData.consultation_date = consultationDate || null
@@ -73,11 +74,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         status: status || null,
         notes: sanitizedNotes || null,
         consultation_date: consultationDate || null,
+        created_by: Number(user.id),
       })
       .select()
       .single()
   }
 
   if (result.error) return apiError(result.error.message, 500)
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: accessCheck.clinicId,
+    action: existing ? 'consultation_update' : 'consultation_create',
+    targetTable: 'consultations', targetId: result.data.id,
+    detail: { customer_id: customerId, status },
+  })
+
   return apiSuccess(result.data)
 }

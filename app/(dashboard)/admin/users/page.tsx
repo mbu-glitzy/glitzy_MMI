@@ -156,12 +156,13 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="clinic_admin">병원 어드민</SelectItem>
+                  <SelectItem value="clinic_staff">병원 담당자</SelectItem>
+                  <SelectItem value="clinic_admin">병원 관리자</SelectItem>
                   <SelectItem value="superadmin">슈퍼어드민</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {form.role === 'clinic_admin' && (
+            {(form.role === 'clinic_admin' || form.role === 'clinic_staff') && (
               <div className="space-y-2">
                 <Label className="text-xs text-slate-400">담당 병원 *</Label>
                 <Select value={form.clinic_id} onValueChange={v => setForm(f => ({ ...f, clinic_id: v }))}>
@@ -211,8 +212,11 @@ export default function UsersPage() {
               <TableRow key={u.id} className="border-b border-white/5">
                 <TableCell className="text-white font-medium">{u.username}</TableCell>
                 <TableCell>
-                  <Badge variant={u.role === 'superadmin' ? 'default' : 'info'} className={u.role === 'superadmin' ? 'bg-purple-500/20 text-purple-400 border-0' : ''}>
-                    {u.role === 'superadmin' ? '슈퍼어드민' : '병원어드민'}
+                  <Badge
+                    variant={u.role === 'superadmin' ? 'default' : 'info'}
+                    className={u.role === 'superadmin' ? 'bg-purple-500/20 text-purple-400 border-0' : u.role === 'clinic_staff' ? 'bg-slate-500/20 text-slate-400 border-0' : ''}
+                  >
+                    {u.role === 'superadmin' ? '슈퍼어드민' : u.role === 'clinic_admin' ? '병원 관리자' : '병원 담당자'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-slate-400 text-xs">{u.clinic?.name || '-'}</TableCell>

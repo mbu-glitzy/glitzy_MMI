@@ -23,23 +23,31 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 // 메뉴 타입 정의
+// minRole: 1=clinic_staff, 2=clinic_admin, 3=superadmin
 interface MenuItem {
   href: string
   label: string
   icon: LucideIcon
-  superOnly?: boolean
+  minRole?: number
 }
 
 interface MenuGroup {
   label?: string
   items: MenuItem[]
+  minRole?: number
+}
+
+const ROLE_LEVEL: Record<string, number> = {
+  clinic_staff: 1,
+  clinic_admin: 2,
+  superadmin: 3,
 }
 
 // 그룹별 메뉴 구조
 const menuGroups: MenuGroup[] = [
   {
     items: [
-      { href: '/', label: '대시보드', icon: LayoutDashboard },
+      { href: '/', label: '대시보드', icon: LayoutDashboard, minRole: 2 },
     ]
   },
   {
@@ -49,11 +57,12 @@ const menuGroups: MenuGroup[] = [
       { href: '/leads', label: '고객(CDP)', icon: Users },
       { href: '/patients', label: '예약/결제', icon: Calendar },
       { href: '/chatbot', label: '챗봇 현황', icon: MessageCircle },
-      { href: '/lead-form', label: '리드 등록', icon: FileEdit, superOnly: true },
+      { href: '/lead-form', label: '리드 등록', icon: FileEdit, minRole: 3 },
     ]
   },
   {
     label: '마케팅 분석',
+    minRole: 2,
     items: [
       { href: '/ads', label: '광고 성과', icon: BarChart2 },
       { href: '/content', label: '콘텐츠 분석', icon: Film },
@@ -67,7 +76,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const user = session?.user as any
-  const isSuperAdmin = user?.role === 'superadmin'
+  const userRole = user?.role || 'clinic_staff'
+  const userLevel = ROLE_LEVEL[userRole] || 1
+  const isSuperAdmin = userRole === 'superadmin'
+  const isClinicAdmin = userRole === 'clinic_admin'
 
   const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
   const selectedClinic = clinics.find(c => c.id === selectedClinicId)
@@ -119,7 +131,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
       {/* 네비게이션 */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        {menuGroups.map((group, groupIndex) => (
+        {menuGroups.filter(g => userLevel >= (g.minRole || 1)).map((group, groupIndex) => (
           <div key={groupIndex}>
             {/* 그룹 헤더 */}
             {group.label && (
@@ -131,7 +143,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             )}
             {/* 그룹 아이템 */}
             <div className="space-y-1">
-              {group.items.filter(item => !item.superOnly || isSuperAdmin).map(({ href, label, icon: Icon }) => {
+              {group.items.filter(item => userLevel >= (item.minRole || 1)).map(({ href, label, icon: Icon }) => {
                 const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
                 return (
                   <Link
@@ -152,6 +164,27 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             </div>
           </div>
         ))}
+
+        {/* clinic_admin 전용: 담당자 관리 */}
+        {isClinicAdmin && (
+          <div className="space-y-1 mt-2">
+            <div className="pt-4 pb-1">
+              <p className="text-[10px] text-slate-600 uppercase tracking-widest px-3">관리</p>
+            </div>
+            <Link
+              href="/staff"
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                pathname === '/staff'
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+              }`}
+            >
+              <UserCog size={17} />
+              담당자 관리
+            </Link>
+          </div>
+        )}
 
         {/* 슈퍼어드민 전용 메뉴 */}
         {isSuperAdmin && (
@@ -235,7 +268,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-white font-medium truncate">{user?.name || user?.username}</p>
-                <p className="text-[10px] text-slate-500">{isSuperAdmin ? '슈퍼어드민' : '병원 어드민'}</p>
+                <p className="text-[10px] text-slate-500">{isSuperAdmin ? '슈퍼어드민' : isClinicAdmin ? '병원 관리자' : '병원 담당자'}</p>
               </div>
               <ChevronUp size={14} className="text-slate-500 shrink-0" />
             </button>

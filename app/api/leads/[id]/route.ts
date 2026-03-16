@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, apiError, apiSuccess } from '@/lib/api-middleware'
 import { parseId, sanitizeString } from '@/lib/security'
+import { logActivity } from '@/lib/activity-log'
 
 const VALID_LEAD_STATUSES = ['new', 'no_answer', 'consulted', 'booked', 'hold', 'rejected'] as const
 
@@ -9,7 +10,7 @@ const VALID_LEAD_STATUSES = ['new', 'no_answer', 'consulted', 'booked', 'hold', 
  * - lead_status, notes 변경
  * - "booked" 상태로 변경 시 bookings 테이블에 자동 생성 (메모 포함)
  */
-export const PATCH = withClinicFilter(async (req: Request, { clinicId }: ClinicContext) => {
+export const PATCH = withClinicFilter(async (req: Request, { user, clinicId }: ClinicContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const id = url.pathname.split('/').pop()
@@ -36,7 +37,7 @@ export const PATCH = withClinicFilter(async (req: Request, { clinicId }: ClinicC
   if (fetchError || !lead) return apiError('리드를 찾을 수 없습니다.', 404)
 
   // 업데이트할 필드 구성
-  const updateData: Record<string, unknown> = {}
+  const updateData: Record<string, unknown> = { updated_by: Number(user.id) }
   if (lead_status) updateData.lead_status = lead_status
   if (notes !== undefined) updateData.notes = sanitizeString(notes, 1000)
 
@@ -60,15 +61,31 @@ export const PATCH = withClinicFilter(async (req: Request, { clinicId }: ClinicC
     if (!existingBooking) {
       // 리드 메모를 예약 메모로 전달
       const bookingNotes = (notes !== undefined ? sanitizeString(notes, 1000) : lead.notes) || ''
-      await supabase.from('bookings').insert({
+      const { data: newBooking } = await supabase.from('bookings').insert({
         customer_id: lead.customer_id,
         clinic_id: lead.clinic_id,
         status: 'confirmed',
         booking_datetime: new Date().toISOString(),
         notes: bookingNotes,
-      })
+        created_by: Number(user.id),
+      }).select('id').single()
+
+      if (newBooking) {
+        await logActivity(supabase, {
+          userId: user.id, clinicId: lead.clinic_id,
+          action: 'booking_create', targetTable: 'bookings', targetId: newBooking.id,
+          detail: { customer_id: lead.customer_id, source: 'lead_status_booked', lead_id: leadId },
+        })
+      }
     }
   }
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: lead.clinic_id,
+    action: lead_status ? 'lead_status_change' : 'lead_note_update',
+    targetTable: 'leads', targetId: leadId,
+    detail: { before: lead.lead_status, after: lead_status, notes_changed: notes !== undefined },
+  })
 
   return apiSuccess({ success: true, lead_status, notes: updateData.notes })
 })

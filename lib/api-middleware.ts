@@ -27,10 +27,12 @@ export interface ClinicContext extends AuthContext {
 type AuthHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
 type ClinicHandler = (req: Request, context: ClinicContext) => Promise<NextResponse>
 type SuperAdminHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
+type ClinicAdminHandler = (req: Request, context: ClinicContext) => Promise<NextResponse>
 
 // 인증 실패 응답
 const UNAUTHORIZED = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 const FORBIDDEN_SUPERADMIN = NextResponse.json({ error: 'Forbidden: superadmin only' }, { status: 403 })
+const FORBIDDEN_CLINIC_ADMIN = NextResponse.json({ error: 'Forbidden: clinic_admin 이상 권한 필요' }, { status: 403 })
 
 /**
  * 세션에서 인증된 사용자 추출
@@ -80,6 +82,22 @@ export function withSuperAdmin(handler: SuperAdminHandler) {
     if (!user) return UNAUTHORIZED
     if (user.role !== 'superadmin') return FORBIDDEN_SUPERADMIN
     return handler(req, { user })
+  }
+}
+
+/**
+ * clinic_admin 이상 권한 래퍼
+ * - superadmin 또는 clinic_admin만 접근 가능
+ * - clinic_staff는 차단
+ */
+export function withClinicAdmin(handler: ClinicAdminHandler) {
+  return async (req: Request): Promise<NextResponse> => {
+    const user = await getAuthUser()
+    if (!user) return UNAUTHORIZED
+    if (user.role !== 'superadmin' && user.role !== 'clinic_admin') return FORBIDDEN_CLINIC_ADMIN
+
+    const clinicId = await getClinicId(req.url)
+    return handler(req, { user, clinicId })
   }
 }
 

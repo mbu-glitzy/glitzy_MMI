@@ -2,7 +2,7 @@ import 'next-auth'
 import 'next-auth/jwt'
 
 // 사용자 역할 타입
-type UserRole = 'superadmin' | 'clinic_admin'
+type UserRole = 'superadmin' | 'clinic_admin' | 'clinic_staff'
 
 declare module 'next-auth' {
   interface Session {
