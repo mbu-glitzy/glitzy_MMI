@@ -17,11 +17,10 @@ export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds })
 
   const supabase = serverSupabase()
 
-  // 키워드 조회
+  // 키워드 조회 (비활성 포함 — 순위 현황에서 과거 데이터 확인용)
   let kwQuery = supabase
     .from('monitoring_keywords')
-    .select('id, keyword, category, clinic_id')
-    .eq('is_active', true)
+    .select('id, keyword, category, clinic_id, is_active')
 
   const kwFiltered = applyClinicFilter(kwQuery, { clinicId, assignedClinicIds })
   if (kwFiltered === null) return apiSuccess({ keywords: [], rankings: [] })

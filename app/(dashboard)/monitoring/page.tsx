@@ -282,7 +282,10 @@ export default function MonitoringPage() {
               <tbody>
                 {keywords.map(kw => (
                   <tr key={kw.id} className="border-b border-white/5">
-                    <td className="sticky left-0 bg-[#0f0f23] px-2 py-2 text-slate-300 font-medium z-10">{kw.keyword}</td>
+                    <td className="sticky left-0 bg-[#0f0f23] px-2 py-2 font-medium z-10">
+                      <span className={kw.is_active === false ? 'text-slate-600 line-through' : 'text-slate-300'}>{kw.keyword}</span>
+                      {kw.is_active === false && <span className="ml-1 text-[9px] text-slate-600">(비활성)</span>}
+                    </td>
                     {days.map(d => {
                       const rd = rankMap[kw.id]?.[d]
                       const rank = rd?.rank
@@ -336,8 +339,9 @@ export default function MonitoringPage() {
                       type="monotone"
                       dataKey={kw.keyword}
                       stroke={COLORS[i % COLORS.length]}
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
+                      strokeWidth={kw.is_active === false ? 1 : 2}
+                      strokeDasharray={kw.is_active === false ? '4 4' : undefined}
+                      dot={{ r: kw.is_active === false ? 2 : 3 }}
                       connectNulls
                     />
                   ))}
@@ -346,9 +350,9 @@ export default function MonitoringPage() {
             </div>
             <div className="flex flex-wrap gap-3 mt-3">
               {keywords.map((kw, i) => (
-                <div key={kw.id} className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                  {kw.keyword}
+                <div key={kw.id} className={`flex items-center gap-1.5 text-xs ${kw.is_active === false ? 'text-slate-600 line-through' : 'text-slate-400'}`}>
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length], opacity: kw.is_active === false ? 0.4 : 1 }} />
+                  {kw.keyword}{kw.is_active === false && ' (비활성)'}
                 </div>
               ))}
             </div>
