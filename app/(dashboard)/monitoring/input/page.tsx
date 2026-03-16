@@ -161,13 +161,14 @@ export default function MonitoringInputPage() {
         <div className="space-y-1">
           <Label className="text-xs text-slate-500">병원</Label>
           <Select
-            value={selectedClinicId?.toString() ?? ''}
-            onValueChange={v => setSelectedClinicId(v ? Number(v) : null)}
+            value={selectedClinicId ? String(selectedClinicId) : '_none'}
+            onValueChange={v => setSelectedClinicId(v === '_none' ? null : Number(v))}
           >
             <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
-              <SelectValue placeholder="병원 선택" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="_none" disabled className="text-slate-500">병원 선택</SelectItem>
               {clinics.map(c => (
                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
               ))}
