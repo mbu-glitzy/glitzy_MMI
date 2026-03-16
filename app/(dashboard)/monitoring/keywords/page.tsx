@@ -52,7 +52,7 @@ export default function MonitoringKeywordsPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (user && user.role !== 'superadmin') router.replace('/')
+    if (user && user.role !== 'superadmin' && user.role !== 'agency_staff') router.replace('/')
   }, [user, router])
 
   const fetchKeywords = async () => {
@@ -124,7 +124,7 @@ export default function MonitoringKeywordsPage() {
     }
   }
 
-  if (user?.role !== 'superadmin') return null
+  if (user?.role !== 'superadmin' && user?.role !== 'agency_staff') return null
 
   // 카테고리별 그룹핑
   const grouped: Record<string, any[]> = {}

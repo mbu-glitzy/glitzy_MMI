@@ -79,6 +79,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { href: '/monitoring', label: '순위 현황', icon: TrendingUp, menuKey: 'monitoring' },
       { href: '/monitoring/input', label: '순위 입력', icon: FileEdit, minRole: 2, menuKey: 'monitoring-input' },
+      { href: '/monitoring/keywords', label: '키워드 관리', icon: Settings, minRole: 2, menuKey: 'monitoring-keywords' },
     ]
   },
 ]
@@ -277,18 +278,6 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               >
                 <FileText size={17} />
                 랜딩 페이지
-              </Link>
-              <Link
-                href="/monitoring/keywords"
-                onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  pathname === '/monitoring/keywords'
-                    ? 'bg-brand-600/20 text-brand-400'
-                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
-                }`}
-              >
-                <TrendingUp size={17} />
-                키워드 관리
               </Link>
               <Link
                 href="/admin/clinics"

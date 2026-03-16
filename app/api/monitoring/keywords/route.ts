@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, withSuperAdmin, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClinicFilter, withAuth, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString, parseId } from '@/lib/security'
 
 export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds }) => {
@@ -24,7 +24,11 @@ export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds })
   return apiSuccess(data)
 })
 
-export const POST = withSuperAdmin(async (req: Request, { user }) => {
+export const POST = withAuth(async (req, { user }) => {
+  if (user.role !== 'superadmin' && user.role !== 'agency_staff') {
+    return apiError('키워드 관리 권한이 없습니다.', 403)
+  }
+
   const { clinic_id, keyword, category } = await req.json()
 
   const cid = parseId(clinic_id)
@@ -35,6 +39,18 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
   if (!validCategories.includes(category)) return apiError('유효하지 않은 카테고리입니다.', 400)
 
   const supabase = serverSupabase()
+
+  // agency_staff: 배정된 병원만 허용
+  if (user.role === 'agency_staff') {
+    const { data: assignment } = await supabase
+      .from('user_clinic_assignments')
+      .select('id')
+      .eq('user_id', parseInt(user.id, 10))
+      .eq('clinic_id', cid)
+      .single()
+    if (!assignment) return apiError('배정되지 않은 병원입니다.', 403)
+  }
+
   const { data, error } = await supabase
     .from('monitoring_keywords')
     .insert({
@@ -55,7 +71,11 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
   return apiSuccess(data, 201)
 })
 
-export const PATCH = withSuperAdmin(async (req: Request) => {
+export const PATCH = withAuth(async (req, { user }) => {
+  if (user.role !== 'superadmin' && user.role !== 'agency_staff') {
+    return apiError('키워드 관리 권한이 없습니다.', 403)
+  }
+
   const { id, is_active, keyword } = await req.json()
 
   const keywordId = parseId(id)
@@ -68,6 +88,25 @@ export const PATCH = withSuperAdmin(async (req: Request) => {
   if (Object.keys(updates).length === 0) return apiError('변경할 항목이 없습니다.', 400)
 
   const supabase = serverSupabase()
+
+  // agency_staff: 배정된 병원의 키워드만 수정 가능
+  if (user.role === 'agency_staff') {
+    const { data: kw } = await supabase
+      .from('monitoring_keywords')
+      .select('clinic_id')
+      .eq('id', keywordId)
+      .single()
+    if (!kw) return apiError('키워드를 찾을 수 없습니다.', 404)
+
+    const { data: assignment } = await supabase
+      .from('user_clinic_assignments')
+      .select('id')
+      .eq('user_id', parseInt(user.id, 10))
+      .eq('clinic_id', kw.clinic_id)
+      .single()
+    if (!assignment) return apiError('배정되지 않은 병원의 키워드입니다.', 403)
+  }
+
   const { data, error } = await supabase
     .from('monitoring_keywords')
     .update(updates)
