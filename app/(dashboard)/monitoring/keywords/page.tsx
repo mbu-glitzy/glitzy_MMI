@@ -43,7 +43,7 @@ export default function MonitoringKeywordsPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const user = session?.user as any
-  const { selectedClinicId } = useClinic()
+  const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
 
   const [keywords, setKeywords] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -141,6 +141,25 @@ export default function MonitoringKeywordsPage() {
           <h1 className="text-2xl font-bold text-white">키워드 관리</h1>
         </div>
         <p className="text-sm text-slate-400">순위 모니터링 키워드 등록 및 관리</p>
+      </div>
+
+      {/* 병원 선택 */}
+      <div className="mb-6">
+        <Label className="text-xs text-slate-500 mb-1 block">병원</Label>
+        <Select
+          value={selectedClinicId ? String(selectedClinicId) : '_none'}
+          onValueChange={v => setSelectedClinicId(v === '_none' ? null : Number(v))}
+        >
+          <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_none" disabled className="text-slate-500">병원 선택</SelectItem>
+            {clinics.map(c => (
+              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
