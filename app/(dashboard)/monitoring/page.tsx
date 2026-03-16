@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { TrendingUp, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
+import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -127,8 +127,9 @@ export default function MonitoringPage() {
       }
     }
 
-    // 전월 마지막 날 대비 변동
-    const firstDay = Math.min(...rankings.map(r => parseInt(r.rank_date.split('-')[2], 10)))
+    // 월초 대비 변동
+    const allDays = rankings.map(r => parseInt(r.rank_date.split('-')[2], 10))
+    const firstDay = allDays.length > 0 ? Math.min(...allDays) : latestDay
     let improvedCount = 0
     let declinedCount = 0
     for (const kw of keywords) {

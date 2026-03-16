@@ -43,6 +43,7 @@ export default function MonitoringInputPage() {
   const [entries, setEntries] = useState<KeywordEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [fetchKey, setFetchKey] = useState(0) // refetch 트리거용
 
   useEffect(() => {
     if (user && user.role !== 'superadmin' && user.role !== 'agency_staff') {
@@ -50,11 +51,11 @@ export default function MonitoringInputPage() {
     }
   }, [user, router])
 
-  // 날짜 이동
+  // 날짜 이동 (T00:00:00 붙여 UTC 파싱 방지)
   const changeDate = (delta: number) => {
-    const d = new Date(date)
+    const d = new Date(date + 'T00:00:00')
     d.setDate(d.getDate() + delta)
-    setDate(d.toISOString().split('T')[0])
+    setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
   }
 
   // 키워드 + 기존 순위 로드
@@ -73,18 +74,27 @@ export default function MonitoringInputPage() {
         const kwData = await kwRes.json()
         const keywords = Array.isArray(kwData) ? kwData : []
 
-        // 기존 순위 조회 (해당 월 전체)
+        // 기존 순위 조회 (해당 월)
         const month = date.slice(0, 7)
         const rankParams = new URLSearchParams({ clinic_id: String(selectedClinicId), month })
         const rankRes = await fetch(`/api/monitoring/rankings?${rankParams}`)
         const rankData = await rankRes.json()
-        const existingRankings = rankData.rankings || []
+        let existingRankings = rankData.rankings || []
+
+        // 전일이 다른 월이면 전월 데이터도 조회
+        const prevDate = new Date(date + 'T00:00:00')
+        prevDate.setDate(prevDate.getDate() - 1)
+        const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`
+        const prevMonth = prevDateStr.slice(0, 7)
+
+        if (prevMonth !== month) {
+          const prevParams = new URLSearchParams({ clinic_id: String(selectedClinicId), month: prevMonth })
+          const prevRes = await fetch(`/api/monitoring/rankings?${prevParams}`)
+          const prevData = await prevRes.json()
+          existingRankings = [...existingRankings, ...(prevData.rankings || [])]
+        }
 
         // 선택 날짜 및 전일 데이터 매핑
-        const prevDate = new Date(date)
-        prevDate.setDate(prevDate.getDate() - 1)
-        const prevDateStr = prevDate.toISOString().split('T')[0]
-
         const rankMap: Record<number, { rank: number | null; url?: string }> = {}
         const prevRankMap: Record<number, number | null> = {}
         for (const r of existingRankings) {
@@ -113,7 +123,7 @@ export default function MonitoringInputPage() {
       }
     }
     fetchData()
-  }, [selectedClinicId, date])
+  }, [selectedClinicId, date, fetchKey])
 
   const updateEntry = (idx: number, field: 'rank_position' | 'url', value: string) => {
     setEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e))
@@ -146,26 +156,8 @@ export default function MonitoringInputPage() {
         throw new Error(data.error || '저장 실패')
       }
       toast.success(`${data.count}개 순위가 저장되었습니다.`)
-      // 저장 후 데이터 refetch — prev_rank 등 최신 상태 반영
-      setDate(d => d) // trigger re-fetch via useEffect
-      // force re-fetch by toggling a dep
-      const month = date.slice(0, 7)
-      const rankParams = new URLSearchParams({ clinic_id: String(selectedClinicId!), month })
-      const rankRes = await fetch(`/api/monitoring/rankings?${rankParams}`)
-      const rankData = await rankRes.json()
-      const existingRankings = rankData.rankings || []
-
-      const rankMap: Record<number, { rank: number | null; url?: string }> = {}
-      for (const r of existingRankings) {
-        if (r.rank_date === date) {
-          rankMap[r.keyword_id] = { rank: r.rank_position, url: r.url }
-        }
-      }
-      setEntries(prev => prev.map(e => ({
-        ...e,
-        rank_position: rankMap[e.keyword_id]?.rank?.toString() || e.rank_position,
-        url: rankMap[e.keyword_id]?.url || e.url,
-      })))
+      // fetchKey 변경으로 useEffect 재실행 → 전체 데이터 refetch
+      setFetchKey(k => k + 1)
     } catch (e: any) {
       toast.error(e.message || '저장 실패')
     } finally {
