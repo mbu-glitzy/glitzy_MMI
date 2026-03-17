@@ -4,15 +4,28 @@ import { sanitizeString, parseId } from '@/lib/security'
 import fs from 'fs'
 import path from 'path'
 
-// 사용 가능한 HTML 파일 목록 조회
-function getAvailableHtmlFiles(): string[] {
-  const landingDir = path.join(process.cwd(), 'public', 'landing')
-  try {
-    const files = fs.readdirSync(landingDir)
-    return files.filter(f => f.endsWith('.html'))
-  } catch {
-    return []
+// 사용 가능한 HTML 파일 목록 조회 (Storage + 로컬 합산)
+async function getAvailableHtmlFiles(supabase: ReturnType<typeof serverSupabase>): Promise<string[]> {
+  const files = new Set<string>()
+
+  // Supabase Storage
+  const { data: storageFiles } = await supabase.storage.from('landing-pages').list()
+  if (storageFiles) {
+    for (const f of storageFiles) {
+      if (f.name.endsWith('.html')) files.add(f.name)
+    }
   }
+
+  // 로컬 fallback (public/landing/)
+  try {
+    const landingDir = path.join(process.cwd(), 'public', 'landing')
+    const localFiles = fs.readdirSync(landingDir)
+    for (const f of localFiles) {
+      if (f.endsWith('.html')) files.add(f)
+    }
+  } catch {}
+
+  return [...files].sort()
 }
 
 export const GET = withSuperAdmin(async (req: Request) => {
@@ -30,7 +43,7 @@ export const GET = withSuperAdmin(async (req: Request) => {
   if (includeFiles) {
     return apiSuccess({
       landingPages: data,
-      availableFiles: getAvailableHtmlFiles(),
+      availableFiles: await getAvailableHtmlFiles(supabase),
     })
   }
 
@@ -60,14 +73,15 @@ export const POST = withSuperAdmin(async (req: Request) => {
     return apiError('이름과 파일명은 필수입니다.', 400)
   }
 
-  // file_name path traversal 방어
   const safeFileName = path.basename(file_name)
-  const filePath = path.join(process.cwd(), 'public', 'landing', safeFileName)
-  if (!fs.existsSync(filePath)) {
+  const supabase = serverSupabase()
+
+  // 파일 존재 확인 (Storage 또는 로컬)
+  const { data: storageFile } = await supabase.storage.from('landing-pages').download(safeFileName)
+  const localPath = path.join(process.cwd(), 'public', 'landing', safeFileName)
+  if (!storageFile && !fs.existsSync(localPath)) {
     return apiError(`파일을 찾을 수 없습니다: ${safeFileName}`, 400)
   }
-
-  const supabase = serverSupabase()
 
   // clinic_id 유효성 검증 (제공된 경우)
   let validClinicId: number | null = null

@@ -23,14 +23,28 @@ export async function GET(req: NextRequest) {
     return new NextResponse('랜딩 페이지를 찾을 수 없습니다.', { status: 404 })
   }
 
-  // HTML 파일 읽기
-  const htmlPath = path.join(process.cwd(), 'public', 'landing', landingPage.file_name)
+  // HTML 파일 읽기 (Supabase Storage 우선, public/landing/ fallback)
+  let htmlContent: string | null = null
 
-  if (!fs.existsSync(htmlPath)) {
-    return new NextResponse('HTML 파일을 찾을 수 없습니다.', { status: 404 })
+  // 1. Supabase Storage에서 시도
+  const { data: storageData } = await supabase.storage
+    .from('landing-pages')
+    .download(landingPage.file_name)
+  if (storageData) {
+    htmlContent = await storageData.text()
   }
 
-  let htmlContent = fs.readFileSync(htmlPath, 'utf-8')
+  // 2. fallback: public/landing/ 로컬 파일
+  if (!htmlContent) {
+    const htmlPath = path.join(process.cwd(), 'public', 'landing', landingPage.file_name)
+    if (fs.existsSync(htmlPath)) {
+      htmlContent = fs.readFileSync(htmlPath, 'utf-8')
+    }
+  }
+
+  if (!htmlContent) {
+    return new NextResponse('HTML 파일을 찾을 수 없습니다.', { status: 404 })
+  }
 
   // 데이터 주입 (</head> 앞에 스크립트 삽입)
   const clinicName = landingPage.clinic?.name || ''
