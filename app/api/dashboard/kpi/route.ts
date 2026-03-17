@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext } from '@/lib/api-middleware'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
 // 메트릭 계산 함수 추출
 async function fetchMetrics(
@@ -74,13 +75,13 @@ async function fetchTodaySummary(
     return q
   }
 
-  // KST 기준 오늘 00:00 ~ 23:59
+  // KST 기준 오늘 00:00 ~ 내일 00:00 (lt 쿼리용)
   const now = new Date()
-  const kstOffset = 9 * 60 * 60 * 1000
-  const kstNow = new Date(now.getTime() + kstOffset)
-  const todayStart = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()) - kstOffset).toISOString()
-  const todayEnd = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() + 1) - kstOffset).toISOString()
-  const yesterdayStart = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - 1) - kstOffset).toISOString()
+  const todayStart = getKstDayStartISO(now)
+  const tomorrow = new Date(now.getTime() + 86400000)
+  const todayEnd = getKstDayStartISO(tomorrow)
+  const yesterday = new Date(now.getTime() - 86400000)
+  const yesterdayStart = getKstDayStartISO(yesterday)
 
   const [todayLeads, todayBookings, todayPayments, yesterdayLeads, yesterdayBookings, yesterdayPayments] = await Promise.all([
     applyFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', todayStart).lt('created_at', todayEnd)),
@@ -119,8 +120,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
 
   const supabase = serverSupabase()
   const url = new URL(req.url)
-  const start = url.searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-  const end = url.searchParams.get('endDate') || new Date().toISOString()
+  const start = url.searchParams.get('startDate') || getKstDayStartISO(new Date(Date.now() - 30 * 86400000))
+  const end = url.searchParams.get('endDate') || getKstDayEndISO()
   const compare = url.searchParams.get('compare') === 'true'
 
   // 기간 KPI + 오늘 요약 병렬 조회

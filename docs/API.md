@@ -26,12 +26,17 @@ MMI 대시보드의 REST API 엔드포인트 문서입니다.
 
 ## 공통 파라미터
 
+### 타임존
+- 모든 날짜/시간은 **KST (Asia/Seoul, UTC+9)** 기준으로 처리됩니다.
+- DB에는 UTC ISO 문자열로 저장되지만, 날짜 경계 계산(오늘/어제, 기간 필터 등)은 KST 기준입니다.
+- `startDate`/`endDate` 미지정 시 기본값도 KST 기준으로 계산됩니다.
+
 ### Query Parameters
 | 파라미터 | 타입 | 설명 |
 |---------|------|------|
 | `clinic_id` | number | 병원 ID (superadmin, agency_staff 사용 가능) |
-| `startDate` | string | 시작일 (ISO 8601) |
-| `endDate` | string | 종료일 (ISO 8601) |
+| `startDate` | string | 시작일 (ISO 8601, KST 기준 00:00:00) |
+| `endDate` | string | 종료일 (ISO 8601, KST 기준 23:59:59) |
 
 ---
 
@@ -82,8 +87,9 @@ MMI 대시보드의 REST API 엔드포인트 문서입니다.
 }
 ```
 
-> `today`: 항상 포함 (KST 기준 오늘 + 전일 대비 증감)
+> `today`: 항상 포함 (KST 기준 오늘 00:00~23:59 + 전일 대비 증감)
 > `comparison`: `compare=true`일 때만 포함 (전기 대비 변화율 %)
+> 기본 기간: KST 기준 최근 30일 (startDate/endDate 미지정 시)
 
 ### GET /api/dashboard/channel
 
@@ -167,11 +173,25 @@ MMI 대시보드의 REST API 엔드포인트 문서입니다.
 
 ### GET /api/dashboard/trend
 
-일별 트렌드 데이터를 조회합니다.
+주별 트렌드 데이터를 조회합니다. 광고비와 리드 수를 KST 기준 주 단위로 집계합니다.
 
 **Query Parameters:**
-- `days` (optional): 조회 일수 (기본: 30)
+- `startDate` (optional): 시작일 (기본: 8주 전)
 - `clinic_id`
+
+**Response:**
+```json
+[
+  {
+    "week": "2026-03-08T15:00:00.000Z",
+    "spend": 5000000,
+    "campaigns": 3,
+    "leads": 45
+  }
+]
+```
+
+> `week`: 해당 주 시작일 (일요일) UTC ISO 문자열. 클라이언트에서 KST 변환하여 표시
 
 ---
 

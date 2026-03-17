@@ -6,7 +6,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const url = new URL(req.url)
 
   // startDate 파라미터 지원 (기본값: 8주 전)
-  const defaultStart = new Date(Date.now() - 56 * 24 * 60 * 60 * 1000).toISOString()
+  const defaultStart = new Date(Date.now() - 56 * 86400000).toISOString()
   const startDate = url.searchParams.get('startDate') || defaultStart
 
   // 광고 지출 + 리드 수 병렬 조회
@@ -37,12 +37,14 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   if (adRes.error) return apiError(adRes.error.message, 500)
   if (leadRes.error) return apiError(leadRes.error.message, 500)
 
-  // 주 시작일 계산 헬퍼
+  // 주 시작일 계산 헬퍼 (KST 기준, 일요일 시작)
   const getWeekKey = (dateStr: string) => {
-    const d = new Date(dateStr)
-    const weekStart = new Date(d)
-    weekStart.setDate(d.getDate() - d.getDay())
-    weekStart.setHours(0, 0, 0, 0)
+    // KST 기준 YYYY-MM-DD 추출 후 UTC로 취급하여 요일 계산
+    const kstDate = new Date(dateStr).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
+    const [y, m, d] = kstDate.split('-').map(Number)
+    const utcDate = new Date(Date.UTC(y, m - 1, d))
+    const day = utcDate.getUTCDay()
+    const weekStart = new Date(Date.UTC(y, m - 1, d - day))
     return weekStart.toISOString()
   }
 

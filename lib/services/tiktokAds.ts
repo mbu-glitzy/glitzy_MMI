@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
+import { getKstDateString } from '@/lib/date'
 
 const SERVICE_NAME = 'TikTokAds'
 const logger = createLogger(SERVICE_NAME)
@@ -18,7 +19,7 @@ interface TikTokCampaign {
 }
 
 export async function fetchTikTokAds(date = new Date()) {
-  const dateStr = date.toISOString().split('T')[0]
+  const dateStr = getKstDateString(date)
   const startTime = Date.now()
 
   // 환경변수 검증

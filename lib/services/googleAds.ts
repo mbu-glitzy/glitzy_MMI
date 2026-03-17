@@ -1,12 +1,13 @@
 import { GoogleAdsApi } from 'google-ads-api'
 import { serverSupabase } from '@/lib/supabase'
 import { createLogger } from '@/lib/logger'
+import { getKstDateString } from '@/lib/date'
 
 const SERVICE_NAME = 'GoogleAds'
 const logger = createLogger(SERVICE_NAME)
 
 export async function fetchGoogleAds(date = new Date()) {
-  const dateStr = date.toISOString().split('T')[0]
+  const dateStr = getKstDateString(date)
   const startTime = Date.now()
 
   // 환경변수 검증

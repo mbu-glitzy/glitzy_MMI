@@ -13,7 +13,7 @@ function groupByDate(articles: any[]): Record<string, any[]> {
   const map: Record<string, any[]> = {}
   for (const a of articles) {
     const date = a.published_at
-      ? new Date(a.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+      ? new Date(a.published_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' })
       : '날짜 미상'
     if (!map[date]) map[date] = []
     map[date].push(a)

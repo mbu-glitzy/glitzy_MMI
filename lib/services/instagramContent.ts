@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
+import { getKstDateString } from '@/lib/date'
 
 const SERVICE_NAME = 'InstagramContent'
 const logger = createLogger(SERVICE_NAME)
@@ -18,7 +19,7 @@ interface InstagramMedia {
 
 export async function syncInstagramContent(clinicId: number, accessToken: string, userId: string) {
   const supabase = serverSupabase()
-  const today = new Date().toISOString().split('T')[0]
+  const today = getKstDateString()
   const startTime = Date.now()
 
   try {

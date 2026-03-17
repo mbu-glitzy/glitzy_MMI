@@ -40,7 +40,7 @@ export default function MonitoringInputPage() {
   const user = session?.user as any
   const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
 
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }))
   const [entries, setEntries] = useState<KeywordEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

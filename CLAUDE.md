@@ -76,6 +76,18 @@ npm run analyze  # 번들 크기 분석 (브라우저에서 시각화)
 | `components/ui/` | shadcn/ui 컴포넌트 (다크테마 커스텀) |
 | `components/common/` | 프로젝트 공용 컴포넌트 |
 | `components/charts/` | Recharts 래퍼 (코드 스플리팅) |
+| `components/attribution/` | 매출 기여 분석 UI (퍼널, CPL/ROAS, 고객 여정 등) |
+
+### 클라이언트 병원 선택 (ClinicContext)
+```typescript
+import { useClinic } from '@/components/ClinicContext'
+
+const { selectedClinicId, clinics, setSelectedClinicId } = useClinic()
+```
+- `ClinicProvider`가 대시보드 레이아웃을 감싸고 있음
+- `localStorage` 키 `mmi_selected_clinic`에 선택된 병원 ID 저장
+- agency_staff에게 배정된 병원이 1개뿐이면 자동 선택
+- `/api/my/clinics`와 `/api/my/menu-permissions`에서 데이터 로드
 
 ## 인증 보안
 
@@ -240,6 +252,54 @@ await logActivity(supabase, {
 - bookings/payments/consultations/leads에 `created_by`/`updated_by` 컬럼으로 마지막 수정자 추적
 - `activity_logs` 테이블에 변경 이력 전체 기록
 
+### 삭제 데이터 보관 (lib/archive.ts)
+```typescript
+import { archiveBeforeDelete, archiveBulkBeforeDelete } from '@/lib/archive'
+
+// 단일 삭제 전 스냅샷 보관
+await archiveBeforeDelete(supabase, { table: 'bookings', recordId: id, deletedBy: user.id, clinicId })
+
+// 벌크 삭제 전 스냅샷 보관
+await archiveBulkBeforeDelete(supabase, { table: 'leads', recordIds: ids, deletedBy: user.id, clinicId })
+```
+- `deleted_records` 테이블에 삭제 전 데이터 전체 JSON 보관
+- 데이터 삭제 시 반드시 호출 (감사 추적 + 복구 가능)
+
+### 에러 알림 (lib/error-alert.ts)
+```typescript
+import { sendErrorAlert } from '@/lib/error-alert'
+
+await sendErrorAlert({ type: 'lead_webhook_fail', message: '에러 상세', clinicId })
+```
+- 프로덕션 에러 발생 시 관리자에게 SMS 알림 (`ADMIN_ALERT_PHONES` 환경변수)
+- 쿨다운 5분, 일일 최대 50건 제한
+- 에러 타입: `lead_webhook_fail`, `ad_sync_fail`, `press_sync_fail`, `db_connection_fail`
+
+### 채널 정규화 (lib/channel.ts)
+```typescript
+import { normalizeChannel } from '@/lib/channel'
+normalizeChannel('facebook')  // → 'Meta'
+```
+- utm_source/platform 값을 canonical 채널명으로 변환 (Meta, Google, TikTok 등)
+- `lib/channel-colors.ts`: 채널별 Recharts 색상 코드 (`getChannelColor(channel)`)
+
+### 날짜/시간 유틸 (lib/date.ts)
+```typescript
+import { formatDate, formatDateTime, formatTime, getKstDateString, getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
+
+// 표시용 포맷 (모두 KST 기준)
+formatDate('2026-03-18T15:00:00Z')     // → '2026. 3. 19.'
+formatDateTime('2026-03-18T15:00:00Z') // → '3월 19일 00:00'
+formatTime('2026-03-18T15:00:00Z')     // → '00:00'
+
+// 서버용 KST 날짜 유틸
+getKstDateString()       // → '2026-03-19' (KST 기준 YYYY-MM-DD)
+getKstDayStartISO()      // → KST 오늘 00:00의 UTC ISO 문자열
+getKstDayEndISO()        // → KST 오늘 23:59:59.999의 UTC ISO 문자열
+```
+- 모든 날짜 표시에 `timeZone: 'Asia/Seoul'` 명시 (서버/클라이언트 동일 결과)
+- 날짜 문자열 생성 시 `toISOString().split('T')[0]` 대신 `getKstDateString()` 사용 필수
+
 ### SMS 발송 (lib/solapi.ts)
 ```typescript
 import { sendSmsWithLog } from '@/lib/solapi'
@@ -277,6 +337,7 @@ const { success, logId, error } = await sendSmsWithLog(supabase, {
 | `monitoring_keywords` | 순위 모니터링 키워드 (place/website/smartblock) |
 | `monitoring_rankings` | 일별 순위 데이터 (keyword_id + rank_date UNIQUE) |
 | `login_logs` | 로그인 시도 이력 (user_id, ip_address, success, failure_reason) |
+| `deleted_records` | 삭제 데이터 스냅샷 보관 (감사/복구용) |
 
 ### 멀티테넌트 필터링 (필수)
 ```typescript
@@ -301,6 +362,7 @@ await supabase.from('table').insert({ clinic_id: clinicId, ...data })
 - AI: `ANTHROPIC_API_KEY`
 - SMS: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`
 - 메시징: `QSTASH_*`, `KAKAO_*`
+- 에러 알림: `ADMIN_ALERT_PHONES` (프로덕션 에러 SMS 수신 번호)
 
 ## 환경 분리 운영
 
@@ -387,6 +449,9 @@ useEffect(() => {
 }, [user, router])
 ```
 
+### 서버 시작 시 환경변수 검증
+`instrumentation.ts`에서 서버 시작 시 `lib/env.ts`의 `validateEnv()`를 호출하여 필수 환경변수를 검증. 프로덕션에서 누락 시 서버 시작 실패.
+
 ### 테스트 방법
 ```bash
 # 빌드 검증 (타입 에러 검출)
@@ -400,7 +465,19 @@ npm run test:e2e           # 전체 실행
 npm run test:e2e:headed    # 브라우저 표시
 npm run test:e2e:ui        # Playwright UI 모드
 npm run test:e2e:report    # 리포트 보기
+
+# 특정 테스트 파일만 실행
+npx playwright test e2e/tests/auth.spec.ts
 ```
+- 인증 상태는 `storageState` (`.auth/superadmin.json`)로 관리
+- `PLAYWRIGHT_BASE_URL` 환경변수로 테스트 대상 URL 변경 가능
+- 테스트 구조: `e2e/fixtures/` (인증 픽스처), `e2e/pages/` (Page Object Model), `e2e/tests/` (스펙)
+
+### 코드 작성 시 추가 참고
+8. **삭제 보관**: 데이터 삭제 시 `archiveBeforeDelete()` 호출하여 `deleted_records`에 스냅샷 보관
+9. **채널 정규화**: 광고 채널 표시 시 `normalizeChannel()` 사용, 차트 색상은 `getChannelColor()` 사용
+10. **KST 타임존**: 날짜 표시는 `lib/date.ts` 포맷 함수 사용, 날짜 문자열 생성은 `getKstDateString()` 사용. `toISOString().split('T')[0]` 금지 (UTC 기준이라 KST 자정~09시 사이 날짜 오류)
 
 ### DB 마이그레이션
 SQL 마이그레이션 파일은 `supabase/migrations/`에 위치. 파일명은 `YYYYMMDD_설명.sql` 형식.
+테스트 시드 데이터: `supabase/seed_test_data.sql`

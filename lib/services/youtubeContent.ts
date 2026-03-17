@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
+import { getKstDateString } from '@/lib/date'
 
 const SERVICE_NAME = 'YouTubeContent'
 const logger = createLogger(SERVICE_NAME)
@@ -23,7 +24,7 @@ interface YouTubeVideo {
 
 export async function syncYoutubeContent(clinicId: number, apiKey: string, channelId: string) {
   const supabase = serverSupabase()
-  const today = new Date().toISOString().split('T')[0]
+  const today = getKstDateString()
   const startTime = Date.now()
 
   try {

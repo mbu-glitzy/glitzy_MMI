@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { getKstDateString } from '@/lib/date'
 
 /**
  * 캠페인별 리드 목록 API
@@ -73,7 +74,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     today_count: number
   }> = {}
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getKstDateString()
 
   for (const lead of leadsRes.data || []) {
     const name = lead.utm_campaign!

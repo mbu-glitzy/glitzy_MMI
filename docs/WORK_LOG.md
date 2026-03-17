@@ -24,6 +24,7 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 
 | # | 작업 | 핵심 내용 | 날짜 |
 |---|------|----------|------|
+| P20 | KST 타임존 전환 | 전체 프로젝트 시간 표기를 UTC → KST(Asia/Seoul) 기준으로 통일. `lib/date.ts`에 KST 유틸 추가, 서비스/API/UI 20개 파일 수정 | 03-18 |
 | P19-1 | 공용 인프라 | 채널 색상 유틸(`lib/channel-colors.ts`), StatsCard에 onClick/subtitle/size/icon/subtitleColor props 추가 | 03-17 |
 | P19-2A | KPI API 개선 | `today` 오늘 요약(리드/예약/매출 + 전일 대비), `totalConsultations` 필드, comparison에 `totalLeads`/`totalConsultations`/`totalSpend` 추가 | 03-17 |
 | P19-2B | 상단 섹션 컴포넌트 | `TodaySummary`(오늘 3카드), `KpiSection`(6카드 비즈니스 흐름순), `SpendLeadTrend`(듀얼 축 ComposedChart) | 03-17 |

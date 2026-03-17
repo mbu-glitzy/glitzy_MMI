@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { canAccessContentPost, parseId } from '@/lib/security'
 import { archiveBeforeDelete } from '@/lib/archive'
+import { getKstDateString } from '@/lib/date'
 
 // 콘텐츠 목록 조회 (최신 통계 포함)
 export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
@@ -54,7 +55,7 @@ export const POST = withClinicFilter(async (req: Request, { clinicId }: ClinicCo
 
   // 초기 통계 입력
   if (views || likes || comments || shares || saves) {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getKstDateString()
     await supabase.from('content_stats').insert({
       post_id: post.id,
       stat_date: today,
@@ -83,7 +84,7 @@ export const PUT = withClinicFilter(async (req: Request, { user }: ClinicContext
     return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
-  const date = stat_date || new Date().toISOString().split('T')[0]
+  const date = stat_date || getKstDateString()
 
   const { data, error } = await supabase
     .from('content_stats')

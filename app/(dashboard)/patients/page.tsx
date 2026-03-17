@@ -49,7 +49,9 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'info' | 'success'
 function BookingEditForm({ booking, onSave }: { booking: any; onSave: () => void }) {
   const [form, setForm] = useState({
     status: booking.status || 'confirmed',
-    booking_datetime: booking.booking_datetime ? new Date(booking.booking_datetime).toISOString().slice(0, 16) : '',
+    booking_datetime: booking.booking_datetime
+      ? new Date(booking.booking_datetime).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', 'T')
+      : '',
     notes: booking.notes || '',
   })
   const [saving, setSaving] = useState(false)
@@ -434,7 +436,7 @@ export default function PatientsPage() {
     const mins = Math.ceil(now.getMinutes() / 10) * 10
     now.setMinutes(mins, 0, 0)
     if (mins >= 60) now.setHours(now.getHours() + 1, 0, 0, 0)
-    const dateStr = now.toISOString().slice(0, 10)
+    const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     setCreateForm({
       name: '', phone_number: '',
@@ -585,7 +587,7 @@ export default function PatientsPage() {
                 <Input
                   type="date"
                   value={createForm.booking_date}
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })}
                   onChange={e => setCreateForm(f => ({ ...f, booking_date: e.target.value }))}
                 />
               </div>
@@ -719,7 +721,7 @@ export default function PatientsPage() {
               <ChevronLeft size={16} />
             </Button>
             <h2 className="text-white font-semibold text-lg">
-              {currentMonth.toLocaleDateString('ko', { year: 'numeric', month: 'long' })}
+              {currentMonth.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long' })}
             </h2>
             <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(new Date(year, month + 1))}>
               <ChevronRight size={16} />

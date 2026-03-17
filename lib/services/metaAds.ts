@@ -1,12 +1,13 @@
 import { serverSupabase } from '@/lib/supabase'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
+import { getKstDateString } from '@/lib/date'
 
 const SERVICE_NAME = 'MetaAds'
 const logger = createLogger(SERVICE_NAME)
 
 export async function fetchMetaAds(date = new Date()) {
-  const dateStr = date.toISOString().split('T')[0]
+  const dateStr = getKstDateString(date)
   const startTime = Date.now()
 
   // 환경변수 검증

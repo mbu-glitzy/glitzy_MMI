@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
 import { useClinic } from '@/components/ClinicContext'
 import { useKpiData, useTrendData, useFunnelChannelData } from '@/hooks/use-dashboard-data'
+import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
 // 섹션 컴포넌트
 import { TodaySummary } from '@/components/dashboard/today-summary'
@@ -20,16 +21,6 @@ import { FunnelSection } from '@/components/dashboard/funnel-section'
 import { ChannelChart } from '@/components/dashboard/channel-chart'
 import { CplRoasChart } from '@/components/dashboard/cpl-roas-chart'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
-
-function toStartISO(date: Date): string {
-  return startOfDay(date).toISOString()
-}
-
-function toEndISO(date: Date): string {
-  const end = startOfDay(date)
-  end.setHours(23, 59, 59, 999)
-  return end.toISOString()
-}
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -48,8 +39,8 @@ export default function DashboardPage() {
   })
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const startDate = dateRange.from ? toStartISO(dateRange.from) : toStartISO(new Date())
-  const endDate = dateRange.to ? toEndISO(dateRange.to) : toEndISO(new Date())
+  const startDate = dateRange.from ? getKstDayStartISO(dateRange.from) : getKstDayStartISO(new Date())
+  const endDate = dateRange.to ? getKstDayEndISO(dateRange.to) : getKstDayEndISO(new Date())
 
   // 섹션별 독립 데이터 페칭
   const kpi = useKpiData(selectedClinicId, startDate, endDate)
@@ -91,7 +82,7 @@ export default function DashboardPage() {
       {/* Header */}
       <PageHeader
         title="마케팅 성과 대시보드"
-        description={lastUpdated ? `마지막 업데이트: ${lastUpdated.toLocaleTimeString('ko')}` : '데이터 로딩 중...'}
+        description={lastUpdated ? `마지막 업데이트: ${lastUpdated.toLocaleTimeString('ko', { timeZone: 'Asia/Seoul' })}` : '데이터 로딩 중...'}
         actions={
           <div className="flex items-center gap-2">
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />

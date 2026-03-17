@@ -78,26 +78,26 @@ function getEventColor(event: JourneyEvent): string {
   }
 }
 
-// 날짜 포맷 (null/invalid 안전 처리)
+// 날짜 포맷 (null/invalid 안전 처리, KST 기준)
 function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('ko', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })
 }
 
 function formatDateTime(dateStr: string | undefined | null): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
-  return `${date.toLocaleDateString('ko', { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString('ko', { hour: '2-digit', minute: '2-digit' })}`
+  return `${date.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })} ${date.toLocaleTimeString('ko', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}`
 }
 
 function formatTime(dateStr: string | undefined | null): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
-  return date.toLocaleTimeString('ko', { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleTimeString('ko', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })
 }
 
 // 예약 상태 라벨

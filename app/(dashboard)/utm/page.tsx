@@ -83,6 +83,7 @@ interface UtmLink {
 
 // 날짜 포맷 옵션 상수
 const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  timeZone: 'Asia/Seoul',
   year: 'numeric',
   month: 'short',
   day: 'numeric',
