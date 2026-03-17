@@ -1,60 +1,33 @@
-'use client'
+import type { Metadata } from 'next'
+import { serverSupabase } from '@/lib/supabase'
+import { parseId } from '@/lib/security'
+import LandingPageContent from './LandingPageContent'
 
-import { useSearchParams } from 'next/navigation'
-import { useEffect, useState, Suspense } from 'react'
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
 
-function LandingPageContent() {
-  const searchParams = useSearchParams()
-  const lpId = searchParams.get('id')
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!lpId) {
-      setError('랜딩 페이지 ID가 필요합니다.')
-    }
-  }, [lpId])
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">페이지를 찾을 수 없습니다</h1>
-          <p className="text-gray-400">{error}</p>
-        </div>
-      </div>
-    )
-  }
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams
+  const lpId = parseId(params.id as string | undefined)
 
   if (!lpId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <div className="text-center">
-          <p className="text-gray-400">로딩 중...</p>
-        </div>
-      </div>
-    )
+    return { title: '랜딩 페이지' }
   }
 
-  // 모든 쿼리 파라미터를 iframe에 전달
-  const allParams = searchParams.toString()
+  const supabase = serverSupabase()
+  const { data } = await supabase
+    .from('landing_pages')
+    .select('name')
+    .eq('id', lpId)
+    .eq('is_active', true)
+    .single()
 
-  return (
-    <iframe
-      src={`/api/lp/render?${allParams}`}
-      className="w-full h-screen border-0"
-      title="Landing Page"
-    />
-  )
+  return {
+    title: data?.name || '랜딩 페이지',
+  }
 }
 
 export default function LandingPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <p className="text-gray-400">로딩 중...</p>
-      </div>
-    }>
-      <LandingPageContent />
-    </Suspense>
-  )
+  return <LandingPageContent />
 }
