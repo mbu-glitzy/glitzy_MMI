@@ -109,13 +109,11 @@ export default function DashboardPage() {
       <KpiSection data={kpi.data} loading={kpi.loading} onNavigate={handleNavigate} />
 
       {/* 광고비 · 리드 추이 + 시술별 매출 비중 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6 md:mb-8 items-stretch">
-        <div className="lg:col-span-2 flex">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6 md:mb-8">
+        <div className="lg:col-span-2">
           <SpendLeadTrend data={trendData.trend} loading={trendData.loading} />
         </div>
-        <div className="flex">
-          <TreatmentPie data={funnelChannel.treatmentData} loading={funnelChannel.loading} />
-        </div>
+        <TreatmentPie data={funnelChannel.treatmentData} loading={funnelChannel.loading} />
       </div>
 
       {/* 전환 퍼널 */}

@@ -55,17 +55,21 @@ const RoasTooltip = ({ active, payload }: any) => {
 export function CplRoasChart({ cplData, roasData, loading }: CplRoasChartProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-        <Card variant="glass" className="p-5"><Skeleton className="h-[220px] rounded-lg" /></Card>
-        <Card variant="glass" className="p-5"><Skeleton className="h-[220px] rounded-lg" /></Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 md:mb-8">
+        <Card variant="glass" className="p-5"><Skeleton className="h-[280px] rounded-lg" /></Card>
+        <Card variant="glass" className="p-5"><Skeleton className="h-[280px] rounded-lg" /></Card>
       </div>
     )
   }
 
   if (cplData.length === 0 && roasData.length === 0) return null
 
+  // 두 차트 동일한 높이 사용 (더 많은 쪽 기준)
+  const maxItems = Math.max(cplData.length, roasData.length, 3)
+  const chartHeight = Math.min(360, maxItems * 44 + 20)
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 md:mb-8">
       {/* CPL */}
       <Card variant="glass" className="p-5">
         <div className="flex items-center justify-between mb-1">
@@ -74,7 +78,7 @@ export function CplRoasChart({ cplData, roasData, loading }: CplRoasChartProps) 
         </div>
         <p className="text-xs text-slate-500 mb-4">DB 1건 획득 비용 (낮을수록 효율적)</p>
         {cplData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={Math.max(160, cplData.length * 40 + 20)}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart layout="vertical" data={cplData} barSize={16}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis type="number" tickFormatter={(v: number) => `₩${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -88,7 +92,9 @@ export function CplRoasChart({ cplData, roasData, loading }: CplRoasChartProps) 
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <EmptyState icon={BarChart3} title="CPL 데이터 없음" description="광고 성과가 집계되면 표시됩니다." />
+          <div className="flex items-center justify-center" style={{ height: chartHeight }}>
+            <EmptyState icon={BarChart3} title="CPL 데이터 없음" description="광고 성과가 집계되면 표시됩니다." />
+          </div>
         )}
       </Card>
 
@@ -100,7 +106,7 @@ export function CplRoasChart({ cplData, roasData, loading }: CplRoasChartProps) 
         </div>
         <p className="text-xs text-slate-500 mb-4">예산 대비 매출 (100% 이상 = 흑자)</p>
         {roasData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={Math.max(160, roasData.length * 40 + 20)}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart layout="vertical" data={roasData} barSize={16}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis type="number" tickFormatter={(v: number) => `${v}%`} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -114,9 +120,10 @@ export function CplRoasChart({ cplData, roasData, loading }: CplRoasChartProps) 
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <EmptyState icon={BarChart3} title="ROAS 데이터 없음" description="매출 데이터가 집계되면 표시됩니다." />
+          <div className="flex items-center justify-center" style={{ height: chartHeight }}>
+            <EmptyState icon={BarChart3} title="ROAS 데이터 없음" description="매출 데이터가 집계되면 표시됩니다." />
+          </div>
         )}
-
         <div className="mt-3 pt-3 border-t border-white/5">
           <Link
             href="/ads"

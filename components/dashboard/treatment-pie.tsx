@@ -10,10 +10,11 @@ import { EmptyState } from '@/components/common'
 import { PieChart as PieChartIcon } from 'lucide-react'
 
 const PIE_SHADES = ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff', '#8b5cf6']
+const MAX_ITEMS = 5
 
 interface TreatmentData {
   name: string
-  amount: number  // 매출액 기준
+  amount: number
 }
 
 interface TreatmentPieProps {
@@ -33,39 +34,48 @@ const PieTooltip = ({ active, payload }: any) => {
   )
 }
 
-export function TreatmentPie({ data, loading }: TreatmentPieProps) {
+function groupData(data: TreatmentData[]): TreatmentData[] {
   const filtered = data.filter(d => d.amount > 0)
-  const total = filtered.reduce((sum, d) => sum + d.amount, 0)
+  if (filtered.length <= MAX_ITEMS) return filtered
+
+  const top = filtered.slice(0, MAX_ITEMS)
+  const rest = filtered.slice(MAX_ITEMS)
+  const etcAmount = rest.reduce((sum, d) => sum + d.amount, 0)
+  return [...top, { name: '기타', amount: etcAmount }]
+}
+
+export function TreatmentPie({ data, loading }: TreatmentPieProps) {
+  const grouped = groupData(data)
+  const total = grouped.reduce((sum, d) => sum + d.amount, 0)
 
   return (
-    <Card variant="glass" className="p-5 w-full flex flex-col">
+    <Card variant="glass" className="p-5 w-full">
       <h2 className="text-sm font-semibold text-white mb-4">시술별 매출 비중</h2>
 
       {loading ? (
-        <Skeleton className="h-[200px] rounded-lg" />
-      ) : filtered.length > 0 ? (
+        <Skeleton className="h-[240px] rounded-lg" />
+      ) : grouped.length > 0 ? (
         <>
           <div className="relative">
-            <ResponsiveContainer width="100%" height={170}>
+            <ResponsiveContainer width="100%" height={160}>
               <PieChart>
                 <Pie
-                  data={filtered}
+                  data={grouped}
                   cx="50%"
                   cy="50%"
-                  innerRadius={45}
-                  outerRadius={68}
+                  innerRadius={42}
+                  outerRadius={65}
                   paddingAngle={2}
                   dataKey="amount"
                   stroke="none"
                 >
-                  {filtered.map((_, i) => (
+                  {grouped.map((_, i) => (
                     <Cell key={i} fill={PIE_SHADES[i % PIE_SHADES.length]} />
                   ))}
                 </Pie>
                 <Tooltip content={<PieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            {/* 도넛 중앙 총 매출 */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
                 <p className="text-[10px] text-slate-500">총 매출</p>
@@ -74,12 +84,12 @@ export function TreatmentPie({ data, loading }: TreatmentPieProps) {
             </div>
           </div>
 
-          <ul className="space-y-1.5 mt-3">
-            {filtered.map((d, i) => {
+          <ul className="space-y-1.5 mt-2">
+            {grouped.map((d, i) => {
               const pct = total > 0 ? ((d.amount / total) * 100).toFixed(0) : '0'
               return (
                 <li key={i} className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 min-w-0">
                     <span
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ background: PIE_SHADES[i % PIE_SHADES.length] }}

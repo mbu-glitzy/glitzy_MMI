@@ -50,7 +50,7 @@ export function ChannelChart({ data, loading, days = '30' }: ChannelChartProps) 
     <Card variant="glass" className="p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-white">채널별 리드 & 매출</h2>
-        <span className="text-xs text-slate-500">최근 {days}일</span>
+        <span className="text-xs text-slate-500">{days}</span>
       </div>
 
       {loading ? (
