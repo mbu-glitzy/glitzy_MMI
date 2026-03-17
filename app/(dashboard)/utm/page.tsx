@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useClinic } from '@/components/ClinicContext'
 import { Copy, Check, Trash2, ExternalLink, ChevronDown, Link2, QrCode, RefreshCw, Database, FileText, Image, ArrowLeft, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -297,6 +298,8 @@ export default function UtmPage() {
 }
 
 function UtmGenerator({ onBack }: { onBack: () => void }) {
+  const { selectedClinicId: sidebarClinicId } = useClinic()
+
   // Form state
   const [baseUrl, setBaseUrl] = useState('')
   const [platform, setPlatform] = useState('meta')
@@ -333,7 +336,12 @@ function UtmGenerator({ onBack }: { onBack: () => void }) {
   const [adCreatives, setAdCreatives] = useState<AdCreative[]>([])
   const [adCreativesLoading, setAdCreativesLoading] = useState(true)
   const [selectedCreative, setSelectedCreative] = useState<string>('')
-  const [selectedClinicId, setSelectedClinicId] = useState<number | null>(null)
+  const [selectedClinicId, setSelectedClinicId] = useState<number | null>(sidebarClinicId)
+
+  // 사이드바 병원 선택 변경 시 반영
+  useEffect(() => {
+    if (sidebarClinicId !== null) setSelectedClinicId(sidebarClinicId)
+  }, [sidebarClinicId])
 
   // 필터링된 링크 목록 (메모이제이션)
   const filteredLinks = useMemo(() => {
