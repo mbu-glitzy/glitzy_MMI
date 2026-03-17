@@ -164,11 +164,12 @@ export async function POST(req: Request) {
 
   // --- 처리 ---
   try {
-    // 1. 고객 조회/생성
+    // 1. 고객 조회/생성 (clinic_id 기준으로 격리)
     const { data: existingCustomer } = await supabase
       .from('customers')
       .select('*')
       .eq('phone_number', normalizedPhone)
+      .eq('clinic_id', validClinicId)
       .maybeSingle()
 
     let customer = existingCustomer
@@ -199,7 +200,7 @@ export async function POST(req: Request) {
       .from('leads')
       .insert({
         customer_id: customer.id,
-        clinic_id: customer.clinic_id || validClinicId,
+        clinic_id: validClinicId,
         utm_source: finalUtm.utm_source,
         utm_medium: finalUtm.utm_medium,
         utm_campaign: finalUtm.utm_campaign,
@@ -223,7 +224,7 @@ export async function POST(req: Request) {
       const { data: clinic } = await supabase
         .from('clinics')
         .select('notify_phone, notify_phones, notify_enabled, name')
-        .eq('id', customer.clinic_id || validClinicId)
+        .eq('id', validClinicId)
         .single()
 
       if (clinic?.notify_enabled && process.env.SOLAPI_API_KEY) {
@@ -236,7 +237,7 @@ export async function POST(req: Request) {
         if (phones.length > 0) {
           const { sendSmsWithLog } = await import('@/lib/solapi')
           const smsText = `[${clinic.name}] 상담 유입\n이름: ${sanitizedName || '미입력'}\n연락처: ${normalizedPhone}`
-          const clinicId = customer.clinic_id || validClinicId
+          const clinicId = validClinicId
 
           const results = await Promise.all(
             phones.map(phone =>
