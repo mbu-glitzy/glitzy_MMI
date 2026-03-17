@@ -122,8 +122,9 @@ export default function LandingPagesPage() {
           body: formData,
         })
         if (!uploadRes.ok) {
-          const err = await uploadRes.json()
-          throw new Error(err.error || '파일 업로드 실패')
+          let errMsg = '파일 업로드 실패'
+          try { const err = await uploadRes.json(); errMsg = err.error || errMsg } catch {}
+          throw new Error(errMsg)
         }
         const uploadData = await uploadRes.json()
         fileName = uploadData.fileName
@@ -143,8 +144,9 @@ export default function LandingPagesPage() {
         }),
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error)
+        let errMsg = '저장 실패'
+        try { const err = await res.json(); errMsg = err.error || errMsg } catch {}
+        throw new Error(errMsg)
       }
       setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', is_active: true })
       setUploadFile(null)
