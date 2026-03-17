@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClinicFilter, withSuperAdmin, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { parseId, sanitizeString } from '@/lib/security'
 import { logActivity } from '@/lib/activity-log'
 
@@ -90,4 +90,34 @@ export const PATCH = withClinicFilter(async (req: Request, { user, clinicId, ass
   })
 
   return apiSuccess({ success: true, lead_status, notes: updateData.notes })
+})
+
+/**
+ * 리드 삭제 (superadmin 전용)
+ */
+export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
+  const url = new URL(req.url)
+  const id = url.pathname.split('/').pop()
+  const leadId = parseId(id)
+  if (!leadId) return apiError('유효한 ID가 필요합니다.', 400)
+
+  const supabase = serverSupabase()
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('id, clinic_id, customer_id')
+    .eq('id', leadId)
+    .single()
+  if (!lead) return apiError('리드를 찾을 수 없습니다.', 404)
+
+  const { error } = await supabase.from('leads').delete().eq('id', leadId)
+  if (error) return apiError(error.message, 500)
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: lead.clinic_id,
+    action: 'lead_delete', targetTable: 'leads', targetId: leadId,
+    detail: { customer_id: lead.customer_id },
+  })
+
+  return apiSuccess({ deleted: true })
 })

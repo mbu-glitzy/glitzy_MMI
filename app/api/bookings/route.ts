@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
 import { getClinicId } from '@/lib/session'
-import { apiError, apiSuccess } from '@/lib/api-middleware'
+import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import {
   getSessionUser,
   canModifyBooking,
@@ -194,3 +194,30 @@ export async function PATCH(req: Request) {
 
   return apiSuccess(data)
 }
+
+// 예약 삭제 (superadmin 전용)
+export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
+  const { searchParams } = new URL(req.url)
+  const bookingId = parseId(searchParams.get('id'))
+  if (!bookingId) return apiError('유효한 예약 ID가 필요합니다.', 400)
+
+  const supabase = serverSupabase()
+
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('id, clinic_id, customer_id')
+    .eq('id', bookingId)
+    .single()
+  if (!booking) return apiError('예약을 찾을 수 없습니다.', 404)
+
+  const { error } = await supabase.from('bookings').delete().eq('id', bookingId)
+  if (error) return apiError(error.message, 500)
+
+  await logActivity(supabase, {
+    userId: user.id, clinicId: booking.clinic_id,
+    action: 'booking_delete', targetTable: 'bookings', targetId: bookingId,
+    detail: { customer_id: booking.customer_id },
+  })
+
+  return apiSuccess({ deleted: true })
+})

@@ -1,8 +1,10 @@
 'use client'
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, User, Phone, Calendar, TrendingUp, Users, Star, Filter, FileText, Info, X } from 'lucide-react'
+import { Search, User, Phone, Calendar, TrendingUp, Users, Star, Filter, FileText, Info, X, Trash2 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { useClinic } from '@/components/ClinicContext'
+import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -73,7 +75,7 @@ function getCustomerType(customer: any): 'new' | 'revisit' {
   return total >= 2 ? 'revisit' : 'new'
 }
 
-function CustomerDetail({ lead }: { lead: any }) {
+function CustomerDetail({ lead, onDelete }: { lead: any; onDelete?: (leadId: number) => void }) {
   const c = lead.customer
   const payments: any[] = c?.payments || []
   const consultations: any[] = c?.consultations || []
@@ -200,6 +202,20 @@ function CustomerDetail({ lead }: { lead: any }) {
         consultations={consultations}
         payments={payments}
       />
+
+      {/* 삭제 버튼 (superadmin) */}
+      {onDelete && (
+        <div className="mt-5 pt-4 border-t border-white/5 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(lead.id)}
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+          >
+            <Trash2 size={14} /> 이 리드 삭제
+          </Button>
+        </div>
+      )}
     </Card>
   )
 }
@@ -214,6 +230,8 @@ export default function LeadsPage() {
 
 function LeadsContent() {
   const { selectedClinicId } = useClinic()
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user?.role === 'superadmin'
   const searchParams = useSearchParams()
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -235,7 +253,7 @@ function LeadsContent() {
       .catch(() => {})
   }, [selectedClinicId])
 
-  useEffect(() => {
+  const fetchLeads = () => {
     setLoading(true)
     const params = new URLSearchParams()
     if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
@@ -247,7 +265,22 @@ function LeadsContent() {
       .then(d => setLeads(Array.isArray(d) ? d : []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [selectedClinicId, landingPageFilter, campaignFilter])
+  }
+
+  useEffect(() => { fetchLeads() }, [selectedClinicId, landingPageFilter, campaignFilter])
+
+  const handleDeleteLead = async (leadId: number) => {
+    if (!confirm('이 리드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error((await res.json()).error)
+      toast.success('리드가 삭제되었습니다.')
+      setSelected(null)
+      fetchLeads()
+    } catch (e: any) {
+      toast.error(e.message || '삭제에 실패했습니다.')
+    }
+  }
 
   const channels = useMemo(() => {
     const set = new Set<string>()
@@ -430,7 +463,7 @@ function LeadsContent() {
             <SheetHeader className="mb-4">
               <SheetTitle className="text-white">고객 상세</SheetTitle>
             </SheetHeader>
-            {selected && <CustomerDetail lead={selected} />}
+            {selected && <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} />}
           </SheetContent>
         </Sheet>
       </div>
@@ -509,7 +542,7 @@ function LeadsContent() {
         {/* 상세 패널 (데스크톱만) */}
         <div className="hidden md:block md:col-span-3">
           {selected ? (
-            <CustomerDetail lead={selected} />
+            <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} />
           ) : (
             <Card variant="glass" className="p-12 text-center">
               <Star size={32} className="text-slate-600 mx-auto mb-3" />

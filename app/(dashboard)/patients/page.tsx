@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2 } from 'lucide-react'
+import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2, Trash2 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { useClinic } from '@/components/ClinicContext'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -181,7 +182,7 @@ function ConsultationForm({ customerId, current, onSave }: { customerId: number;
 }
 
 // 결제 섹션
-function PaymentSection({ customerId, payments, onSave }: { customerId: number; payments: any[]; onSave: () => void }) {
+function PaymentSection({ customerId, payments, onSave, isSuperAdmin }: { customerId: number; payments: any[]; onSave: () => void; isSuperAdmin?: boolean }) {
   const [form, setForm] = useState({ treatmentName: '', paymentAmount: '', paymentDate: '' })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -224,6 +225,7 @@ function PaymentSection({ customerId, payments, onSave }: { customerId: number; 
               <TableHead className="text-xs text-slate-500 uppercase tracking-wider font-medium">시술명</TableHead>
               <TableHead className="text-xs text-slate-500 uppercase tracking-wider font-medium">금액</TableHead>
               <TableHead className="text-xs text-slate-500 uppercase tracking-wider font-medium">결제일</TableHead>
+              {isSuperAdmin && <TableHead className="text-xs text-slate-500 uppercase tracking-wider font-medium w-10" />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -232,6 +234,24 @@ function PaymentSection({ customerId, payments, onSave }: { customerId: number; 
                 <TableCell className="text-white">{p.treatment_name}</TableCell>
                 <TableCell className="text-emerald-400 font-semibold">₩{Number(p.payment_amount).toLocaleString()}</TableCell>
                 <TableCell className="text-slate-400 text-xs">{formatDate(p.payment_date)}</TableCell>
+                {isSuperAdmin && (
+                  <TableCell>
+                    <button
+                      onClick={async () => {
+                        if (!confirm('이 결제 내역을 삭제하시겠습니까?')) return
+                        try {
+                          const res = await fetch(`/api/payments/${p.id}`, { method: 'DELETE' })
+                          if (!res.ok) throw new Error()
+                          toast.success('결제 내역이 삭제되었습니다.')
+                          onSave()
+                        } catch { toast.error('삭제에 실패했습니다.') }
+                      }}
+                      className="text-red-400 hover:text-red-300 p-1"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -280,7 +300,7 @@ function PaymentSection({ customerId, payments, onSave }: { customerId: number; 
 }
 
 // 예약 행
-function BookingRow({ booking, onRefresh }: { booking: any; onRefresh: () => void }) {
+function BookingRow({ booking, onRefresh, isSuperAdmin }: { booking: any; onRefresh: () => void; isSuperAdmin?: boolean }) {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<'booking' | 'consult' | 'payment'>('booking')
 
@@ -345,7 +365,44 @@ function BookingRow({ booking, onRefresh }: { booking: any; onRefresh: () => voi
           </div>
           {tab === 'booking' && <BookingEditForm booking={booking} onSave={onRefresh} />}
           {tab === 'consult' && <ConsultationForm customerId={customer?.id} current={latestConsult} onSave={onRefresh} />}
-          {tab === 'payment' && <PaymentSection customerId={customer?.id} payments={customer?.payments || []} onSave={onRefresh} />}
+          {tab === 'payment' && <PaymentSection customerId={customer?.id} payments={customer?.payments || []} onSave={onRefresh} isSuperAdmin={isSuperAdmin} />}
+
+          {isSuperAdmin && (
+            <div className="mt-4 pt-4 border-t border-white/5 flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  if (!confirm('이 예약을 삭제하시겠습니까?')) return
+                  try {
+                    const res = await fetch(`/api/bookings?id=${booking.id}`, { method: 'DELETE' })
+                    if (!res.ok) throw new Error()
+                    toast.success('예약이 삭제되었습니다.')
+                    onRefresh()
+                  } catch { toast.error('삭제에 실패했습니다.') }
+                }}
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <Trash2 size={14} /> 예약 삭제
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  if (!confirm(`${customer?.name || '이 고객'}의 모든 데이터(리드, 예약, 상담, 결제)가 삭제됩니다. 계속하시겠습니까?`)) return
+                  try {
+                    const res = await fetch(`/api/patients/${customer?.id}`, { method: 'DELETE' })
+                    if (!res.ok) throw new Error()
+                    toast.success('고객 데이터가 삭제되었습니다.')
+                    onRefresh()
+                  } catch { toast.error('삭제에 실패했습니다.') }
+                }}
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <Trash2 size={14} /> 고객 전체 삭제
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -355,6 +412,8 @@ function BookingRow({ booking, onRefresh }: { booking: any; onRefresh: () => voi
 // 메인 페이지
 export default function PatientsPage() {
   const { selectedClinicId } = useClinic()
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user?.role === 'superadmin'
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'list' | 'calendar'>('list')
@@ -647,7 +706,7 @@ export default function PatientsPage() {
               </Card>
               <div className="space-y-2 min-w-[640px]">
                 {filtered.map(b => (
-                  <BookingRow key={b.id} booking={b} onRefresh={fetchBookings} />
+                  <BookingRow key={b.id} booking={b} onRefresh={fetchBookings} isSuperAdmin={isSuperAdmin} />
                 ))}
               </div>
             </div>
