@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { parseId } from '@/lib/security'
 import { logActivity } from '@/lib/activity-log'
+import { archiveBeforeDelete } from '@/lib/archive'
 
 function getIdFromUrl(req: Request): number | null {
   const url = new URL(req.url)
@@ -22,6 +23,7 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
     .single()
   if (!payment) return apiError('결제를 찾을 수 없습니다.', 404)
 
+  await archiveBeforeDelete(supabase, 'payments', paymentId, user.id, payment.clinic_id)
   const { error } = await supabase.from('payments').delete().eq('id', paymentId)
   if (error) return apiError(error.message, 500)
 

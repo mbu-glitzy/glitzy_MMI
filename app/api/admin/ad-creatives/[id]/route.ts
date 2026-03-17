@@ -3,6 +3,7 @@ import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString, parseId } from '@/lib/security'
 import { buildUtmUrl } from '@/lib/utm'
 import { createLogger } from '@/lib/logger'
+import { archiveBeforeDelete } from '@/lib/archive'
 
 const logger = createLogger('AdCreatives')
 
@@ -203,7 +204,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
   return apiSuccess(data)
 })
 
-export const DELETE = withSuperAdmin(async (req: Request) => {
+export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
   const creativeId = getCreativeIdFromUrl(req)
   if (creativeId === null) {
     return apiError('유효하지 않은 ID입니다.', 400)
@@ -222,6 +223,7 @@ export const DELETE = withSuperAdmin(async (req: Request) => {
     return apiError('광고 소재를 찾을 수 없습니다.', 404)
   }
 
+  await archiveBeforeDelete(supabase, 'ad_creatives', creativeId, user.id)
   const { error } = await supabase
     .from('ad_creatives')
     .delete()

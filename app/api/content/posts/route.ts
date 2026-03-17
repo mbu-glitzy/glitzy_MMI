@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { canAccessContentPost, parseId } from '@/lib/security'
+import { archiveBeforeDelete } from '@/lib/archive'
 
 // 콘텐츠 목록 조회 (최신 통계 포함)
 export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
@@ -134,6 +135,7 @@ export const DELETE = withClinicFilter(async (req: Request, { user }: ClinicCont
     return apiError(accessCheck.error || '권한이 없습니다.', 403)
   }
 
+  await archiveBeforeDelete(supabase, 'content_posts', postId, user.id)
   const { error } = await supabase.from('content_posts').delete().eq('id', postId)
   if (error) return apiError(error.message, 500)
   return apiSuccess({ success: true })

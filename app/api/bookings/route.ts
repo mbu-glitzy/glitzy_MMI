@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
 import { getClinicId } from '@/lib/session'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
+import { archiveBeforeDelete } from '@/lib/archive'
 import {
   getSessionUser,
   canModifyBooking,
@@ -210,6 +211,7 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
     .single()
   if (!booking) return apiError('예약을 찾을 수 없습니다.', 404)
 
+  await archiveBeforeDelete(supabase, 'bookings', bookingId, user.id, booking.clinic_id)
   const { error } = await supabase.from('bookings').delete().eq('id', bookingId)
   if (error) return apiError(error.message, 500)
 

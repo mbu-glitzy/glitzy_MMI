@@ -6,6 +6,7 @@
 import { withClinicFilter, apiError, apiSuccess, ClinicContext } from '@/lib/api-middleware'
 import { serverSupabase } from '@/lib/supabase'
 import { parseId } from '@/lib/security'
+import { archiveBeforeDelete } from '@/lib/archive'
 
 export const DELETE = withClinicFilter(async (req: Request, { user, clinicId }: ClinicContext) => {
   const url = new URL(req.url)
@@ -35,6 +36,7 @@ export const DELETE = withClinicFilter(async (req: Request, { user, clinicId }: 
     return apiError('이 링크를 삭제할 권한이 없습니다.', 403)
   }
 
+  await archiveBeforeDelete(supabase, 'utm_links', linkId, user.id, link.clinic_id)
   const { error } = await supabase
     .from('utm_links')
     .delete()

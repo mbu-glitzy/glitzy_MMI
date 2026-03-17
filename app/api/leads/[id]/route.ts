@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, withSuperAdmin, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { parseId, sanitizeString } from '@/lib/security'
 import { logActivity } from '@/lib/activity-log'
+import { archiveBeforeDelete } from '@/lib/archive'
 
 const VALID_LEAD_STATUSES = ['new', 'no_answer', 'consulted', 'booked', 'hold', 'rejected'] as const
 
@@ -110,6 +111,7 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
     .single()
   if (!lead) return apiError('리드를 찾을 수 없습니다.', 404)
 
+  await archiveBeforeDelete(supabase, 'leads', leadId, user.id, lead.clinic_id)
   const { error } = await supabase.from('leads').delete().eq('id', leadId)
   if (error) return apiError(error.message, 500)
 

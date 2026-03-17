@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess, AuthContext } from '@/lib/api-middleware'
 import { sanitizeString, parseId } from '@/lib/security'
+import { archiveBeforeDelete } from '@/lib/archive'
 import fs from 'fs'
 import path from 'path'
 
@@ -114,6 +115,7 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }: AuthContext)
 
   const supabase = serverSupabase()
 
+  await archiveBeforeDelete(supabase, 'landing_pages', lpId, user.id)
   const { error } = await supabase
     .from('landing_pages')
     .delete()

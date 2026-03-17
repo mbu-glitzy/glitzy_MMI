@@ -209,7 +209,7 @@ function CustomerDetail({ lead, onDelete }: { lead: any; onDelete?: (leadId: num
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onDelete(lead.id)}
+            onClick={() => onDelete(lead.latest_lead?.id || lead.leads?.[0]?.id)}
             className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
           >
             <Trash2 size={14} /> 이 리드 삭제

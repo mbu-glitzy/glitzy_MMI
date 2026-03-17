@@ -8,6 +8,7 @@ import { withClinicFilter, apiError, apiSuccess, ClinicContext } from '@/lib/api
 import { serverSupabase } from '@/lib/supabase'
 import { sanitizeUtmParam } from '@/lib/utm'
 import { parseId, sanitizeString } from '@/lib/security'
+import { archiveBeforeDelete } from '@/lib/archive'
 
 export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: ClinicContext) => {
   const url = new URL(req.url)
@@ -133,6 +134,7 @@ export const DELETE = withClinicFilter(async (req: Request, { user, clinicId }: 
     return apiError('이 템플릿을 삭제할 권한이 없습니다.', 403)
   }
 
+  await archiveBeforeDelete(supabase, 'utm_templates', templateId, user.id, template.clinic_id)
   const { error } = await supabase
     .from('utm_templates')
     .delete()
