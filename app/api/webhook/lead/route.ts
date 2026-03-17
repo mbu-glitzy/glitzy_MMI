@@ -15,6 +15,7 @@ import {
   type UtmParams,
 } from '@/lib/utm'
 import { createLogger } from '@/lib/logger'
+import { sendErrorAlert } from '@/lib/error-alert'
 
 const logger = createLogger('WebhookLead')
 
@@ -289,6 +290,7 @@ export async function POST(req: Request) {
     const errorMsg = err instanceof Error ? err.message : String(err)
     logger.error('리드 처리 실패', err as Error, { rawLogId, clinic_id: validClinicId })
     await updateRawLog(supabase, rawLogId, { status: 'failed', error_message: errorMsg })
+    sendErrorAlert('lead_webhook_fail', `리드 처리 실패: ${errorMsg}`, { rawLogId, clinic_id: validClinicId }).catch(() => {})
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 }

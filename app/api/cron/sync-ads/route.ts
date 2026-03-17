@@ -2,6 +2,7 @@ import { fetchMetaAds } from '@/lib/services/metaAds'
 import { fetchGoogleAds } from '@/lib/services/googleAds'
 import { fetchTikTokAds } from '@/lib/services/tiktokAds'
 import { apiError, apiSuccess } from '@/lib/api-middleware'
+import { sendErrorAlert } from '@/lib/error-alert'
 
 export const maxDuration = 60
 
@@ -20,6 +21,15 @@ export async function GET(req: Request) {
     fetchGoogleAds(yesterday),
     fetchTikTokAds(yesterday),
   ])
+
+  const failures = [
+    metaResult.status === 'rejected' && 'Meta',
+    googleResult.status === 'rejected' && 'Google',
+    tiktokResult.status === 'rejected' && 'TikTok',
+  ].filter(Boolean)
+  if (failures.length > 0) {
+    sendErrorAlert('ad_sync_fail', `광고 동기화 실패: ${failures.join(', ')}`).catch(() => {})
+  }
 
   console.log('[CronJob] 광고 데이터 자동 수집 완료')
   return apiSuccess({

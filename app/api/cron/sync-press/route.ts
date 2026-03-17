@@ -1,5 +1,6 @@
 import { syncPressForClinic } from '@/lib/services/pressSync'
 import { apiError, apiSuccess } from '@/lib/api-middleware'
+import { sendErrorAlert } from '@/lib/error-alert'
 
 export const maxDuration = 60
 
@@ -9,7 +10,13 @@ export async function GET(req: Request) {
     return apiError('Unauthorized', 401)
   }
 
-  const inserted = await syncPressForClinic(null) // null = 전체 병원
-  console.log(`[CronJob] 언론보도 자동 수집 완료 — ${inserted}건`)
-  return apiSuccess({ success: true, inserted })
+  try {
+    const inserted = await syncPressForClinic(null) // null = 전체 병원
+    console.log(`[CronJob] 언론보도 자동 수집 완료 — ${inserted}건`)
+    return apiSuccess({ success: true, inserted })
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
+    sendErrorAlert('press_sync_fail', `언론보도 동기화 실패: ${errorMsg}`).catch(() => {})
+    return apiError('동기화 실패', 500)
+  }
 }
