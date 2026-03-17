@@ -61,7 +61,7 @@ export default function LandingPagesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<LandingPage | null>(null)
-  const [form, setForm] = useState({ name: '', file_name: '', clinic_id: '', description: '', is_active: true })
+  const [form, setForm] = useState({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', is_active: true })
   const [saving, setSaving] = useState(false)
   const [fileMode, setFileMode] = useState<'select' | 'upload'>('select')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -146,7 +146,7 @@ export default function LandingPagesPage() {
         const err = await res.json()
         throw new Error(err.error)
       }
-      setForm({ name: '', file_name: '', clinic_id: '', description: '', is_active: true })
+      setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', is_active: true })
       setUploadFile(null)
       setFileMode('select')
       setEditing(null)
@@ -170,6 +170,7 @@ export default function LandingPagesPage() {
       file_name: lp.file_name,
       clinic_id: lp.clinic_id ? String(lp.clinic_id) : '',
       description: lp.description || '',
+      gtm_id: (lp as any).gtm_id || '',
       is_active: lp.is_active,
     })
     setDialogOpen(true)
@@ -215,7 +216,7 @@ export default function LandingPagesPage() {
         setDialogOpen(open)
         if (!open) {
           setEditing(null)
-          setForm({ name: '', file_name: '', clinic_id: '', description: '', is_active: true })
+          setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', is_active: true })
           setUploadFile(null)
           setFileMode('select')
         }
@@ -336,6 +337,15 @@ export default function LandingPagesPage() {
                 placeholder="관리자 메모"
                 rows={2}
               />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-400">GTM ID</Label>
+              <Input
+                value={form.gtm_id}
+                onChange={e => setForm(f => ({ ...f, gtm_id: e.target.value }))}
+                placeholder="GTM-XXXXXXX (미입력 시 기본값 사용)"
+              />
+              <p className="text-[10px] text-slate-600">랜딩페이지 서빙 시 자동 삽입됩니다. 비워두면 기본 GTM ID가 적용됩니다.</p>
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-xs text-slate-400">활성화</Label>

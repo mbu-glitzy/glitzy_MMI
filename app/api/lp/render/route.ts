@@ -116,7 +116,33 @@ export async function GET(req: NextRequest) {
 })();
 </script>`
 
-  htmlContent = htmlContent.replace('</head>', `${dataScript}${leadQueueScript}</head>`)
+  // GTM 태그 주입 (랜딩페이지별 또는 기본 GTM ID)
+  const DEFAULT_GTM_ID = 'GTM-5B2QSHGG'
+  const gtmId = landingPage.gtm_id || DEFAULT_GTM_ID
+  const gtmHeadScript = `
+<!-- Google Tag Manager (auto-injected) -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${gtmId}');</script>
+<!-- End Google Tag Manager -->`
+
+  const gtmBodyScript = `
+<!-- Google Tag Manager (noscript, auto-injected) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${gtmId}"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->`
+
+  // 기존 GTM 태그가 HTML에 있으면 제거 (중복 방지)
+  htmlContent = htmlContent.replace(/<!-- Google Tag Manager -->[\s\S]*?<!-- End Google Tag Manager -->/g, '')
+  htmlContent = htmlContent.replace(/<!-- Google Tag Manager \(noscript\) -->[\s\S]*?<!-- End Google Tag Manager \(noscript\) -->/g, '')
+  // auto-injected 주석 버전도 제거 (재렌더링 시)
+  htmlContent = htmlContent.replace(/<!-- Google Tag Manager \(auto-injected\) -->[\s\S]*?<!-- End Google Tag Manager -->/g, '')
+  htmlContent = htmlContent.replace(/<!-- Google Tag Manager \(noscript, auto-injected\) -->[\s\S]*?<!-- End Google Tag Manager \(noscript\) -->/g, '')
+
+  htmlContent = htmlContent.replace('</head>', `${gtmHeadScript}${dataScript}${leadQueueScript}</head>`)
+  htmlContent = htmlContent.replace(/<body([^>]*)>/, `<body$1>${gtmBodyScript}`)
 
   return new NextResponse(htmlContent, {
     status: 200,
