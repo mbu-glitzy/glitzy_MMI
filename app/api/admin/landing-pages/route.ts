@@ -91,20 +91,17 @@ export const POST = withSuperAdmin(async (req: Request) => {
   // 8자리 랜덤 ID 생성
   const newId = await generateUniqueLpId(supabase)
 
-  const insertData: Record<string, unknown> = {
-    id: newId,
-    name: sanitizeString(name, 100),
-    file_name: sanitizeString(safeFileName, 100),
-    clinic_id: validClinicId,
-    description: description ? sanitizeString(description, 500) : null,
-    is_active: is_active !== false,
-  }
-  // gtm_id가 제공된 경우에만 포함 (컬럼 미존재 시 에러 방지)
-  if (gtm_id) insertData.gtm_id = sanitizeString(gtm_id, 20)
-
   const { data, error } = await supabase
     .from('landing_pages')
-    .insert(insertData)
+    .insert({
+      id: newId,
+      name: sanitizeString(name, 100),
+      file_name: sanitizeString(safeFileName, 100),
+      clinic_id: validClinicId,
+      description: description ? sanitizeString(description, 500) : null,
+      gtm_id: gtm_id ? sanitizeString(gtm_id, 20) : null,
+      is_active: is_active !== false,
+    })
     .select('*, clinic:clinics(id, name)')
     .single()
 
