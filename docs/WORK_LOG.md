@@ -16,10 +16,24 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | Phase 3: 운영 기능 | 2026-03-16~ | 캠페인, 알림, 상태관리, 예약 등록, UTM 개편 (P13~P17) | 완료 | [상세](work-log/phase3-operations.md) |
 | Phase 4: 모니터링 + 역할 | 2026-03-16~ | 순위 모니터링, agency_staff 역할, 메뉴 권한 (P18) | 완료 | [상세](work-log/phase4-monitoring.md) |
 | E2E 테스트 | 2026-03-16 | Playwright 106개 테스트 | 완료 | [상세](work-log/e2e-tests.md) |
+| Phase 5: 대시보드 고도화 | 2026-03-17~ | KPI 재구성, 오늘 요약, 듀얼 차트, 채널 바차트, 퍼널 분리 | 진행 중 | [상세](work-log/phase5-dashboard-overhaul.md) |
 
 ---
 
-## 최신 작업 (Phase 4)
+## 최신 작업 (Phase 5: 대시보드 고도화)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| P19-1 | 공용 인프라 | 채널 색상 유틸(`lib/channel-colors.ts`), StatsCard에 onClick/subtitle/size/icon/subtitleColor props 추가 | 03-17 |
+| P19-2A | KPI API 개선 | `today` 오늘 요약(리드/예약/매출 + 전일 대비), `totalConsultations` 필드, comparison에 `totalLeads`/`totalConsultations`/`totalSpend` 추가 | 03-17 |
+| P19-2B | 상단 섹션 컴포넌트 | `TodaySummary`(오늘 3카드), `KpiSection`(6카드 비즈니스 흐름순), `SpendLeadTrend`(듀얼 축 ComposedChart) | 03-17 |
+| P19-2C | 하단 섹션 컴포넌트 | `ChannelChart`(채널별 바차트), `TreatmentPie`(시술별 매출 파이), `FunnelSection`(퍼널 분리) | 03-17 |
+
+> 상세 구현 계획: [PLAN_dashboard-overhaul.md](plans/PLAN_dashboard-overhaul.md)
+
+---
+
+## Phase 4 작업
 
 | # | 작업 | 핵심 내용 | 날짜 |
 |---|------|----------|------|
@@ -62,7 +76,6 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 ## 향후 작업 가능 항목
 
 1. **광고 소재 성과 연동**: 소재별 리드 수, CPL, 전환율 표시
-2. **대시보드 드릴다운**: KPI 카드 클릭 → 채널별 상세
-3. **예약 페이지 유입 경로**: 채널/캠페인 컬럼 추가
-4. **단위 테스트**: Jest + React Testing Library
-5. **성능 모니터링**: Web Vitals 측정
+2. **예약 페이지 유입 경로**: 채널/캠페인 컬럼 추가
+3. **단위 테스트**: Jest + React Testing Library
+4. **성능 모니터링**: Web Vitals 측정

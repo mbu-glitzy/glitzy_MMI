@@ -49,6 +49,7 @@ async function fetchMetrics(
     totalRevenue,
     totalLeads,
     totalSpend,
+    totalConsultations: bookedCount,
     cac,
     arpc,
     payingCustomerCount,
@@ -61,10 +62,59 @@ function calcChange(prev: number, curr: number): number {
   return Number((((curr - prev) / prev) * 100).toFixed(1))
 }
 
+// 오늘 요약 데이터 (리드, 예약, 매출 + 전일 대비)
+async function fetchTodaySummary(
+  supabase: SupabaseClient,
+  clinicId: number | null,
+  assignedClinicIds: number[] | null,
+) {
+  const applyFilter = <T>(q: T): T => {
+    if (clinicId) return (q as any).eq('clinic_id', clinicId)
+    if (assignedClinicIds !== null && assignedClinicIds.length > 0) return (q as any).in('clinic_id', assignedClinicIds)
+    return q
+  }
+
+  // KST 기준 오늘 00:00 ~ 23:59
+  const now = new Date()
+  const kstOffset = 9 * 60 * 60 * 1000
+  const kstNow = new Date(now.getTime() + kstOffset)
+  const todayStart = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()) - kstOffset).toISOString()
+  const todayEnd = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() + 1) - kstOffset).toISOString()
+  const yesterdayStart = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - 1) - kstOffset).toISOString()
+
+  const [todayLeads, todayBookings, todayPayments, yesterdayLeads, yesterdayBookings, yesterdayPayments] = await Promise.all([
+    applyFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', todayStart).lt('created_at', todayEnd)),
+    applyFilter(supabase.from('bookings').select('*', { count: 'exact', head: true }).neq('status', 'cancelled').gte('created_at', todayStart).lt('created_at', todayEnd)),
+    applyFilter(supabase.from('payments').select('payment_amount').gte('payment_date', todayStart).lt('payment_date', todayEnd)),
+    applyFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', yesterdayStart).lt('created_at', todayStart)),
+    applyFilter(supabase.from('bookings').select('*', { count: 'exact', head: true }).neq('status', 'cancelled').gte('created_at', yesterdayStart).lt('created_at', todayStart)),
+    applyFilter(supabase.from('payments').select('payment_amount').gte('payment_date', yesterdayStart).lt('payment_date', todayStart)),
+  ])
+
+  const leads = todayLeads.count || 0
+  const bookings = todayBookings.count || 0
+  const revenue = todayPayments.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
+  const yLeads = yesterdayLeads.count || 0
+  const yBookings = yesterdayBookings.count || 0
+  const yRevenue = yesterdayPayments.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
+
+  return {
+    leads,
+    bookings,
+    revenue,
+    leadsDiff: leads - yLeads,
+    bookingsDiff: bookings - yBookings,
+    revenueDiff: revenue - yRevenue,
+  }
+}
+
 export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
   // agency_staff 배정 병원 0개 → 빈 결과
   if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
-    return NextResponse.json({ cpl: 0, roas: 0, bookingRate: 0, totalRevenue: 0, totalLeads: 0, totalSpend: 0, cac: 0, arpc: 0, payingCustomerCount: 0 })
+    return NextResponse.json({
+      cpl: 0, roas: 0, bookingRate: 0, totalRevenue: 0, totalLeads: 0, totalSpend: 0, totalConsultations: 0, cac: 0, arpc: 0, payingCustomerCount: 0,
+      today: { leads: 0, bookings: 0, revenue: 0, leadsDiff: 0, bookingsDiff: 0, revenueDiff: 0 },
+    })
   }
 
   const supabase = serverSupabase()
@@ -73,7 +123,11 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const end = url.searchParams.get('endDate') || new Date().toISOString()
   const compare = url.searchParams.get('compare') === 'true'
 
-  const current = await fetchMetrics(supabase, clinicId, assignedClinicIds, start, end)
+  // 기간 KPI + 오늘 요약 병렬 조회
+  const [current, today] = await Promise.all([
+    fetchMetrics(supabase, clinicId, assignedClinicIds, start, end),
+    fetchTodaySummary(supabase, clinicId, assignedClinicIds),
+  ])
 
   // 비교 모드: 전기 데이터와 변화율 계산
   if (compare) {
@@ -85,16 +139,20 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
 
     return NextResponse.json({
       ...current,
+      today,
       comparison: {
         cpl: calcChange(previous.cpl, current.cpl),
         roas: calcChange(previous.roas, current.roas),
         bookingRate: calcChange(previous.bookingRate, current.bookingRate),
         totalRevenue: calcChange(previous.totalRevenue, current.totalRevenue),
+        totalLeads: calcChange(previous.totalLeads, current.totalLeads),
+        totalConsultations: calcChange(previous.totalConsultations, current.totalConsultations),
+        totalSpend: calcChange(previous.totalSpend, current.totalSpend),
         cac: calcChange(previous.cac, current.cac),
         arpc: calcChange(previous.arpc, current.arpc),
       },
     })
   }
 
-  return NextResponse.json(current)
+  return NextResponse.json({ ...current, today })
 })

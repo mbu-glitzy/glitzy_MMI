@@ -33,6 +33,14 @@ components/
 │   ├── status-badge.tsx
 │   └── empty-state.tsx
 │
+├── charts/               # Recharts 코드 스플리팅 래퍼
+│   └── index.tsx          # AreaChart, BarChart, PieChart, LineChart, ComposedChart 등
+│
+├── dashboard/            # 대시보드 섹션 컴포넌트
+│   ├── today-summary.tsx  # 오늘 요약 (문의/예약/매출)
+│   ├── kpi-section.tsx    # KPI 카드 6개 (비즈니스 흐름순)
+│   └── spend-lead-trend.tsx # 광고비+리드 듀얼 축 차트
+│
 ├── Sidebar.tsx            # 사이드바 네비게이션
 ├── ClinicContext.tsx      # 병원 선택 Context
 └── Providers.tsx          # 전역 Provider
@@ -277,6 +285,53 @@ import { StatusBadge } from '@/components/common'
 <StatusBadge status="cancelled" />
 ```
 
+### StatsCard
+
+```tsx
+import { StatsCard } from '@/components/common'
+import { TrendingUp } from 'lucide-react'
+
+// 기본
+<StatsCard label="총 문의" value="150건" />
+
+// 트렌드 표시 (전기 대비 %)
+<StatsCard
+  label="총 매출"
+  value="₩5,000만"
+  trend={{ value: 15.2, isPositive: true }}
+/>
+
+// 클릭 네비게이션
+<StatsCard
+  label="광고비"
+  value="₩500만"
+  onClick={() => router.push('/ads')}
+/>
+
+// 큰 사이즈 + 아이콘 + 서브타이틀 (오늘 요약용)
+<StatsCard
+  label="오늘 문의"
+  value="5건"
+  size="lg"
+  icon={TrendingUp}
+  subtitle="전일 대비 +2건"
+  subtitleColor="positive"   // 'default' | 'positive' | 'negative'
+/>
+```
+
+**Props:**
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `label` | string | required | 카드 라벨 |
+| `value` | string \| number | required | 표시 값 |
+| `loading` | boolean | false | 스켈레톤 표시 |
+| `icon` | LucideIcon | - | 라벨 옆 아이콘 |
+| `trend` | `{ value: number, isPositive: boolean }` | - | 증감 화살표 + 퍼센트 |
+| `onClick` | `() => void` | - | 클릭 시 커서/호버 효과 |
+| `subtitle` | string | - | value 아래 보조 텍스트 |
+| `subtitleColor` | `'default' \| 'positive' \| 'negative'` | `'default'` | 서브타이틀 색상 |
+| `size` | `'default' \| 'lg'` | `'default'` | lg: 큰 폰트 + 패딩 |
+
 ### EmptyState
 
 ```tsx
@@ -288,6 +343,88 @@ import { FileX } from 'lucide-react'
   title="데이터가 없습니다"
   description="새 데이터를 추가하세요"
 />
+```
+
+---
+
+## 대시보드 섹션 컴포넌트
+
+대시보드 page.tsx를 섹션별로 분리한 컴포넌트들입니다.
+각 컴포넌트는 `data`와 `loading` props로 독립 로딩이 가능합니다.
+
+### TodaySummary
+
+오늘 문의/예약/매출 3카드를 큰 사이즈로 표시합니다.
+
+```tsx
+import { TodaySummary } from '@/components/dashboard/today-summary'
+
+<TodaySummary
+  data={{
+    leads: 5, bookings: 3, revenue: 3000000,
+    leadsDiff: 2, bookingsDiff: -1, revenueDiff: 500000,
+  }}
+  loading={false}
+/>
+```
+
+### KpiSection
+
+6개 KPI를 비즈니스 흐름순(총 문의 → 예약 전환율 → 총 방문 → 총 매출 → 광고비 → ROAS)으로 표시합니다.
+
+```tsx
+import { KpiSection } from '@/components/dashboard/kpi-section'
+
+<KpiSection
+  data={kpiData}        // KPI API 응답 객체
+  loading={false}
+  onNavigate={(path) => router.push(path)}  // 카드 클릭 시 이동
+/>
+```
+
+### SpendLeadTrend
+
+광고비(Area) + 리드 수(Line) 듀얼 축 차트입니다.
+
+```tsx
+import { SpendLeadTrend } from '@/components/dashboard/spend-lead-trend'
+
+<SpendLeadTrend
+  data={[
+    { date: '3/1', spend: 500000, leads: 12 },
+    { date: '3/8', spend: 600000, leads: 15 },
+  ]}
+  loading={false}
+/>
+```
+
+---
+
+## 차트 래퍼
+
+`components/charts/index.tsx`에서 Recharts를 코드 스플리팅으로 제공합니다.
+
+```tsx
+import {
+  AreaChart, BarChart, PieChart, LineChart, ComposedChart,
+  ResponsiveContainer,
+  Area, Bar, Line, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from '@/components/charts'
+```
+
+- 컨테이너 컴포넌트(`AreaChart`, `ComposedChart` 등)는 `dynamic()` import (SSR 비활성)
+- 자식 컴포넌트(`Area`, `XAxis` 등)는 직접 re-export (번들 분리 불필요)
+- `ComposedChart`: Area + Line 등 서로 다른 차트를 한 축에 결합할 때 사용
+
+### 채널 색상 유틸
+
+```tsx
+import { getChannelColor, CHANNEL_COLORS } from '@/lib/channel-colors'
+
+getChannelColor('Meta')    // → '#3b82f6'
+getChannelColor('Google')  // → '#ef4444'
+getChannelColor('unknown') // → '#64748b' (기본 slate)
 ```
 
 ---

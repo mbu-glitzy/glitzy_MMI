@@ -9,38 +9,68 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const defaultStart = new Date(Date.now() - 56 * 24 * 60 * 60 * 1000).toISOString()
   const startDate = url.searchParams.get('startDate') || defaultStart
 
-  let query = supabase
+  // 광고 지출 + 리드 수 병렬 조회
+  let adQuery = supabase
     .from('ad_campaign_stats')
     .select('stat_date, spend_amount, campaign_id')
     .gte('stat_date', startDate)
     .order('stat_date')
 
-  const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
-  if (filtered === null) return apiSuccess([])
-  query = filtered
+  let leadQuery = supabase
+    .from('leads')
+    .select('created_at')
+    .gte('created_at', startDate)
+    .order('created_at')
 
-  const { data, error } = await query
-  if (error) return apiError(error.message, 500)
+  const adFiltered = applyClinicFilter(adQuery, { clinicId, assignedClinicIds })
+  const leadFiltered = applyClinicFilter(leadQuery, { clinicId, assignedClinicIds })
 
-  // JS에서 주별 집계
-  const weekMap = new Map<string, { week: string; spend: number; campaigns: Set<string> }>()
-  for (const row of data || []) {
-    const d = new Date(row.stat_date)
+  if (adFiltered === null && leadFiltered === null) return apiSuccess([])
+  if (adFiltered) adQuery = adFiltered
+  if (leadFiltered) leadQuery = leadFiltered
+
+  const [adRes, leadRes] = await Promise.all([
+    adFiltered ? adQuery : Promise.resolve({ data: [] as any[], error: null }),
+    leadFiltered ? leadQuery : Promise.resolve({ data: [] as any[], error: null }),
+  ])
+
+  if (adRes.error) return apiError(adRes.error.message, 500)
+  if (leadRes.error) return apiError(leadRes.error.message, 500)
+
+  // 주 시작일 계산 헬퍼
+  const getWeekKey = (dateStr: string) => {
+    const d = new Date(dateStr)
     const weekStart = new Date(d)
     weekStart.setDate(d.getDate() - d.getDay())
     weekStart.setHours(0, 0, 0, 0)
-    const key = weekStart.toISOString()
-    if (!weekMap.has(key)) weekMap.set(key, { week: key, spend: 0, campaigns: new Set() })
+    return weekStart.toISOString()
+  }
+
+  // 광고 데이터 주별 집계
+  const weekMap = new Map<string, { week: string; spend: number; campaigns: Set<string>; leads: number }>()
+  for (const row of adRes.data || []) {
+    const key = getWeekKey(row.stat_date)
+    if (!weekMap.has(key)) weekMap.set(key, { week: key, spend: 0, campaigns: new Set(), leads: 0 })
     const w = weekMap.get(key)!
     w.spend += Number(row.spend_amount)
     w.campaigns.add(row.campaign_id)
   }
 
-  const result = [...weekMap.values()].map(w => ({
-    week: w.week,
-    spend: w.spend,
-    campaigns: w.campaigns.size,
-  }))
+  // 리드 데이터 주별 집계
+  for (const row of leadRes.data || []) {
+    const key = getWeekKey(row.created_at)
+    if (!weekMap.has(key)) weekMap.set(key, { week: key, spend: 0, campaigns: new Set(), leads: 0 })
+    weekMap.get(key)!.leads += 1
+  }
+
+  const result = [...weekMap.values()]
+    .sort((a, b) => a.week.localeCompare(b.week))
+    .map(w => ({
+      week: w.week,
+      spend: w.spend,
+      campaigns: w.campaigns.size,
+      leads: w.leads,
+    }))
 
   return apiSuccess(result)
 })

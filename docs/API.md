@@ -39,11 +39,12 @@ MMI 대시보드의 REST API 엔드포인트 문서입니다.
 
 ### GET /api/dashboard/kpi
 
-전체 KPI 지표를 조회합니다.
+전체 KPI 지표 + 오늘 요약을 조회합니다.
 
 **Query Parameters:**
 - `startDate` (optional): 시작일
 - `endDate` (optional): 종료일 (기본: 최근 30일)
+- `compare` (optional): `true`이면 전기 대비 변화율 포함
 - `clinic_id` (optional): 병원 ID
 
 **Response:**
@@ -55,11 +56,34 @@ MMI 대시보드의 REST API 엔드포인트 문서입니다.
   "totalRevenue": 50000000,
   "totalLeads": 150,
   "totalSpend": 5000000,
+  "totalConsultations": 45,
   "cac": 250000,
   "arpc": 1500000,
-  "payingCustomerCount": 20
+  "payingCustomerCount": 20,
+  "today": {
+    "leads": 5,
+    "bookings": 3,
+    "revenue": 3000000,
+    "leadsDiff": 2,
+    "bookingsDiff": -1,
+    "revenueDiff": 500000
+  },
+  "comparison": {
+    "cpl": -12.5,
+    "roas": 8.3,
+    "bookingRate": 5.0,
+    "totalRevenue": 15.2,
+    "totalLeads": 10.0,
+    "totalConsultations": 7.5,
+    "totalSpend": -3.2,
+    "cac": -8.1,
+    "arpc": 12.0
+  }
 }
 ```
+
+> `today`: 항상 포함 (KST 기준 오늘 + 전일 대비 증감)
+> `comparison`: `compare=true`일 때만 포함 (전기 대비 변화율 %)
 
 ### GET /api/dashboard/channel
 

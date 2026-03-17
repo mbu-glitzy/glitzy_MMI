@@ -46,6 +46,11 @@ export const LineChart = dynamic(
   { ssr: false, loading: () => <ChartLoading /> }
 ) as ComponentType<any>
 
+export const ComposedChart = dynamic(
+  () => import('recharts').then(mod => mod.ComposedChart),
+  { ssr: false, loading: () => <ChartLoading /> }
+) as ComponentType<any>
+
 export const ResponsiveContainer = dynamic(
   () => import('recharts').then(mod => mod.ResponsiveContainer),
   { ssr: false }
