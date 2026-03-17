@@ -1,6 +1,10 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString, parseId } from '@/lib/security'
+import { buildUtmUrl } from '@/lib/utm'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('AdCreatives')
 
 export const GET = withSuperAdmin(async (req: Request) => {
   const url = new URL(req.url)
@@ -125,5 +129,59 @@ export const POST = withSuperAdmin(async (req: Request) => {
     .single()
 
   if (error) return apiError(error.message, 500)
+
+  // utm_links 자동 생성 (실패해도 메인 응답에 영향 없음)
+  try {
+    if (validLandingPageId && data) {
+      const baseUrl = `${process.env.NEXTAUTH_URL || 'https://localhost:3000'}/lp?id=${validLandingPageId}`
+      const generatedUrl = buildUtmUrl({
+        baseUrl,
+        source: data.utm_source || undefined,
+        medium: data.utm_medium || undefined,
+        campaign: data.utm_campaign || undefined,
+        content: data.utm_content || undefined,
+        term: data.utm_term || undefined,
+      })
+
+      if (generatedUrl) {
+        const { data: existingLink } = await supabase
+          .from('utm_links')
+          .select('id')
+          .eq('clinic_id', validClinicId)
+          .eq('utm_content', data.utm_content)
+          .maybeSingle()
+
+        if (existingLink) {
+          await supabase
+            .from('utm_links')
+            .update({
+              original_url: generatedUrl,
+              utm_source: data.utm_source,
+              utm_medium: data.utm_medium,
+              utm_campaign: data.utm_campaign,
+              utm_term: data.utm_term,
+              label: data.name,
+            })
+            .eq('id', existingLink.id)
+        } else {
+          await supabase
+            .from('utm_links')
+            .insert({
+              clinic_id: validClinicId,
+              original_url: generatedUrl,
+              utm_source: data.utm_source,
+              utm_medium: data.utm_medium,
+              utm_campaign: data.utm_campaign,
+              utm_content: data.utm_content,
+              utm_term: data.utm_term,
+              label: data.name,
+            })
+        }
+      }
+    }
+  } catch (e) {
+    logger.warn('utm_links 자동 생성 실패', { creativeId: data?.id, error: e })
+  }
+
   return apiSuccess(data)
 })

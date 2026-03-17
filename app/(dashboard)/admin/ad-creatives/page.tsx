@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { Plus, Image, Trash2, Pencil, Link2, Upload, X, Film } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Plus, Image, Trash2, Pencil, Upload, X, Film, ChevronDown, Copy, QrCode, ExternalLink } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -35,6 +35,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmDialog, EmptyState, PageHeader } from '@/components/common'
+import { QRCodeDialog } from '@/app/(dashboard)/utm/components/QRCodeDialog'
+import { buildUtmUrl } from '@/lib/utm'
 
 interface LandingPage {
   id: number
@@ -79,39 +81,6 @@ function getCreativeUrl(fileName: string): string {
   return `${SUPABASE_URL}/storage/v1/object/public/creatives/${fileName}`
 }
 
-function CreativeThumbnail({ creative, onClick }: { creative: AdCreative; onClick?: () => void }) {
-  if (!creative.file_name) {
-    return (
-      <div className="w-[100px] h-[100px] rounded-lg bg-white/5 flex items-center justify-center text-slate-600">
-        <Image size={28} />
-      </div>
-    )
-  }
-
-  const src = getCreativeUrl(creative.file_name)
-  const isVideo = creative.file_type?.startsWith('video/')
-
-  if (isVideo) {
-    return (
-      <div className="w-[100px] h-[100px] rounded-lg bg-white/5 overflow-hidden relative cursor-pointer" onClick={onClick}>
-        <video src={src} className="w-full h-full object-cover" muted preload="metadata" />
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
-          <Film size={24} className="text-white/80" />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <img
-      src={src}
-      alt={creative.name}
-      className="w-[100px] h-[100px] rounded-lg object-cover bg-white/5 cursor-pointer hover:opacity-80 transition-opacity"
-      onClick={onClick}
-    />
-  )
-}
-
 export default function AdCreativesPage() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -137,6 +106,10 @@ export default function AdCreativesPage() {
   const [viewerSrc, setViewerSrc] = useState<string | null>(null)
   const [viewerType, setViewerType] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [qrOpen, setQrOpen] = useState(false)
+  const [qrUrl, setQrUrl] = useState('')
+  const [qrLabel, setQrLabel] = useState('')
 
   useEffect(() => {
     if (user && user.role !== 'superadmin') router.replace('/')
@@ -293,6 +266,28 @@ export default function AdCreativesPage() {
     ? landingPages.filter(lp => lp.clinic_id === Number(form.clinic_id) || !lp.clinic_id)
     : landingPages
 
+  const getCreativeUtmUrl = (creative: AdCreative): string | null => {
+    if (!creative.landing_page_id) return null
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return buildUtmUrl({
+      baseUrl: `${origin}/lp?id=${creative.landing_page_id}`,
+      source: creative.utm_source || undefined,
+      medium: creative.utm_medium || undefined,
+      campaign: creative.utm_campaign || undefined,
+      content: creative.utm_content || undefined,
+      term: creative.utm_term || undefined,
+    })
+  }
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('URL이 클립보드에 복사되었습니다.')
+    } catch {
+      toast.error('복사에 실패했습니다.')
+    }
+  }
+
   if (user?.role !== 'superadmin') return null
 
   return (
@@ -304,6 +299,7 @@ export default function AdCreativesPage() {
         description="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
         onConfirm={confirmDelete}
       />
+      <QRCodeDialog open={qrOpen} onOpenChange={setQrOpen} url={qrUrl} label={qrLabel} />
       <PageHeader icon={Image} title="광고 소재" description="광고 소재 등록 및 UTM 파라미터 관리" />
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -526,76 +522,187 @@ export default function AdCreativesPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-white/5 hover:bg-transparent">
-                <TableHead className="text-xs text-slate-500 font-medium w-[116px]">소재</TableHead>
-                <TableHead className="text-xs text-slate-500 font-medium">소재명</TableHead>
-                <TableHead className="text-xs text-slate-500 font-medium">UTM Content</TableHead>
-                <TableHead className="text-xs text-slate-500 font-medium">플랫폼</TableHead>
-                <TableHead className="text-xs text-slate-500 font-medium">병원</TableHead>
-                <TableHead className="text-xs text-slate-500 font-medium">랜딩 페이지</TableHead>
+                <TableHead className="text-xs text-slate-500 font-medium w-[76px]">소재</TableHead>
+                <TableHead className="text-xs text-slate-500 font-medium">소재명 / UTM Content</TableHead>
+                <TableHead className="text-xs text-slate-500 font-medium">플랫폼 / 병원</TableHead>
                 <TableHead className="text-xs text-slate-500 font-medium">상태</TableHead>
-                <TableHead className="text-xs text-slate-500 font-medium">작업</TableHead>
+                <TableHead className="text-xs text-slate-500 font-medium w-[100px]">작업</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {adCreatives.map((creative) => (
-                <TableRow key={creative.id} className="border-b border-white/5">
-                  <TableCell>
-                    <CreativeThumbnail
-                      creative={creative}
-                      onClick={() => {
-                        if (creative.file_name) {
-                          setViewerSrc(getCreativeUrl(creative.file_name))
-                          setViewerType(creative.file_type)
-                          setViewerOpen(true)
-                        }
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell className="text-white font-medium">{creative.name}</TableCell>
-                  <TableCell>
-                    <code className="text-xs text-brand-400 bg-white/5 px-2 py-1 rounded">
-                      {creative.utm_content}
-                    </code>
-                  </TableCell>
-                  <TableCell className="text-slate-400 text-xs">
-                    {PLATFORM_OPTIONS.find(p => p.value === creative.platform)?.label || '-'}
-                  </TableCell>
-                  <TableCell className="text-slate-400 text-xs">{creative.clinic?.name || '-'}</TableCell>
-                  <TableCell>
-                    {creative.landing_page ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-slate-300">{creative.landing_page.name}</span>
-                        <a
-                          href={`/lp?id=${creative.landing_page.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-slate-500 hover:text-white transition-colors"
-                          aria-label="랜딩 페이지 열기"
+              {adCreatives.map((creative) => {
+                const isExpanded = expandedId === creative.id
+                const utmUrl = getCreativeUtmUrl(creative)
+                return (
+                  <React.Fragment key={creative.id}>
+                    {/* 1단: 축소 행 */}
+                    <TableRow
+                      className="border-b border-white/5 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                      onClick={() => setExpandedId(isExpanded ? null : creative.id)}
+                    >
+                      <TableCell>
+                        <div
+                          className={`w-[60px] h-[60px] ${creative.file_name ? 'cursor-pointer' : ''}`}
+                          onClick={(e) => {
+                            if (creative.file_name) {
+                              e.stopPropagation()
+                              setViewerSrc(getCreativeUrl(creative.file_name))
+                              setViewerType(creative.file_type)
+                              setViewerOpen(true)
+                            }
+                          }}
                         >
-                          <Link2 size={12} />
-                        </a>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-600">미연결</span>
+                          {creative.file_name ? (
+                            creative.file_type?.startsWith('video/') ? (
+                              <div className="w-[60px] h-[60px] rounded-lg bg-white/5 overflow-hidden relative">
+                                <video src={getCreativeUrl(creative.file_name)} className="w-full h-full object-cover" muted preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
+                                  <Film size={16} className="text-white/80" />
+                                </div>
+                              </div>
+                            ) : (
+                              <img src={getCreativeUrl(creative.file_name)} alt={creative.name} className="w-[60px] h-[60px] rounded-lg object-cover bg-white/5 hover:opacity-80 transition-opacity" />
+                            )
+                          ) : (
+                            <div className="w-[60px] h-[60px] rounded-lg bg-white/5 flex items-center justify-center text-slate-600">
+                              <Image size={20} />
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-white font-medium text-sm">{creative.name}</div>
+                        <code className="text-[11px] text-brand-400 bg-white/5 px-1.5 py-0.5 rounded mt-1 inline-block">
+                          {creative.utm_content}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-slate-400 text-xs">
+                          {PLATFORM_OPTIONS.find(p => p.value === creative.platform)?.label || '-'}
+                        </div>
+                        <div className="text-slate-500 text-xs mt-0.5">{creative.clinic?.name || '-'}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={creative.is_active ? 'success' : 'secondary'}>
+                          {creative.is_active ? '활성' : '비활성'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEdit(creative) }}
+                            className="text-slate-400 hover:text-white transition-colors"
+                            aria-label="수정"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(creative.id) }}
+                            className="text-slate-400 hover:text-red-400 transition-colors"
+                            aria-label="삭제"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          <ChevronDown
+                            size={14}
+                            className={`text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+
+                    {/* 2단: 펼침 패널 */}
+                    {isExpanded && (
+                      <TableRow className="border-b border-white/5 bg-white/[0.02]">
+                        <TableCell colSpan={5} className="p-0">
+                          <div className="px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* 좌측: UTM 파라미터 */}
+                            <div className="space-y-2">
+                              <p className="text-xs text-slate-500 font-medium mb-2">UTM 파라미터</p>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                                <div>
+                                  <span className="text-slate-500">Source: </span>
+                                  <span className="text-slate-300">{creative.utm_source || '-'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500">Medium: </span>
+                                  <span className="text-slate-300">{creative.utm_medium || '-'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500">Campaign: </span>
+                                  <span className="text-slate-300">{creative.utm_campaign || '-'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-500">Term: </span>
+                                  <span className="text-slate-300">{creative.utm_term || '-'}</span>
+                                </div>
+                              </div>
+                              <div className="text-xs mt-2">
+                                <span className="text-slate-500">랜딩페이지: </span>
+                                {creative.landing_page ? (
+                                  <span className="text-slate-300">{creative.landing_page.name}</span>
+                                ) : (
+                                  <span className="text-slate-600">미연결</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 우측: UTM URL + 액션 */}
+                            <div className="space-y-2">
+                              <p className="text-xs text-slate-500 font-medium mb-2">UTM URL</p>
+                              {utmUrl ? (
+                                <>
+                                  <div className="bg-slate-800/50 rounded-lg p-2.5">
+                                    <p className="text-[11px] text-slate-300 break-all font-mono leading-relaxed">{utmUrl}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={(e) => { e.stopPropagation(); copyToClipboard(utmUrl) }}
+                                    >
+                                      <Copy size={12} className="mr-1" /> 복사
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setQrUrl(utmUrl)
+                                        setQrLabel(creative.utm_content)
+                                        setQrOpen(true)
+                                      }}
+                                    >
+                                      <QrCode size={12} className="mr-1" /> QR
+                                    </Button>
+                                    <a
+                                      href={utmUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs">
+                                        <ExternalLink size={12} className="mr-1" /> 열기
+                                      </Button>
+                                    </a>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="bg-slate-800/30 rounded-lg p-3 text-center">
+                                  <p className="text-xs text-slate-600">랜딩 페이지 미연결</p>
+                                  <p className="text-[10px] text-slate-700 mt-1">소재에 랜딩 페이지를 연결하면 UTM URL이 자동 생성됩니다.</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={creative.is_active ? 'success' : 'secondary'}>
-                      {creative.is_active ? '활성' : '비활성'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => handleEdit(creative)} className="text-slate-400 hover:text-white transition-colors" aria-label="수정">
-                        <Pencil size={14} />
-                      </button>
-                      <button onClick={() => handleDelete(creative.id)} className="text-slate-400 hover:text-red-400 transition-colors" aria-label="삭제">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                  </React.Fragment>
+                )
+              })}
             </TableBody>
           </Table>
         )}
