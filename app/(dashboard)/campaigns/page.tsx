@@ -56,7 +56,9 @@ interface CampaignLead {
 }
 
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  // timezone 정보 없는 Supabase timestamp → UTC로 취급
+  const ts = dateStr.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr) ? dateStr : dateStr + 'Z'
+  const diff = Date.now() - new Date(ts).getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return '방금 전'
   if (mins < 60) return `${mins}분 전`

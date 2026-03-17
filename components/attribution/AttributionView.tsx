@@ -106,7 +106,9 @@ export default function AttributionView() {
 
   const formatDate = (iso: string) => {
     if (!iso) return '-'
-    return new Date(iso).toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })
+    const s = iso.trim()
+    const d = (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s)) ? new Date(s) : new Date(s + 'Z')
+    return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })
   }
 
   const maskName = (name: string | null) => {

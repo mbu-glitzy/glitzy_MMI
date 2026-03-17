@@ -65,7 +65,8 @@ export default function LoginLogsPage() {
   const totalPages = Math.ceil(total / limit)
 
   const formatDate = (iso: string) => {
-    const d = new Date(iso)
+    const s = iso.trim()
+    const d = (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s)) ? new Date(s) : new Date(s + 'Z')
     return d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
   }
 

@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Copy, Check, Trash2, ExternalLink, ChevronDown, Link2, QrCode, RefreshCw, Database, FileText, Image, ArrowLeft, Search } from 'lucide-react'
 import { toast } from 'sonner'
+import { toUtcDate } from '@/lib/date'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -235,7 +236,7 @@ export default function UtmPage() {
                 )}
                 <code className="text-xs text-brand-400 truncate flex-1">{link.original_url}</code>
                 <span className="text-[10px] text-slate-600 shrink-0">
-                  {new Date(link.created_at).toLocaleString('ko', DATE_FORMAT_OPTIONS)}
+                  {toUtcDate(link.created_at).toLocaleString('ko', DATE_FORMAT_OPTIONS)}
                 </span>
                 <button
                   onClick={() => handleCopy(link)}
@@ -1023,7 +1024,7 @@ function UtmGenerator({ onBack }: { onBack: () => void }) {
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-white truncate">{item.label || '무제'}</p>
                             <p className="text-[10px] text-slate-500 mt-0.5">
-                              {new Date(item.created_at).toLocaleDateString('ko-KR', DATE_FORMAT_OPTIONS)}
+                              {toUtcDate(item.created_at).toLocaleDateString('ko-KR', DATE_FORMAT_OPTIONS)}
                             </p>
                           </div>
                           <button

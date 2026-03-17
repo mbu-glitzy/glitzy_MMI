@@ -8,12 +8,13 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader, StatsCard, EmptyState } from '@/components/common'
+import { toUtcDate } from '@/lib/date'
 
 function groupByDate(articles: any[]): Record<string, any[]> {
   const map: Record<string, any[]> = {}
   for (const a of articles) {
     const date = a.published_at
-      ? new Date(a.published_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' })
+      ? toUtcDate(a.published_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' })
       : '날짜 미상'
     if (!map[date]) map[date] = []
     map[date].push(a)
@@ -98,7 +99,7 @@ export default function PressPage() {
           { label: '언론사 수',    value: new Set(articles.map(a => a.source)).size },
           { label: '최근 7일',     value: articles.filter(a => {
             if (!a.published_at) return false
-            return (Date.now() - new Date(a.published_at).getTime()) < 7 * 24 * 3600 * 1000
+            return (Date.now() - toUtcDate(a.published_at).getTime()) < 7 * 24 * 3600 * 1000
           }).length },
         ].map(({ label, value }) => (
           <Card key={label} variant="glass" className="p-4">

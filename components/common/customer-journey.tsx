@@ -78,24 +78,30 @@ function getEventColor(event: JourneyEvent): string {
   }
 }
 
+// Supabase timestamp → UTC Date (tz 정보 없으면 UTC로 취급)
+function toUtc(dateStr: string): Date {
+  const s = dateStr.trim()
+  return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s)) ? new Date(s) : new Date(s + 'Z')
+}
+
 // 날짜 포맷 (null/invalid 안전 처리, KST 기준)
 function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return '-'
-  const date = new Date(dateStr)
+  const date = toUtc(dateStr)
   if (isNaN(date.getTime())) return '-'
   return date.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })
 }
 
 function formatDateTime(dateStr: string | undefined | null): string {
   if (!dateStr) return '-'
-  const date = new Date(dateStr)
+  const date = toUtc(dateStr)
   if (isNaN(date.getTime())) return '-'
   return `${date.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })} ${date.toLocaleTimeString('ko', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}`
 }
 
 function formatTime(dateStr: string | undefined | null): string {
   if (!dateStr) return '-'
-  const date = new Date(dateStr)
+  const date = toUtc(dateStr)
   if (isNaN(date.getTime())) return '-'
   return date.toLocaleTimeString('ko', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })
 }
@@ -330,7 +336,8 @@ function buildJourneyEvents(
     payment: 4,
   }
   return events.sort((a, b) => {
-    const timeDiff = new Date(a.date).getTime() - new Date(b.date).getTime()
+    const toTs = (s: string) => { const t = s.trim(); return (t.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(t)) ? new Date(t).getTime() : new Date(t + 'Z').getTime() }
+    const timeDiff = toTs(a.date) - toTs(b.date)
     if (timeDiff !== 0) return timeDiff
     // 동일 시간: inflow → chatbot → booking → consultation → payment 순서 보장
     return typeOrder[a.type] - typeOrder[b.type]

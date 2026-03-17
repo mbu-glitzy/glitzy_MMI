@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { PageHeader, StatusBadge, EmptyState } from '@/components/common'
-import { formatDate, formatDateTime, formatTime } from '@/lib/date'
+import { formatDate, formatDateTime, formatTime, toUtcDate } from '@/lib/date'
 
 // 상수
 const STATUS_CONFIG: Record<string, { label: string; variant: 'info' | 'success' | 'default' | 'secondary' | 'destructive' }> = {
@@ -50,7 +50,7 @@ function BookingEditForm({ booking, onSave }: { booking: any; onSave: () => void
   const [form, setForm] = useState({
     status: booking.status || 'confirmed',
     booking_datetime: booking.booking_datetime
-      ? new Date(booking.booking_datetime).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', 'T')
+      ? toUtcDate(booking.booking_datetime).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', 'T')
       : '',
     notes: booking.notes || '',
   })
@@ -518,7 +518,7 @@ export default function PatientsPage() {
   const bookingsByDate: Record<string, any[]> = {}
   for (const b of bookings) {
     if (!b.booking_datetime) continue
-    const key = new Date(b.booking_datetime).toDateString()
+    const key = toUtcDate(b.booking_datetime).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
     if (!bookingsByDate[key]) bookingsByDate[key] = []
     bookingsByDate[key].push(b)
   }
@@ -738,9 +738,9 @@ export default function PatientsPage() {
             {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} />)}
             {Array(daysInMonth).fill(null).map((_, i) => {
               const dayNum = i + 1
-              const dateKey = new Date(year, month, dayNum).toDateString()
+              const dateKey = new Date(year, month, dayNum).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
               const dayBookings = bookingsByDate[dateKey] || []
-              const isToday = new Date().toDateString() === dateKey
+              const isToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }) === dateKey
               return (
                 <div key={dayNum} className={`min-h-[60px] sm:min-h-[80px] rounded-xl p-1.5 sm:p-2 border transition-all ${isToday ? 'border-brand-500/40 bg-brand-500/5' : 'border-white/5 hover:bg-white/[0.03]'}`}>
                   <p className={`text-xs font-medium mb-1 ${isToday ? 'text-brand-400' : 'text-slate-400'}`}>{dayNum}</p>

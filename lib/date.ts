@@ -5,14 +5,28 @@
 
 const TZ = 'Asia/Seoul'
 
+/**
+ * 타임존 정보가 없는 문자열을 UTC로 취급하여 Date 생성
+ * Supabase의 `timestamp` (without tz) 컬럼은 '2026-03-17T12:50:00' 형태(Z 없음)로 반환되며,
+ * 브라우저는 이를 로컬 시간으로 해석하여 KST 변환이 무시됨 → Z를 붙여 UTC로 강제
+ */
+export function toUtcDate(date: string | Date): Date {
+  if (date instanceof Date) return date
+  const s = date.trim()
+  if (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s)) {
+    return new Date(s)
+  }
+  return new Date(s + 'Z')
+}
+
 /** 날짜만 (예: 2026. 3. 16.) */
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString('ko', { timeZone: TZ })
+  return toUtcDate(date).toLocaleDateString('ko', { timeZone: TZ })
 }
 
 /** 날짜 + 시간 (예: 3월 16일 14:30) */
 export function formatDateTime(date: string | Date): string {
-  return new Date(date).toLocaleString('ko', {
+  return toUtcDate(date).toLocaleString('ko', {
     timeZone: TZ,
     month: 'short',
     day: 'numeric',
@@ -23,7 +37,7 @@ export function formatDateTime(date: string | Date): string {
 
 /** 시간만 (예: 14:30) */
 export function formatTime(date: string | Date): string {
-  return new Date(date).toLocaleTimeString('ko', {
+  return toUtcDate(date).toLocaleTimeString('ko', {
     timeZone: TZ,
     hour: '2-digit',
     minute: '2-digit',
