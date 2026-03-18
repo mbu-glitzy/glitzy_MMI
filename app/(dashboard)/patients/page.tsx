@@ -403,9 +403,10 @@ function TreatmentManageDialog({ clinicId, open, onOpenChange }: { clinicId: num
                       placeholder="카테고리"
                     />
                     <Input
-                      type="number"
-                      value={editForm.default_price}
-                      onChange={e => setEditForm(f => ({ ...f, default_price: e.target.value }))}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatAmount(editForm.default_price)}
+                      onChange={e => setEditForm(f => ({ ...f, default_price: parseAmount(e.target.value) }))}
                       className="h-7 text-xs w-24"
                       placeholder="금액"
                     />
@@ -461,9 +462,10 @@ function TreatmentManageDialog({ clinicId, open, onOpenChange }: { clinicId: num
               className="w-24 h-9 text-sm"
             />
             <Input
-              type="number"
-              value={form.default_price}
-              onChange={e => setForm(f => ({ ...f, default_price: e.target.value }))}
+              type="text"
+              inputMode="numeric"
+              value={formatAmount(form.default_price)}
+              onChange={e => setForm(f => ({ ...f, default_price: parseAmount(e.target.value) }))}
               placeholder="기본 금액"
               className="w-28 h-9 text-sm"
               min="0"
@@ -481,6 +483,17 @@ function TreatmentManageDialog({ clinicId, open, onOpenChange }: { clinicId: num
 // H: POS형 결제 섹션 (시술 카탈로그 선택 + 금액 자동 채움 + 수정 가능)
 // D: 합계 표시, C: 폼 접기
 type CartItem = { key: string; treatmentName: string; paymentAmount: string }
+
+// 숫자 → 콤마 포맷 (예: 1500000 → "1,500,000")
+function formatAmount(val: string | number): string {
+  const num = String(val).replace(/[^\d]/g, '')
+  if (!num) return ''
+  return Number(num).toLocaleString()
+}
+// 콤마 포맷 → 순수 숫자 문자열
+function parseAmount(val: string): string {
+  return val.replace(/[^\d]/g, '')
+}
 
 function PaymentSection({ customerId, payments, onSave, isSuperAdmin, clinicId, treatmentRefreshKey }: {
   customerId: number; payments: any[]; onSave: () => void; isSuperAdmin?: boolean; clinicId?: number | null; treatmentRefreshKey?: number
@@ -666,11 +679,11 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin, clinicId, 
                     className="flex-1 bg-muted dark:bg-white/5 text-foreground border-border dark:border-white/10"
                   />
                   <Input
-                    type="number"
-                    value={customAmount}
-                    onChange={e => setCustomAmount(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatAmount(customAmount)}
+                    onChange={e => setCustomAmount(parseAmount(e.target.value))}
                     placeholder="금액"
-                    min="0"
                     className="w-28 bg-muted dark:bg-white/5 text-foreground border-border dark:border-white/10"
                   />
                   <Button variant="outline" size="sm" className="h-10 shrink-0" onClick={addCustomItem}>
@@ -694,11 +707,11 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin, clinicId, 
                   <span className="text-sm text-foreground flex-1 truncate">{item.treatmentName}</span>
                   <span className="text-muted-foreground text-xs">₩</span>
                   <Input
-                    type="number"
-                    value={item.paymentAmount}
-                    onChange={e => updateCartAmount(item.key, e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatAmount(item.paymentAmount)}
+                    onChange={e => updateCartAmount(item.key, parseAmount(e.target.value))}
                     className="w-28 h-7 text-xs text-right bg-transparent border-border dark:border-white/10"
-                    min="0"
                   />
                   <button onClick={() => removeCartItem(item.key)} className="text-red-400 hover:text-red-300 p-1 shrink-0">
                     <X size={13} />
