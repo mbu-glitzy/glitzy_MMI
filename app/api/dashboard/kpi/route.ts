@@ -18,10 +18,12 @@ async function fetchMetrics(
     return q
   }
 
-  const [adStatsRes, leadsRes, paymentsRes, consultRes, contentBudgetRes] = await Promise.all([
+  const [adStatsRes, leadsRes, paymentsRes, bookingsRes, consultRes, contentBudgetRes] = await Promise.all([
     applyFilter(supabase.from('ad_campaign_stats').select('spend_amount').gte('stat_date', start).lte('stat_date', end)),
     applyFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)),
     applyFilter(supabase.from('payments').select('customer_id, payment_amount').gte('payment_date', start).lte('payment_date', end)),
+    applyFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })
+      .neq('status', 'cancelled').gte('created_at', start).lte('created_at', end)),
     applyFilter(supabase.from('consultations').select('*', { count: 'exact', head: true })
       .in('status', ['예약완료', '방문완료']).gte('created_at', start).lte('created_at', end)),
     applyFilter(supabase.from('content_posts').select('budget').gte('created_at', start).lte('created_at', end)),
@@ -30,7 +32,8 @@ async function fetchMetrics(
   const totalSpend = adStatsRes.data?.reduce((s, r) => s + Number(r.spend_amount), 0) || 0
   const totalLeads = leadsRes.count || 0
   const totalRevenue = paymentsRes.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
-  const bookedCount = consultRes.count || 0
+  const bookedCount = bookingsRes.count || 0
+  const consultCount = consultRes.count || 0
   const contentBudget = contentBudgetRes.data?.reduce((s, p) => s + (p.budget || 0), 0) || 0
 
   // 결제 완료 고객 수 (distinct customer_id)
@@ -50,7 +53,7 @@ async function fetchMetrics(
     totalRevenue,
     totalLeads,
     totalSpend,
-    totalConsultations: bookedCount,
+    totalConsultations: consultCount,
     cac,
     arpc,
     payingCustomerCount,
