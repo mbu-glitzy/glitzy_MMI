@@ -1251,15 +1251,20 @@ export default function PatientsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 통계 카드 */}
+      {/* 통계 카드 (클릭 시 필터) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         {[
-          { label: '전체 예약', value: stats.total },
-          { label: '시술확정', value: stats.treatmentConfirmed },
-          { label: '노쇼', value: stats.noshow },
-          { label: '총 결제액', value: `₩${stats.revenue.toLocaleString()}` },
-        ].map(({ label, value }) => (
-          <Card key={label} variant="glass" className="p-4">
+          { label: '전체 예약', value: stats.total, filter: 'all' },
+          { label: '시술확정', value: stats.treatmentConfirmed, filter: 'treatment_confirmed' },
+          { label: '노쇼', value: stats.noshow, filter: 'noshow' },
+          { label: '총 결제액', value: `₩${stats.revenue.toLocaleString()}`, filter: null },
+        ].map(({ label, value, filter }) => (
+          <Card
+            key={label}
+            variant="glass"
+            className={`p-4 transition-all ${filter !== null ? 'cursor-pointer hover:ring-1 hover:ring-brand-500/30' : ''} ${statusFilter === filter && filter !== 'all' ? 'ring-2 ring-brand-500/50 bg-brand-500/5' : ''}`}
+            onClick={() => { if (filter !== null) setStatusFilter(statusFilter === filter ? 'all' : filter) }}
+          >
             <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
             {loading ? <Skeleton className="h-6 mt-1" /> : <p className="text-xl font-bold text-foreground">{value}</p>}
           </Card>

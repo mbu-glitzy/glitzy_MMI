@@ -280,6 +280,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
   const { selectedClinicId } = useClinic()
   const [leads, setLeads] = useState<CampaignLead[]>([])
   const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const fetchLeads = () => {
     setLoading(true)
@@ -360,8 +361,13 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
           {Object.entries(LEAD_STATUS_CONFIG).map(([key, cfg]) => {
             const count = leads.filter(l => (l.lead_status || 'new') === key).length
             return (
-              <Card key={key} variant="glass" className="p-2.5 text-center">
-                <p className={`text-lg font-bold ${cfg.color.split(' ')[1]}`}>{count}</p>
+              <Card
+                key={key}
+                variant="glass"
+                className={`p-2.5 text-center cursor-pointer transition-all hover:ring-1 hover:ring-brand-500/30 ${statusFilter === key ? 'ring-2 ring-brand-500/50 bg-brand-500/5' : ''}`}
+                onClick={() => setStatusFilter(statusFilter === key ? 'all' : key)}
+              >
+                <p className={`text-lg font-bold ${statusFilter === key ? 'text-brand-400' : cfg.color.split(' ')[1]}`}>{count}</p>
                 <p className="text-[10px] text-muted-foreground">{cfg.label}</p>
               </Card>
             )
@@ -379,7 +385,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
                 이 캠페인에서 유입된 리드가 없습니다.
               </Card>
             )
-            : leads.map(lead => <LeadCard key={lead.id} lead={lead} onStatusChange={handleStatusChange} onNotesChange={handleNotesChange} />)
+            : (statusFilter === 'all' ? leads : leads.filter(l => (l.lead_status || 'new') === statusFilter)).map(lead => <LeadCard key={lead.id} lead={lead} onStatusChange={handleStatusChange} onNotesChange={handleNotesChange} />)
         }
       </div>
     </>
