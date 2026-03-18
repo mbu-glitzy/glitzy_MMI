@@ -220,7 +220,7 @@ export default function MonitoringInputPage() {
           </div>
         </div>
         <div className="mt-5">
-          <span className="text-sm text-muted-foreground">({dayOfWeek})</span>
+          <span className={`text-sm ${dateObj.getDay() === 0 ? 'text-red-500' : dateObj.getDay() === 6 ? 'text-blue-500' : 'text-muted-foreground'}`}>({dayOfWeek})</span>
         </div>
       </div>
 

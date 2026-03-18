@@ -46,6 +46,12 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'info' | 'success'
 }
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
+// 요일 색상: 일=빨강, 토=파랑, 평일=기본
+function getDayColor(dayIndex: number) {
+  if (dayIndex === 0) return 'text-red-500'
+  if (dayIndex === 6) return 'text-blue-500'
+  return 'text-muted-foreground'
+}
 
 // 10분 단위 시간 옵션 생성 (00:00 ~ 23:50)
 const TIME_OPTIONS = Array.from({ length: 24 * 6 }, (_, i) => {
@@ -933,15 +939,17 @@ export default function PatientsPage() {
           {calView === 'month' && (
             <>
               <div className="grid grid-cols-7 gap-1 mb-2">
-                {['일', '월', '화', '수', '목', '금', '토'].map(d => (
-                  <div key={d} className="text-center text-xs text-muted-foreground py-2 font-medium">{d}</div>
+                {DAY_NAMES.map((d, i) => (
+                  <div key={d} className={`text-center text-xs py-2 font-medium ${getDayColor(i)}`}>{d}</div>
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-1">
                 {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} />)}
                 {Array(daysInMonth).fill(null).map((_, i) => {
                   const dayNum = i + 1
-                  const dateKey = new Date(year, month, dayNum).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
+                  const dateObj = new Date(year, month, dayNum)
+                  const dateKey = dateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
+                  const dayOfWeek = dateObj.getDay()
                   const dayBookings = bookingsByDate[dateKey] || []
                   const isToday = todayKey === dateKey
                   const isSelected = selectedDate === dateKey
@@ -956,7 +964,7 @@ export default function PatientsPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs font-medium ${isToday ? 'text-brand-400' : 'text-muted-foreground'}`}>{dayNum}</span>
+                        <span className={`text-xs font-medium ${isToday ? 'text-brand-400' : getDayColor(dayOfWeek)}`}>{dayNum}</span>
                         {dayBookings.length > 0 && (
                           <span className="text-[10px] text-muted-foreground bg-muted dark:bg-white/10 rounded-full px-1.5">{dayBookings.length}</span>
                         )}
@@ -1000,7 +1008,7 @@ export default function PatientsPage() {
                     }`}
                   >
                     <div className="text-center mb-3">
-                      <p className="text-[10px] text-muted-foreground">{DAY_NAMES[i]}</p>
+                      <p className={`text-[10px] ${getDayColor(i)}`}>{DAY_NAMES[i]}</p>
                       <p className={`text-lg font-bold ${isToday ? 'text-brand-400' : 'text-foreground'}`}>{date.getDate()}</p>
                       {dayBookings.length > 0 && (
                         <span className="text-[10px] text-muted-foreground">{dayBookings.length}건</span>
@@ -1116,7 +1124,11 @@ export default function PatientsPage() {
                             : <span className="text-muted-foreground/60 text-xs">-</span>}
                         </div>
                       </div>
-                      {b.notes && <p className="text-[10px] text-muted-foreground mt-1.5 truncate" title={b.notes}>{b.notes}</p>}
+                      {b.notes && (
+                        <p className="text-[11px] text-muted-foreground mt-2 pt-2 border-t border-border dark:border-white/5 whitespace-pre-wrap break-words">
+                          {b.notes}
+                        </p>
+                      )}
                     </div>
                   )
                 })}
