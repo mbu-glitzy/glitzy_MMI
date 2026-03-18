@@ -21,10 +21,14 @@ import { formatDateTime } from '@/lib/date'
 const LEAD_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   new:        { label: '신규',     color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   no_answer:  { label: '부재',     color: 'bg-muted text-muted-foreground border-border dark:bg-slate-500/20 dark:text-slate-400 dark:border-slate-500/30' },
-  consulted:  { label: '상담완료', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   booked:     { label: '예약완료', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   hold:       { label: '보류',     color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   rejected:   { label: '거절',     color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+}
+
+// 기존 consulted 상태 리드 표시용 (신규 선택 불가)
+const LEGACY_STATUS: Record<string, { label: string; color: string }> = {
+  consulted:  { label: '상담완료', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
 }
 
 interface CampaignSummary {
@@ -179,7 +183,7 @@ function LeadCard({ lead, onStatusChange, onNotesChange }: {
   const marketingConsent = lead.custom_data?.marketing_consent
   const leadName = lead.custom_data?.name || lead.customer?.name || '이름 없음'
   const status = lead.lead_status || 'new'
-  const statusConfig = LEAD_STATUS_CONFIG[status] || LEAD_STATUS_CONFIG.new
+  const statusConfig = LEAD_STATUS_CONFIG[status] || LEGACY_STATUS[status] || LEAD_STATUS_CONFIG.new
 
   const handleNotesSave = () => {
     onNotesChange(lead.id, notesValue)
