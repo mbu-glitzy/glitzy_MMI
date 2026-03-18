@@ -1219,48 +1219,74 @@ export default function PatientsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-        {[
-          { label: '전체 예약', value: stats.total },
-          { label: '시술확정', value: stats.treatmentConfirmed },
-          { label: '노쇼', value: stats.noshow },
-          { label: '총 결제액', value: `₩${stats.revenue.toLocaleString()}` },
-        ].map(({ label, value }) => (
-          <Card key={label} variant="glass" className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-            {loading ? <Skeleton className="h-6 mt-1" /> : <p className="text-xl font-bold text-foreground">{value}</p>}
-          </Card>
-        ))}
-      </div>
+      {/* 통계 요약 */}
+      <Card variant="glass" className="flex items-center gap-6 px-5 py-3 mb-5 flex-wrap">
+        {loading ? (
+          <Skeleton className="h-5 w-full" />
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">전체</span>
+              <span className="text-lg font-bold text-foreground">{stats.total}</span>
+            </div>
+            <div className="w-px h-5 bg-border dark:bg-white/10 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">시술확정</span>
+              <span className="text-lg font-bold text-foreground">{stats.treatmentConfirmed}</span>
+            </div>
+            <div className="w-px h-5 bg-border dark:bg-white/10 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">노쇼</span>
+              <span className="text-lg font-bold text-red-500">{stats.noshow}</span>
+            </div>
+            <div className="flex-1" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">총 결제</span>
+              <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">₩{stats.revenue.toLocaleString()}</span>
+            </div>
+          </>
+        )}
+      </Card>
 
       {view === 'list' ? (
         <>
-          <div className="flex items-center gap-3 mb-4 flex-wrap">
-            <Card variant="glass" className="flex items-center px-3 py-2">
-              <Search size={14} className="text-muted-foreground mr-2" />
+          <div className="flex items-center gap-2 mb-4">
+            <Card variant="glass" className="flex items-center px-3 py-1.5 flex-1 max-w-xs">
+              <Search size={14} className="text-muted-foreground mr-2 shrink-0" />
               <Input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="이름 또는 전화번호"
-                className="bg-transparent border-0 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 w-44 p-0 h-auto"
+                className="bg-transparent border-0 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 p-0 h-auto"
               />
+              {search && (
+                <button onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground shrink-0 ml-1">
+                  <X size={13} />
+                </button>
+              )}
             </Card>
-            <div className="flex gap-2 flex-wrap">
-              {[{ key: 'all', label: '전체' }, ...Object.entries(STATUS_CONFIG).map(([k, v]) => ({ key: k, label: v.label }))].map(({ key, label }) => (
-                <Button
-                  key={key}
-                  variant={statusFilter === key ? 'default' : 'glass'}
-                  size="sm"
-                  onClick={() => setStatusFilter(key)}
-                  className={statusFilter === key ? 'bg-brand-600' : ''}
-                >
-                  {label}
-                  {key !== 'all' && <span className="ml-1 opacity-60">{bookings.filter(b => b.status === key).length}</span>}
-                </Button>
-              ))}
-            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-auto min-w-[120px] h-9 bg-card border-border dark:border-white/10">
+                <SelectValue>
+                  {statusFilter === 'all'
+                    ? `전체 (${bookings.length})`
+                    : `${STATUS_CONFIG[statusFilter]?.label} (${bookings.filter(b => b.status === statusFilter).length})`
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 ({bookings.length})</SelectItem>
+                {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>
+                    <span className="flex items-center gap-2">
+                      <Badge variant={v.variant} className="text-[10px] px-1.5 py-0">{v.label}</Badge>
+                      <span className="text-muted-foreground text-xs">{bookings.filter(b => b.status === k).length}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {loading ? (
