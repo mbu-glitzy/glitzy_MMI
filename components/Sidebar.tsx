@@ -54,10 +54,10 @@ const menuGroups: MenuGroup[] = [
     ]
   },
   {
-    label: '고객 관리',
+    label: '고객관리',
     items: [
       { href: '/campaigns', label: '캠페인 리드', icon: Megaphone, menuKey: 'campaigns' },
-      { href: '/leads', label: '고객(CDP)', icon: Users, menuKey: 'leads' },
+      { href: '/leads', label: '고객', icon: Users, menuKey: 'leads' },
       { href: '/patients', label: '예약/결제', icon: Calendar, menuKey: 'patients' },
       { href: '/chatbot', label: '챗봇 현황', icon: MessageCircle, menuKey: 'chatbot' },
       { href: '/lead-form', label: '리드 수집', icon: ClipboardList, minRole: 3, menuKey: 'lead-form' },
@@ -198,11 +198,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                       key={href}
                       href={href}
                       onClick={onClose}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        isActive
-                          ? 'bg-brand-600/20 text-brand-400'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                      }`}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                        ? 'bg-brand-600/20 text-brand-400'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
                     >
                       <Icon size={17} />
                       {label}
@@ -223,11 +222,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             <Link
               href="/staff"
               onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                pathname === '/staff'
-                  ? 'bg-brand-600/20 text-brand-400'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === '/staff'
+                ? 'bg-brand-600/20 text-brand-400'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
             >
               <UserCog size={17} />
               담당자 관리
@@ -245,11 +243,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <Link
                 href="/admin/ad-creatives"
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  pathname === '/admin/ad-creatives'
-                    ? 'bg-brand-600/20 text-brand-400'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === '/admin/ad-creatives'
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
               >
                 <Image size={17} />
                 광고 소재
@@ -257,11 +254,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <Link
                 href="/admin/landing-pages"
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  pathname === '/admin/landing-pages'
-                    ? 'bg-brand-600/20 text-brand-400'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === '/admin/landing-pages'
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
               >
                 <FileText size={17} />
                 랜딩 페이지
@@ -269,11 +265,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <Link
                 href="/admin/clinics"
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  pathname === '/admin/clinics'
-                    ? 'bg-brand-600/20 text-brand-400'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === '/admin/clinics'
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
               >
                 <Building2 size={17} />
                 병원 관리
@@ -281,11 +276,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <Link
                 href="/admin/users"
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  pathname === '/admin/users'
-                    ? 'bg-brand-600/20 text-brand-400'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === '/admin/users'
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
               >
                 <UserCog size={17} />
                 계정 관리
@@ -293,11 +287,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <Link
                 href="/utm"
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  pathname.startsWith('/utm')
-                    ? 'bg-brand-600/20 text-brand-400'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname.startsWith('/utm')
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
               >
                 <Link2 size={17} />
                 UTM 생성
@@ -305,11 +298,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <Link
                 href="/admin/login-logs"
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  pathname === '/admin/login-logs'
-                    ? 'bg-brand-600/20 text-brand-400'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === '/admin/login-logs'
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
               >
                 <Shield size={17} />
                 로그인 로그

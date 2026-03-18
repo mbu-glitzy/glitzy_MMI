@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, User, Phone, Calendar, TrendingUp, Users, Star, Filter, FileText, Info, X, Trash2 } from 'lucide-react'
+import { Search, User, Phone, Calendar, TrendingUp, Users, Filter, FileText, Info, X, Trash2, ArrowUpDown, Clock } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useClinic } from '@/components/ClinicContext'
 import { toast } from 'sonner'
@@ -24,16 +24,16 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { PageHeader, ChannelBadge, CustomerJourney } from '@/components/common'
-import { formatDate } from '@/lib/date'
+import { formatDate, toUtcDate } from '@/lib/date'
 
 // 퍼널 단계 정의
 type FunnelStage = 'lead' | 'booked' | 'visited' | 'consulted' | 'paid'
-const FUNNEL_STAGES: Record<FunnelStage, { label: string; color: string; icon: string }> = {
-  lead:      { label: '리드', color: 'bg-muted text-muted-foreground', icon: '' },
-  booked:    { label: '예약', color: 'bg-blue-500/20 text-blue-400', icon: '' },
-  visited:   { label: '방문', color: 'bg-purple-500/20 text-purple-400', icon: '' },
-  consulted: { label: '상담', color: 'bg-amber-500/20 text-amber-400', icon: '' },
-  paid:      { label: '결제', color: 'bg-emerald-500/20 text-emerald-400', icon: '' },
+const FUNNEL_STAGES: Record<FunnelStage, { label: string; color: string; barColor: string }> = {
+  lead: { label: '리드', color: 'bg-muted text-muted-foreground', barColor: 'bg-muted-foreground/30' },
+  booked: { label: '예약', color: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', barColor: 'bg-blue-500' },
+  visited: { label: '방문', color: 'bg-purple-500/20 text-purple-600 dark:text-purple-400', barColor: 'bg-purple-500' },
+  consulted: { label: '상담', color: 'bg-amber-500/20 text-amber-600 dark:text-amber-400', barColor: 'bg-amber-500' },
+  paid: { label: '결제', color: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400', barColor: 'bg-emerald-500' },
 }
 
 function getFunnelStage(customer: any): FunnelStage {
@@ -54,16 +54,16 @@ function getFunnelStage(customer: any): FunnelStage {
 }
 
 const GRADE_CONFIG: Record<string, { color: string; icon: string }> = {
-  VIP:  { color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', icon: '' },
-  골드:  { color: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',    icon: '' },
-  실버:  { color: 'bg-muted text-foreground/60 border border-border',             icon: '' },
-  일반:  { color: 'bg-muted/50 text-muted-foreground border border-border',       icon: '' },
+  VIP: { color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', icon: '' },
+  골드: { color: 'bg-amber-500/20 text-amber-400 border border-amber-500/30', icon: '' },
+  실버: { color: 'bg-muted text-foreground/60 border border-border', icon: '' },
+  일반: { color: 'bg-muted/50 text-muted-foreground border border-border', icon: '' },
 }
 
 function getGrade(totalPayment: number, treatmentCount: number): keyof typeof GRADE_CONFIG {
   if (totalPayment >= 5_000_000 || treatmentCount >= 5) return 'VIP'
   if (totalPayment >= 2_000_000 || treatmentCount >= 3) return '골드'
-  if (totalPayment >= 500_000   || treatmentCount >= 1) return '실버'
+  if (totalPayment >= 500_000 || treatmentCount >= 1) return '실버'
   return '일반'
 }
 
@@ -75,7 +75,30 @@ function getCustomerType(customer: any): 'new' | 'revisit' {
   return total >= 2 ? 'revisit' : 'new'
 }
 
-function CustomerDetail({ lead, onDelete }: { lead: any; onDelete?: (leadId: number) => void }) {
+// 기간 필터 헬퍼
+type DateRange = 'all' | 'today' | 'week' | 'month'
+function isInDateRange(dateStr: string | undefined, range: DateRange): boolean {
+  if (range === 'all' || !dateStr) return true
+  const now = new Date()
+  const kstNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+  const target = toUtcDate(dateStr)
+  const kstTarget = new Date(target.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+
+  if (range === 'today') {
+    return kstTarget.toDateString() === kstNow.toDateString()
+  }
+  if (range === 'week') {
+    const weekAgo = new Date(kstNow)
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    return kstTarget >= weekAgo
+  }
+  if (range === 'month') {
+    return kstTarget.getMonth() === kstNow.getMonth() && kstTarget.getFullYear() === kstNow.getFullYear()
+  }
+  return true
+}
+
+function CustomerDetail({ lead, onDelete, onClose }: { lead: any; onDelete?: (leadId: number) => void; onClose: () => void }) {
   const c = lead.customer
   const payments: any[] = c?.payments || []
   const consultations: any[] = c?.consultations || []
@@ -102,58 +125,69 @@ function CustomerDetail({ lead, onDelete }: { lead: any; onDelete?: (leadId: num
   })
 
   return (
-    <Card variant="glass" className="p-6">
+    <div>
+      {/* 닫기 버튼 */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-muted-foreground">고객 상세</h3>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <X size={14} />
+        </Button>
+      </div>
+
       {/* 고객 헤더 */}
-      <div className="flex items-start gap-4 mb-5">
-        <div className="w-12 h-12 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 font-bold text-lg shrink-0">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 font-bold text-sm shrink-0">
           {c?.name?.[0] || '?'}
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h3 className="font-semibold text-foreground">{c?.name || '이름 없음'}</h3>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+            <h3 className="font-semibold text-foreground text-sm">{c?.name || '이름 없음'}</h3>
             <ChannelBadge channel={c?.first_source || 'Unknown'} />
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gradeStyle.color}`}>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${gradeStyle.color}`}>
               {grade}
             </span>
-            <Badge variant={customerType === 'revisit' ? 'default' : 'secondary'} className={customerType === 'revisit' ? 'bg-brand-500/20 text-brand-400 border-0' : ''}>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge variant={customerType === 'revisit' ? 'default' : 'secondary'} className={`text-[10px] ${customerType === 'revisit' ? 'bg-brand-500/20 text-brand-400 border-0' : ''}`}>
               {customerType === 'revisit' ? '재방문' : '신규'}
             </Badge>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${stageConfig.color}`}>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${stageConfig.color}`}>
               {stageConfig.label}
             </span>
             {leadCount > 1 && (
-              <Badge variant="info">{leadCount}회 유입</Badge>
+              <Badge variant="info" className="text-[10px]">{leadCount}회 유입</Badge>
             )}
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Phone size={11} />{c?.phone_number}</span>
-            <span className="flex items-center gap-1"><Calendar size={11} />{formatDate(lead.created_at)}</span>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+            <span className="flex items-center gap-1"><Phone size={10} />{c?.phone_number}</span>
+            <span className="flex items-center gap-1"><Calendar size={10} />{formatDate(lead.created_at)}</span>
           </div>
         </div>
-        {totalPayment > 0 && (
-          <div className="text-right shrink-0">
-            <p className="text-xs text-muted-foreground mb-0.5">누적 결제액</p>
-            <p className="text-lg font-bold text-emerald-400">₩{totalPayment.toLocaleString()}</p>
-          </div>
-        )}
       </div>
+
+      {totalPayment > 0 && (
+        <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
+          <span className="text-xs text-muted-foreground">누적 결제액</span>
+          <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">₩{totalPayment.toLocaleString()}</span>
+        </div>
+      )}
 
       {/* 랜딩 페이지 및 설문 응답 */}
       {(landingPage || (customData && Object.keys(customData).length > 0)) && (
-        <div className="mb-5 p-4 bg-muted/40 dark:bg-white/[0.03] rounded-xl border border-border dark:border-white/5">
+        <div className="mb-4 p-3 bg-muted/40 dark:bg-white/[0.03] rounded-xl border border-border dark:border-white/5">
           {landingPage && (
-            <div className="flex items-center gap-2 mb-3">
-              <FileText size={12} className="text-brand-400" />
-              <span className="text-xs font-semibold text-muted-foreground">유입 랜딩 페이지:</span>
-              <span className="text-sm text-brand-400">{landingPage.name}</span>
+            <div className="flex items-center gap-2 mb-2">
+              <FileText size={11} className="text-brand-400" />
+              <span className="text-[11px] font-semibold text-muted-foreground">유입 랜딩 페이지:</span>
+              <span className="text-xs text-brand-400">{landingPage.name}</span>
             </div>
           )}
           {customData?.survey && Object.keys(customData.survey).length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                <Info size={12} /> 설문 응답
+              <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <Info size={11} /> 설문 응답
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {Object.entries(customData.survey).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{key}</span>
@@ -173,24 +207,24 @@ function CustomerDetail({ lead, onDelete }: { lead: any; onDelete?: (leadId: num
 
       {/* 시술 이력 */}
       {Object.keys(treatmentMap).length > 0 && (
-        <div className="mb-5 p-4 bg-muted/40 dark:bg-white/[0.03] rounded-xl border border-border dark:border-white/5">
-          <p className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-            <TrendingUp size={12} /> 시술 이력
+        <div className="mb-4 p-3 bg-muted/40 dark:bg-white/[0.03] rounded-xl border border-border dark:border-white/5">
+          <p className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+            <TrendingUp size={11} /> 시술 이력
           </p>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {Object.entries(treatmentMap).map(([name, { count, total }]) => (
               <div key={name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-foreground/80">{name}</span>
-                  <span className="text-xs text-muted-foreground bg-muted dark:bg-white/5 px-2 py-0.5 rounded-full">{count}회</span>
+                  <span className="text-xs text-foreground/80">{name}</span>
+                  <span className="text-[10px] text-muted-foreground bg-muted dark:bg-white/5 px-1.5 py-0.5 rounded-full">{count}회</span>
                 </div>
-                <span className="text-sm font-semibold text-emerald-400">₩{total.toLocaleString()}</span>
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">₩{total.toLocaleString()}</span>
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border dark:border-white/5">
-            <span className="text-xs text-muted-foreground">총 {payments.length}회 시술</span>
-            <span className="text-sm font-bold text-emerald-400">₩{totalPayment.toLocaleString()}</span>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border dark:border-white/5">
+            <span className="text-[11px] text-muted-foreground">총 {payments.length}회 시술</span>
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">₩{totalPayment.toLocaleString()}</span>
           </div>
         </div>
       )}
@@ -205,7 +239,7 @@ function CustomerDetail({ lead, onDelete }: { lead: any; onDelete?: (leadId: num
 
       {/* 삭제 버튼 (superadmin) */}
       {onDelete && (
-        <div className="mt-5 pt-4 border-t border-border dark:border-white/5 flex justify-end">
+        <div className="mt-4 pt-3 border-t border-border dark:border-white/5 flex justify-end">
           <Button
             variant="ghost"
             size="sm"
@@ -216,7 +250,7 @@ function CustomerDetail({ lead, onDelete }: { lead: any; onDelete?: (leadId: num
           </Button>
         </div>
       )}
-    </Card>
+    </div>
   )
 }
 
@@ -240,6 +274,8 @@ function LeadsContent() {
   const [tab, setTab] = useState<'all' | 'new' | 'revisit'>('all')
   const [channelFilter, setChannelFilter] = useState<string>('all')
   const [stageFilter, setStageFilter] = useState<string>('all')
+  const [dateRange, setDateRange] = useState<DateRange>('all')
+  const [sortBy, setSortBy] = useState<'newest' | 'payment' | 'name'>('newest')
   const [landingPageFilter, setLandingPageFilter] = useState<string>(searchParams.get('landing_page_id') || 'all')
   const [campaignFilter, setCampaignFilter] = useState<string>('all')
   const [landingPages, setLandingPages] = useState<{ id: number; name: string }[]>([])
@@ -250,7 +286,7 @@ function LeadsContent() {
     fetch(`/api/landing-pages${qs}`)
       .then(r => r.json())
       .then(d => setLandingPages(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch(() => { })
   }, [selectedClinicId])
 
   const fetchLeads = () => {
@@ -263,7 +299,7 @@ function LeadsContent() {
     fetch(`/api/leads${qs}`)
       .then(r => r.json())
       .then(d => setLeads(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false))
   }
 
@@ -300,7 +336,19 @@ function LeadsContent() {
     return Array.from(set).sort()
   }, [leads])
 
-  const activeFilterCount = [channelFilter, landingPageFilter, campaignFilter].filter(f => f !== 'all').length
+  const activeFilterCount = [channelFilter, landingPageFilter, campaignFilter, stageFilter].filter(f => f !== 'all').length
+    + (dateRange !== 'all' ? 1 : 0)
+
+  // A: stageCounts는 필터 전 전체 leads 기준
+  const allStageCounts = useMemo(() => {
+    const counts: Record<FunnelStage, number> = { lead: 0, booked: 0, visited: 0, consulted: 0, paid: 0 }
+    leads.forEach(l => {
+      counts[getFunnelStage(l.customer)]++
+    })
+    return counts
+  }, [leads])
+
+  const totalLeads = leads.length
 
   const filtered = useMemo(() => {
     return leads.filter(l => {
@@ -319,33 +367,48 @@ function LeadsContent() {
         if (stage !== stageFilter) return false
       }
 
+      if (!isInDateRange(l.created_at, dateRange)) return false
+
       return true
     })
-  }, [leads, search, channelFilter, stageFilter])
+  }, [leads, search, channelFilter, stageFilter, dateRange])
 
-  const newLeads     = filtered.filter(l => getCustomerType(l.customer) === 'new')
-  const revisitLeads = filtered.filter(l => getCustomerType(l.customer) === 'revisit')
-  const displayed    = tab === 'all' ? filtered : tab === 'new' ? newLeads : revisitLeads
-
-  const stageCounts = useMemo(() => {
-    const counts: Record<FunnelStage, number> = { lead: 0, booked: 0, visited: 0, consulted: 0, paid: 0 }
-    filtered.forEach(l => {
-      const stage = getFunnelStage(l.customer)
-      counts[stage]++
+  const newLeads = useMemo(() => filtered.filter(l => getCustomerType(l.customer) === 'new'), [filtered])
+  const revisitLeads = useMemo(() => filtered.filter(l => getCustomerType(l.customer) === 'revisit'), [filtered])
+  const displayed = useMemo(() => {
+    const base = tab === 'all' ? filtered : tab === 'new' ? newLeads : revisitLeads
+    // H: 정렬
+    return [...base].sort((a, b) => {
+      if (sortBy === 'payment') {
+        const pa = (a.customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
+        const pb = (b.customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
+        return pb - pa
+      }
+      if (sortBy === 'name') {
+        return (a.customer?.name || '').localeCompare(b.customer?.name || '', 'ko')
+      }
+      // newest (default)
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
-    return counts
-  }, [filtered])
+  }, [filtered, newLeads, revisitLeads, tab, sortBy])
 
   const TABS = [
-    { key: 'all',     label: '전체',     count: filtered.length },
-    { key: 'new',     label: '신규고객',  count: newLeads.length },
+    { key: 'all', label: '전체', count: filtered.length },
+    { key: 'new', label: '신규고객', count: newLeads.length },
     { key: 'revisit', label: '재방문고객', count: revisitLeads.length },
+  ]
+
+  const DATE_RANGES: { key: DateRange; label: string }[] = [
+    { key: 'all', label: '전체 기간' },
+    { key: 'today', label: '오늘' },
+    { key: 'week', label: '이번 주' },
+    { key: 'month', label: '이번 달' },
   ]
 
   return (
     <>
       <PageHeader
-        title="고객(CDP) 관리"
+        title="고객관리"
         description="광고 인입 → 챗봇 → 상담 → 결제 전체 여정을 추적합니다."
         actions={
           <Card variant="glass" className="flex items-center px-3 py-2">
@@ -361,20 +424,30 @@ function LeadsContent() {
         }
       />
 
-      {/* 퍼널 단계 요약 */}
-      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-5">
-        {(Object.entries(FUNNEL_STAGES) as [FunnelStage, typeof FUNNEL_STAGES[FunnelStage]][]).map(([key, stage]) => (
-          <button
-            key={key}
-            onClick={() => setStageFilter(stageFilter === key ? 'all' : key)}
-            className={`p-3 text-center transition-all rounded-2xl bg-muted/40 dark:bg-white/[0.04] border border-border dark:border-white/[0.08] backdrop-blur-md ${stageFilter === key ? 'ring-1 ring-brand-500' : 'hover:bg-muted dark:hover:bg-white/[0.03]'}`}
-            aria-pressed={stageFilter === key}
-            aria-label={`${stage.label} 필터 ${stageFilter === key ? '해제' : '적용'}`}
-          >
-            {loading ? <Skeleton className="h-6 w-12 mx-auto mb-1" /> : <p className="text-lg font-bold text-foreground">{stageCounts[key]}</p>}
-            <p className="text-xs text-muted-foreground">{stage.label}</p>
-          </button>
-        ))}
+      {/* A+E: 퍼널 단계 요약 — 항상 전체 기준 count + 진행 바 */}
+      <div className="grid grid-cols-5 gap-2 mb-5">
+        {(Object.entries(FUNNEL_STAGES) as [FunnelStage, typeof FUNNEL_STAGES[FunnelStage]][]).map(([key, stage]) => {
+          const count = allStageCounts[key]
+          const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0
+          return (
+            <button
+              key={key}
+              onClick={() => setStageFilter(stageFilter === key ? 'all' : key)}
+              className={`p-3 text-center transition-all rounded-2xl bg-muted/40 dark:bg-white/[0.04] border border-border dark:border-white/[0.08] backdrop-blur-md ${stageFilter === key ? 'ring-2 ring-brand-500 bg-brand-500/5' : 'hover:bg-muted dark:hover:bg-white/[0.03]'}`}
+              aria-pressed={stageFilter === key}
+              aria-label={`${stage.label} 필터 ${stageFilter === key ? '해제' : '적용'}`}
+            >
+              {loading ? <Skeleton className="h-6 w-12 mx-auto mb-1" /> : (
+                <p className={`text-lg font-bold ${stageFilter === key ? 'text-brand-400' : 'text-foreground'}`}>{count}</p>
+              )}
+              <p className="text-[11px] text-muted-foreground mb-1.5">{stage.label}</p>
+              {/* E: 진행 바 */}
+              <div className="h-1 bg-muted dark:bg-white/10 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${stage.barColor}`} style={{ width: `${pct}%` }} />
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       {/* 필터 + 탭 */}
@@ -384,10 +457,10 @@ function LeadsContent() {
             <Button
               key={t.key}
               variant={tab === t.key ? 'default' : 'glass'}
-              onClick={() => { setTab(t.key as any); setSelected(null) }}
+              onClick={() => { setTab(t.key as typeof tab); setSelected(null) }}
               className={tab === t.key ? 'bg-brand-600 border-brand-600' : ''}
             >
-              {t.key === 'new'     && <User  size={13} />}
+              {t.key === 'new' && <User size={13} />}
               {t.key === 'revisit' && <Users size={13} />}
               {t.label}
               <span className={`text-xs px-1.5 py-0 rounded-full ml-1 ${tab === t.key ? 'bg-white/20' : 'bg-muted dark:bg-white/5 text-muted-foreground'}`}>
@@ -398,6 +471,21 @@ function LeadsContent() {
         </div>
 
         <div className="flex items-center gap-2 ml-auto flex-wrap">
+          {/* G: 기간 필터 */}
+          <div className="flex gap-1 bg-muted dark:bg-white/5 rounded-lg p-0.5">
+            {DATE_RANGES.map(d => (
+              <Button
+                key={d.key}
+                variant={dateRange === d.key ? 'default' : 'ghost'}
+                size="sm"
+                className={`text-xs px-2.5 h-7 ${dateRange === d.key ? 'bg-brand-600 hover:bg-brand-700' : ''}`}
+                onClick={() => setDateRange(d.key)}
+              >
+                {d.label}
+              </Button>
+            ))}
+          </div>
+
           <Filter size={14} className="text-muted-foreground" />
 
           {channels.length > 0 && (
@@ -442,34 +530,48 @@ function LeadsContent() {
             </Select>
           )}
 
+          {/* H: 정렬 */}
+          <Select value={sortBy} onValueChange={v => setSortBy(v as any)}>
+            <SelectTrigger className="w-[110px] glass-card border-0 text-foreground text-xs">
+              <ArrowUpDown size={11} className="mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">최신순</SelectItem>
+              <SelectItem value="payment">결제액순</SelectItem>
+              <SelectItem value="name">이름순</SelectItem>
+            </SelectContent>
+          </Select>
+
           {activeFilterCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setLandingPageFilter('all'); setCampaignFilter('all'); setChannelFilter('all') }}
+              onClick={() => { setLandingPageFilter('all'); setCampaignFilter('all'); setChannelFilter('all'); setDateRange('all'); setStageFilter('all') }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              <X size={12} /> 필터 초기화
+              <X size={12} /> 초기화
             </Button>
           )}
         </div>
       </div>
 
-      {/* 모바일 Sheet - 모바일에서만 렌더링 */}
+      {/* 모바일 Sheet */}
       <div className="md:hidden">
         <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
           <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
             <SheetHeader className="mb-4">
               <SheetTitle className="text-foreground">고객 상세</SheetTitle>
             </SheetHeader>
-            {selected && <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} />}
+            {selected && <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} onClose={() => setSelected(null)} />}
           </SheetContent>
         </Sheet>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* B: 목록 전체 너비 + 우측 사이드 패널 */}
+      <div className="hidden md:flex gap-3">
         {/* 고객 목록 */}
-        <div className="md:col-span-2 space-y-2">
+        <div className="flex-1 min-w-0 space-y-2">
           {loading
             ? Array(8).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
             : displayed.map(lead => {
@@ -487,7 +589,7 @@ function LeadsContent() {
                 <button
                   key={lead.id}
                   onClick={() => setSelected(isSelected ? null : lead)}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-all rounded-2xl bg-muted/40 dark:bg-white/[0.04] border border-border dark:border-white/[0.08] backdrop-blur-md ${isSelected ? 'ring-1 ring-brand-500' : 'hover:bg-muted dark:hover:bg-white/[0.03]'}`}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-all rounded-2xl bg-muted/40 dark:bg-white/[0.04] border border-border dark:border-white/[0.08] backdrop-blur-md ${isSelected ? 'ring-1 ring-brand-500 bg-brand-500/5' : 'hover:bg-muted dark:hover:bg-white/[0.03]'}`}
                   aria-pressed={isSelected}
                   aria-label={`${c?.name || '이름 없음'} 고객 ${isSelected ? '선택 해제' : '선택'}`}
                 >
@@ -513,14 +615,21 @@ function LeadsContent() {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="truncate">{c?.phone_number}</span>
+                      {/* I: 유입일 표시 */}
+                      <span className="flex items-center gap-0.5 text-muted-foreground/60 shrink-0">
+                        <Clock size={9} />{formatDate(lead.created_at)}
+                      </span>
                       {lead.utm_campaign && (
                         <span className="text-muted-foreground/60 truncate">· {lead.utm_campaign}</span>
                       )}
                       {leadCount > 1 && (
-                        <span className="text-brand-400 shrink-0">({leadCount}회 유입)</span>
+                        <span className="text-brand-400 shrink-0">({leadCount}회)</span>
                       )}
                     </div>
                   </div>
+                  {totalPayment > 0 && (
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">₩{totalPayment.toLocaleString()}</span>
+                  )}
                   <ChannelBadge channel={channelSource || '-'} />
                 </button>
               )
@@ -531,35 +640,69 @@ function LeadsContent() {
               {search
                 ? `'${search}' 검색 결과 없음`
                 : tab === 'revisit' ? '재방문 고객이 없습니다.'
-                : tab === 'new'     ? '신규 고객이 없습니다.'
-                : '인입된 고객이 없습니다.'}
+                  : tab === 'new' ? '신규 고객이 없습니다.'
+                    : '인입된 고객이 없습니다.'}
             </Card>
           )}
         </div>
 
-        {/* 상세 패널 (데스크톱만) */}
-        <div className="hidden md:block md:col-span-3">
-          {selected ? (
-            <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} />
-          ) : (
-            <Card variant="glass" className="p-12 text-center">
-              <Star size={32} className="text-muted-foreground/60 mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">좌측 목록에서 고객을 선택하면<br />전체 여정 및 시술 이력을 확인할 수 있습니다.</p>
-              <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-                {[
-                  { label: '전체 고객', value: filtered.length },
-                  { label: '신규 고객', value: newLeads.length },
-                  { label: '재방문 고객', value: revisitLeads.length },
-                ].map(({ label, value }) => (
-                  <div key={label} className="bg-muted/40 dark:bg-white/[0.03] rounded-xl p-3">
-                    {loading ? <Skeleton className="h-6 w-12 mx-auto mb-1" /> : <p className="text-lg font-bold text-foreground">{value}</p>}
-                    <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+        {/* B: 우측 사이드 패널 */}
+        {selected && (
+          <Card variant="glass" className="w-[400px] shrink-0 p-5 self-start sticky top-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
+            <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} onClose={() => setSelected(null)} />
+          </Card>
+        )}
+      </div>
+
+      {/* 모바일 목록 */}
+      <div className="md:hidden space-y-2">
+        {loading
+          ? Array(8).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
+          : displayed.map(lead => {
+            const c = lead.customer
+            const funnelStage = getFunnelStage(c)
+            const stageConfig = FUNNEL_STAGES[funnelStage]
+            const channelSource = lead.utm_source || c?.first_source
+            const leadCount = lead.lead_count || 1
+            const isSelected = selected?.id === lead.id
+            return (
+              <button
+                key={lead.id}
+                onClick={() => setSelected(isSelected ? null : lead)}
+                className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-all rounded-2xl bg-muted/40 dark:bg-white/[0.04] border border-border dark:border-white/[0.08] backdrop-blur-md ${isSelected ? 'ring-1 ring-brand-500' : 'hover:bg-muted dark:hover:bg-white/[0.03]'}`}
+              >
+                <div className="w-8 h-8 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 font-semibold text-sm shrink-0 relative">
+                  {c?.name?.[0] || <User size={14} />}
+                  {leadCount > 1 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {leadCount}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className="text-sm font-medium text-foreground truncate">{c?.name || '이름 없음'}</p>
+                    <span className={`text-[10px] px-1.5 rounded-full shrink-0 ${stageConfig.color}`}>
+                      {stageConfig.label}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </Card>
-          )}
-        </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="truncate">{c?.phone_number}</span>
+                    <span className="flex items-center gap-0.5 text-muted-foreground/60 shrink-0">
+                      <Clock size={9} />{formatDate(lead.created_at)}
+                    </span>
+                  </div>
+                </div>
+                <ChannelBadge channel={channelSource || '-'} />
+              </button>
+            )
+          })
+        }
+        {!loading && displayed.length === 0 && (
+          <Card variant="glass" className="p-8 text-center text-muted-foreground text-sm">
+            {search ? `'${search}' 검색 결과 없음` : '인입된 고객이 없습니다.'}
+          </Card>
+        )}
       </div>
     </>
   )
