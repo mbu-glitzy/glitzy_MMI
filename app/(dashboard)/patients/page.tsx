@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2, Trash2, X } from 'lucide-react'
+import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2, Trash2, X, Settings } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useClinic } from '@/components/ClinicContext'
 import { toast } from 'sonner'
@@ -177,12 +177,13 @@ function BookingEditForm({ booking, onSave }: { booking: any; onSave: () => void
   )
 }
 
-// 상담 기록 폼
-function ConsultationForm({ customerId, current, onSave }: { customerId: number; current: any; onSave: () => void }) {
+// 상담 기록 섹션 (A: 이력 목록 + 새 상담 추가, E: Textarea 메모)
+function ConsultationSection({ customerId, consultations, onSave }: { customerId: number; consultations: any[]; onSave: () => void }) {
+  const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
-    status: current?.status || '',
-    notes: current?.notes || '',
-    consultationDate: current?.consultation_date ? current.consultation_date.slice(0, 10) : '',
+    status: '',
+    notes: '',
+    consultationDate: '',
   })
   const [saving, setSaving] = useState(false)
 
@@ -196,6 +197,8 @@ function ConsultationForm({ customerId, current, onSave }: { customerId: number;
       })
       if (!res.ok) throw new Error()
       toast.success('상담 내용이 저장되었습니다.')
+      setForm({ status: '', notes: '', consultationDate: '' })
+      setShowForm(false)
       onSave()
     } catch {
       toast.error('저장에 실패했습니다.')
@@ -205,51 +208,314 @@ function ConsultationForm({ customerId, current, onSave }: { customerId: number;
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-      <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">상담 상태</Label>
-        <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="선택" />
-          </SelectTrigger>
-          <SelectContent>
-            {['예약완료', '방문완료', '노쇼', '상담중', '취소'].map(s => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">상담 일시</Label>
-        <Input
-          type="date"
-          value={form.consultationDate}
-          onChange={e => setForm(f => ({ ...f, consultationDate: e.target.value }))}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">메모</Label>
-        <Input
-          type="text"
-          value={form.notes}
-          onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-          placeholder="상담 내용 메모"
-        />
-      </div>
-      <div className="sm:col-span-3 flex justify-end">
-        <Button onClick={handleSave} disabled={saving} className="bg-brand-600 hover:bg-brand-700">
-          {saving ? '저장 중...' : '상담 저장'}
+    <div>
+      {/* 상담 이력 목록 */}
+      {consultations.length > 0 ? (
+        <div className="space-y-2 mb-3">
+          {consultations.map((c: any, i: number) => (
+            <div key={c.id || i} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-muted/40 dark:bg-white/[0.03] border border-border dark:border-white/5">
+              <div className="w-2 h-2 rounded-full bg-brand-500 mt-1.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  {c.status && <Badge variant="secondary" className="text-[10px]">{c.status}</Badge>}
+                  {c.consultation_date && <span className="text-[10px] text-muted-foreground">{formatDate(c.consultation_date)}</span>}
+                </div>
+                {c.notes && <p className="text-xs text-foreground/80 whitespace-pre-wrap">{c.notes}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground mb-3">상담 기록이 없습니다.</p>
+      )}
+
+      {/* 새 상담 추가 */}
+      {showForm ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border border-border dark:border-white/5 bg-muted/20 dark:bg-white/[0.02]">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">상담 상태</Label>
+            <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {['상담대기', '상담중', '방문완료', '시술확정', '노쇼', '취소'].map(s => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">상담 일시</Label>
+            <Input
+              type="date"
+              value={form.consultationDate}
+              onChange={e => setForm(f => ({ ...f, consultationDate: e.target.value }))}
+            />
+          </div>
+          <div className="sm:col-span-2 space-y-2">
+            <Label className="text-xs text-muted-foreground">메모</Label>
+            <Textarea
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="상담 내용을 자세히 기록하세요"
+              rows={3}
+              className="bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground placeholder:text-muted-foreground/60"
+            />
+          </div>
+          <div className="sm:col-span-2 flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>취소</Button>
+            <Button onClick={handleSave} disabled={saving} size="sm" className="bg-brand-600 hover:bg-brand-700">
+              {saving ? '저장 중...' : '상담 저장'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)} className="text-brand-400 hover:text-brand-300">
+          <Plus size={13} /> 상담 기록 추가
         </Button>
-      </div>
+      )}
     </div>
   )
 }
 
-// 결제 섹션
-function PaymentSection({ customerId, payments, onSave, isSuperAdmin }: { customerId: number; payments: any[]; onSave: () => void; isSuperAdmin?: boolean }) {
+// 시술 메뉴 관리 Dialog
+function TreatmentManageDialog({ clinicId, open, onOpenChange }: { clinicId: number; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [items, setItems] = useState<{ id: number; name: string; category: string | null; default_price: number; is_active: boolean; sort_order: number }[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ name: '', category: '', default_price: '' })
+  const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', category: '', default_price: '' })
+
+  const fetchItems = useCallback(() => {
+    setLoading(true)
+    fetch(`/api/clinic-treatments?clinic_id=${clinicId}&active_only=false`)
+      .then(r => r.json())
+      .then(d => setItems(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [clinicId])
+
+  useEffect(() => { if (open) fetchItems() }, [open, fetchItems])
+
+  const handleAdd = async () => {
+    if (!form.name.trim()) { toast.error('시술명을 입력하세요.'); return }
+    const price = Number(form.default_price)
+    if (!form.default_price || isNaN(price) || price < 0) { toast.error('올바른 금액을 입력하세요.'); return }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/clinic-treatments?clinic_id=${clinicId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name, category: form.category || null, default_price: price }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || '추가 실패')
+      }
+      setForm({ name: '', category: '', default_price: '' })
+      toast.success('시술이 추가되었습니다.')
+      fetchItems()
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUpdate = async (id: number) => {
+    if (!editForm.name.trim()) { toast.error('시술명을 입력하세요.'); return }
+    const price = Number(editForm.default_price)
+    if (isNaN(price) || price < 0) { toast.error('올바른 금액을 입력하세요.'); return }
+    try {
+      const res = await fetch(`/api/clinic-treatments?clinic_id=${clinicId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: editForm.name, category: editForm.category || null, default_price: price }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || '수정 실패')
+      }
+      setEditingId(null)
+      toast.success('수정되었습니다.')
+      fetchItems()
+    } catch (e: any) {
+      toast.error(e.message)
+    }
+  }
+
+  const handleToggleActive = async (item: typeof items[0]) => {
+    try {
+      const res = await fetch(`/api/clinic-treatments?clinic_id=${clinicId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, is_active: !item.is_active }),
+      })
+      if (!res.ok) throw new Error()
+      fetchItems()
+    } catch {
+      toast.error('변경 실패')
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('이 시술 항목을 삭제하시겠습니까?')) return
+    try {
+      const res = await fetch(`/api/clinic-treatments?clinic_id=${clinicId}&id=${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      toast.success('삭제되었습니다.')
+      fetchItems()
+    } catch {
+      toast.error('삭제 실패')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>시술 메뉴 관리</DialogTitle>
+        </DialogHeader>
+
+        {/* 시술 목록 */}
+        <div className="max-h-[320px] overflow-y-auto space-y-1.5 py-2">
+          {loading ? (
+            <div className="space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}</div>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">등록된 시술이 없습니다.</p>
+          ) : (
+            items.map(item => (
+              <div key={item.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${item.is_active ? 'border-border dark:border-white/5 bg-muted/30 dark:bg-white/[0.02]' : 'border-border/50 bg-muted/10 opacity-50'}`}>
+                {editingId === item.id ? (
+                  <>
+                    <Input
+                      value={editForm.name}
+                      onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                      className="h-7 text-xs flex-1"
+                      placeholder="시술명"
+                    />
+                    <Input
+                      value={editForm.category}
+                      onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                      className="h-7 text-xs w-20"
+                      placeholder="카테고리"
+                    />
+                    <Input
+                      type="number"
+                      value={editForm.default_price}
+                      onChange={e => setEditForm(f => ({ ...f, default_price: e.target.value }))}
+                      className="h-7 text-xs w-24"
+                      placeholder="금액"
+                    />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-brand-400" onClick={() => handleUpdate(item.id)}>
+                      <Check size={13} />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
+                      <X size={13} />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-foreground flex-1 truncate">{item.name}</span>
+                    {item.category && <span className="text-[10px] text-muted-foreground bg-muted dark:bg-white/5 px-1.5 py-0.5 rounded-full shrink-0">{item.category}</span>}
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0 w-20 text-right">₩{item.default_price.toLocaleString()}</span>
+                    <Button
+                      variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+                      onClick={() => { setEditingId(item.id); setEditForm({ name: item.name, category: item.category || '', default_price: String(item.default_price) }) }}
+                    >
+                      <Edit2 size={11} />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+                      onClick={() => handleToggleActive(item)}
+                      title={item.is_active ? '비활성화' : '활성화'}
+                    >
+                      {item.is_active ? <Check size={11} className="text-emerald-500" /> : <AlertCircle size={11} className="text-muted-foreground" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-red-400 hover:text-red-300" onClick={() => handleDelete(item.id)}>
+                      <Trash2 size={11} />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* 추가 폼 */}
+        <div className="border-t border-border dark:border-white/5 pt-3">
+          <p className="text-xs text-muted-foreground font-medium mb-2">새 시술 추가</p>
+          <div className="flex gap-2">
+            <Input
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="시술명"
+              className="flex-1 h-9 text-sm"
+            />
+            <Input
+              value={form.category}
+              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              placeholder="카테고리"
+              className="w-24 h-9 text-sm"
+            />
+            <Input
+              type="number"
+              value={form.default_price}
+              onChange={e => setForm(f => ({ ...f, default_price: e.target.value }))}
+              placeholder="기본 금액"
+              className="w-28 h-9 text-sm"
+              min="0"
+            />
+            <Button onClick={handleAdd} disabled={saving} size="sm" className="bg-brand-600 hover:bg-brand-700 h-9 shrink-0">
+              <Plus size={14} /> {saving ? '...' : '추가'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// H: POS형 결제 섹션 (시술 카탈로그 선택 + 금액 자동 채움 + 수정 가능)
+// D: 합계 표시, C: 폼 접기
+function PaymentSection({ customerId, payments, onSave, isSuperAdmin, clinicId }: {
+  customerId: number; payments: any[]; onSave: () => void; isSuperAdmin?: boolean; clinicId?: number | null
+}) {
   const [form, setForm] = useState({ treatmentName: '', paymentAmount: '', paymentDate: '' })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showForm, setShowForm] = useState(false)
+  const [treatments, setTreatments] = useState<{ id: number; name: string; category: string | null; default_price: number }[]>([])
+  const [customInput, setCustomInput] = useState(false)
+
+  // 시술 카탈로그 로드
+  useEffect(() => {
+    if (!clinicId) return
+    fetch(`/api/clinic-treatments?clinic_id=${clinicId}`)
+      .then(r => r.json())
+      .then(d => setTreatments(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [clinicId])
+
+  const totalPayment = payments.reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
+
+  const handleTreatmentSelect = (treatmentName: string) => {
+    if (treatmentName === '__custom__') {
+      setCustomInput(true)
+      setForm(f => ({ ...f, treatmentName: '' }))
+      return
+    }
+    setCustomInput(false)
+    const found = treatments.find(t => t.name === treatmentName)
+    setForm(f => ({
+      ...f,
+      treatmentName,
+      paymentAmount: found ? String(found.default_price) : f.paymentAmount,
+    }))
+    setErrors(e => ({ ...e, treatmentName: '' }))
+  }
 
   const validate = () => {
     const errs: Record<string, string> = {}
@@ -271,6 +537,8 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin }: { custom
       })
       if (!res.ok) throw new Error()
       setForm({ treatmentName: '', paymentAmount: '', paymentDate: '' })
+      setCustomInput(false)
+      setShowForm(false)
       toast.success('결제 내역이 등록되었습니다.')
       onSave()
     } catch {
@@ -280,14 +548,31 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin }: { custom
     }
   }
 
+  // 카테고리별 그룹핑
+  const grouped = treatments.reduce((acc, t) => {
+    const cat = t.category || '기타'
+    if (!acc[cat]) acc[cat] = []
+    acc[cat].push(t)
+    return acc
+  }, {} as Record<string, typeof treatments>)
+
   return (
-    <div className="mt-3">
+    <div>
+      {/* D: 결제 요약 */}
       {payments.length > 0 && (
-        <Table className="mb-4">
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mb-3">
+          <span className="text-xs text-muted-foreground">총 {payments.length}건 결제</span>
+          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">₩{totalPayment.toLocaleString()}</span>
+        </div>
+      )}
+
+      {/* 결제 내역 목록 */}
+      {payments.length > 0 && (
+        <Table className="mb-3">
           <TableHeader>
             <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
               <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">시술명</TableHead>
-              <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">금액</TableHead>
+              <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium text-right">금액</TableHead>
               <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">결제일</TableHead>
               {isSuperAdmin && <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium w-10" />}
             </TableRow>
@@ -295,8 +580,8 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin }: { custom
           <TableBody>
             {payments.map((p: any) => (
               <TableRow key={p.id} className="border-b border-border dark:border-white/5">
-                <TableCell className="text-foreground">{p.treatment_name}</TableCell>
-                <TableCell className="text-emerald-600 dark:text-emerald-400 font-semibold">₩{Number(p.payment_amount).toLocaleString()}</TableCell>
+                <TableCell className="text-foreground text-sm">{p.treatment_name}</TableCell>
+                <TableCell className="text-emerald-600 dark:text-emerald-400 font-semibold text-right">₩{Number(p.payment_amount).toLocaleString()}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">{formatDate(p.payment_date)}</TableCell>
                 {isSuperAdmin && (
                   <TableCell>
@@ -321,58 +606,115 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin }: { custom
           </TableBody>
         </Table>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">시술명 *</Label>
-          <Input
-            type="text"
-            value={form.treatmentName}
-            onChange={e => { setForm(f => ({ ...f, treatmentName: e.target.value })); setErrors(e => ({ ...e, treatmentName: '' })) }}
-            placeholder="쌍꺼풀, 보톡스 등"
-            className={`bg-muted dark:bg-white/5 text-foreground placeholder:text-muted-foreground/60 ${errors.treatmentName ? 'border-red-500' : 'border-border dark:border-white/10'}`}
-          />
-          {errors.treatmentName && <p className="text-red-400 text-xs">{errors.treatmentName}</p>}
+
+      {/* C: 결제 추가 폼 (접기/펼치기) */}
+      {showForm ? (
+        <div className="p-3 rounded-lg border border-border dark:border-white/5 bg-muted/20 dark:bg-white/[0.02]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">시술 항목 *</Label>
+              {treatments.length > 0 && !customInput ? (
+                <Select
+                  value={form.treatmentName}
+                  onValueChange={handleTreatmentSelect}
+                >
+                  <SelectTrigger className={`bg-muted dark:bg-white/5 text-foreground ${errors.treatmentName ? 'border-red-500' : 'border-border dark:border-white/10'}`}>
+                    <SelectValue placeholder="시술 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(grouped).map(([cat, items]) => (
+                      <div key={cat}>
+                        {Object.keys(grouped).length > 1 && (
+                          <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{cat}</div>
+                        )}
+                        {items.map(t => (
+                          <SelectItem key={t.id} value={t.name}>
+                            <span className="flex items-center gap-2">
+                              {t.name}
+                              <span className="text-muted-foreground text-[10px]">₩{t.default_price.toLocaleString()}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
+                    <SelectItem value="__custom__">
+                      <span className="text-brand-400">직접 입력</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="flex gap-1">
+                  <Input
+                    type="text"
+                    value={form.treatmentName}
+                    onChange={e => { setForm(f => ({ ...f, treatmentName: e.target.value })); setErrors(e => ({ ...e, treatmentName: '' })) }}
+                    placeholder="시술명 직접 입력"
+                    className={`bg-muted dark:bg-white/5 text-foreground placeholder:text-muted-foreground/60 ${errors.treatmentName ? 'border-red-500' : 'border-border dark:border-white/10'}`}
+                  />
+                  {treatments.length > 0 && (
+                    <Button variant="ghost" size="icon" className="shrink-0 h-10 w-10" onClick={() => { setCustomInput(false); setForm(f => ({ ...f, treatmentName: '' })) }}>
+                      <List size={14} />
+                    </Button>
+                  )}
+                </div>
+              )}
+              {errors.treatmentName && <p className="text-red-400 text-xs">{errors.treatmentName}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">결제 금액 (원) *</Label>
+              <Input
+                type="number"
+                value={form.paymentAmount}
+                onChange={e => { setForm(f => ({ ...f, paymentAmount: e.target.value })); setErrors(e => ({ ...e, paymentAmount: '' })) }}
+                placeholder="500000"
+                min="0"
+                className={`bg-muted dark:bg-white/5 text-foreground placeholder:text-muted-foreground/60 ${errors.paymentAmount ? 'border-red-500' : 'border-border dark:border-white/10'}`}
+              />
+              {form.paymentAmount && (
+                <p className="text-[10px] text-muted-foreground">₩{Number(form.paymentAmount || 0).toLocaleString()}</p>
+              )}
+              {errors.paymentAmount && <p className="text-red-400 text-xs">{errors.paymentAmount}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">결제일</Label>
+              <Input
+                type="date"
+                value={form.paymentDate}
+                onChange={e => setForm(f => ({ ...f, paymentDate: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <Button variant="ghost" size="sm" onClick={() => { setShowForm(false); setCustomInput(false); setForm({ treatmentName: '', paymentAmount: '', paymentDate: '' }) }}>취소</Button>
+            <Button onClick={handleSave} disabled={saving} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus size={14} /> {saving ? '저장 중...' : '결제 등록'}
+            </Button>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">결제 금액 (원) *</Label>
-          <Input
-            type="number"
-            value={form.paymentAmount}
-            onChange={e => { setForm(f => ({ ...f, paymentAmount: e.target.value })); setErrors(e => ({ ...e, paymentAmount: '' })) }}
-            placeholder="500000"
-            min="0"
-            className={`bg-muted dark:bg-white/5 text-foreground placeholder:text-muted-foreground/60 ${errors.paymentAmount ? 'border-red-500' : 'border-border dark:border-white/10'}`}
-          />
-          {errors.paymentAmount && <p className="text-red-400 text-xs">{errors.paymentAmount}</p>}
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">결제 일시</Label>
-          <Input
-            type="date"
-            value={form.paymentDate}
-            onChange={e => setForm(f => ({ ...f, paymentDate: e.target.value }))}
-          />
-        </div>
-        <div className="sm:col-span-3 flex justify-end">
-          <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus size={14} /> {saving ? '저장 중...' : '결제 내역 추가'}
-          </Button>
-        </div>
-      </div>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)} className="text-emerald-500 hover:text-emerald-400">
+          <Plus size={13} /> 결제 내역 추가
+        </Button>
+      )}
     </div>
   )
 }
 
-// 예약 행
-function BookingRow({ booking, onRefresh, isSuperAdmin }: { booking: any; onRefresh: () => void; isSuperAdmin?: boolean }) {
+// F: 탭→섹션 전환 (예약/상담/결제를 한 화면에 세로 배치)
+// G: 목록에 상담 횟수 + 상태 표시
+function BookingRow({ booking, onRefresh, isSuperAdmin, clinicId }: { booking: any; onRefresh: () => void; isSuperAdmin?: boolean; clinicId?: number | null }) {
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<'booking' | 'consult' | 'payment'>('booking')
   const [changingStatus, setChangingStatus] = useState(false)
+  const [treatmentDialogOpen, setTreatmentDialogOpen] = useState(false)
+  const { data: session } = useSession()
+  const canManageTreatments = session?.user?.role === 'superadmin' || session?.user?.role === 'clinic_admin'
 
   const customer = booking.customer
   const cfg = STATUS_CONFIG[booking.status] || { label: booking.status, variant: 'secondary' as const }
   const totalPayment = (customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
-  const latestConsult = customer?.consultations?.[0]
+  const consultations: any[] = customer?.consultations || []
+  const latestConsult = consultations[0]
+  const consultCount = consultations.length
 
   const handleStatusChange = async (newStatus: string) => {
     if (newStatus === booking.status) return
@@ -433,9 +775,13 @@ function BookingRow({ booking, onRefresh, isSuperAdmin }: { booking: any; onRefr
             </SelectContent>
           </Select>
         </div>
-        <div className="w-20 shrink-0">
+        {/* G: 상담 횟수 + 상태 표시 */}
+        <div className="w-24 shrink-0">
           {latestConsult
-            ? <Badge variant="secondary">{latestConsult.status}</Badge>
+            ? <div className="flex items-center gap-1">
+                <Badge variant="secondary" className="text-[10px]">{latestConsult.status}</Badge>
+                {consultCount > 1 && <span className="text-[10px] text-muted-foreground">({consultCount})</span>}
+              </div>
             : <span className="text-muted-foreground/60 text-xs">-</span>}
         </div>
         <div className="w-28 shrink-0 text-right">
@@ -446,31 +792,49 @@ function BookingRow({ booking, onRefresh, isSuperAdmin }: { booking: any; onRefr
         {open ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
       </button>
 
+      {/* F: 세로 섹션 레이아웃 (탭 제거) */}
       {open && (
-        <div className="border-t border-border dark:border-white/5 px-5 py-4">
-          <div className="flex gap-2 mb-4">
-            {([
-              { key: 'booking' as const, label: '예약 정보', icon: Edit2 },
-              { key: 'consult' as const, label: '상담 기록', icon: List },
-              { key: 'payment' as const, label: '결제 내역', icon: Plus },
-            ]).map(({ key, label, icon: Icon }) => (
-              <Button
-                key={key}
-                variant={tab === key ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setTab(key)}
-                className={tab === key ? 'bg-brand-600' : ''}
-              >
-                <Icon size={13} /> {label}
-              </Button>
-            ))}
+        <div className="border-t border-border dark:border-white/5 px-5 py-4 space-y-5">
+          {/* 섹션 1: 예약 정보 */}
+          <div>
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Edit2 size={12} /> 예약 정보
+            </h4>
+            <BookingEditForm booking={booking} onSave={onRefresh} />
           </div>
-          {tab === 'booking' && <BookingEditForm booking={booking} onSave={onRefresh} />}
-          {tab === 'consult' && <ConsultationForm customerId={customer?.id} current={latestConsult} onSave={onRefresh} />}
-          {tab === 'payment' && <PaymentSection customerId={customer?.id} payments={customer?.payments || []} onSave={onRefresh} isSuperAdmin={isSuperAdmin} />}
+
+          {/* 섹션 2: 상담 기록 */}
+          <div className="pt-4 border-t border-border dark:border-white/5">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <List size={12} /> 상담 기록 {consultCount > 0 && <span className="text-brand-400">({consultCount})</span>}
+            </h4>
+            <ConsultationSection customerId={customer?.id} consultations={consultations} onSave={onRefresh} />
+          </div>
+
+          {/* 섹션 3: 결제 내역 */}
+          <div className="pt-4 border-t border-border dark:border-white/5">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Plus size={12} /> 결제 내역 {(customer?.payments || []).length > 0 && <span className="text-emerald-500">({(customer?.payments || []).length})</span>}
+              </span>
+              {canManageTreatments && clinicId && (
+                <button
+                  onClick={() => setTreatmentDialogOpen(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted"
+                  title="시술 메뉴 관리"
+                >
+                  <Settings size={13} />
+                </button>
+              )}
+            </h4>
+            <PaymentSection customerId={customer?.id} payments={customer?.payments || []} onSave={onRefresh} isSuperAdmin={isSuperAdmin} clinicId={clinicId} />
+            {canManageTreatments && clinicId && (
+              <TreatmentManageDialog clinicId={clinicId} open={treatmentDialogOpen} onOpenChange={setTreatmentDialogOpen} />
+            )}
+          </div>
 
           {isSuperAdmin && (
-            <div className="mt-4 pt-4 border-t border-border dark:border-white/5 flex gap-2 justify-end">
+            <div className="pt-4 border-t border-border dark:border-white/5 flex gap-2 justify-end">
               <Button
                 variant="ghost"
                 size="sm"
@@ -872,13 +1236,13 @@ export default function PatientsPage() {
                 <div className="w-40 shrink-0">예약 일시</div>
                 <div className="flex-1" />
                 <div className="w-28 shrink-0">예약 상태</div>
-                <div className="w-20 shrink-0">상담 상태</div>
+                <div className="w-24 shrink-0">상담</div>
                 <div className="w-28 shrink-0 text-right">결제 금액</div>
                 <div className="w-4 shrink-0" />
               </Card>
               <div className="space-y-2 min-w-[640px]">
                 {filtered.map(b => (
-                  <BookingRow key={b.id} booking={b} onRefresh={fetchBookings} isSuperAdmin={isSuperAdmin} />
+                  <BookingRow key={b.id} booking={b} onRefresh={fetchBookings} isSuperAdmin={isSuperAdmin} clinicId={selectedClinicId} />
                 ))}
               </div>
             </div>
