@@ -62,7 +62,7 @@ function parseBookingDateTime(dt: string | null | undefined): { date: string; ti
   const hh = Number(d.toLocaleString('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', hour12: false }).replace(/\D/g, '')) % 24
   const mm = d.toLocaleString('en-GB', { timeZone: 'Asia/Seoul', minute: '2-digit' }).replace(/\D/g, '')
   const rounded = Math.round(Number(mm) / 10) * 10
-  const adjH = rounded >= 60 ? hh + 1 : hh
+  const adjH = (rounded >= 60 ? hh + 1 : hh) % 24
   const adjM = rounded >= 60 ? 0 : rounded
   const time = `${String(adjH).padStart(2, '0')}:${String(adjM).padStart(2, '0')}`
   return { date, time }
@@ -290,7 +290,7 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin }: { custom
             {payments.map((p: any) => (
               <TableRow key={p.id} className="border-b border-border dark:border-white/5">
                 <TableCell className="text-foreground">{p.treatment_name}</TableCell>
-                <TableCell className="text-emerald-400 font-semibold">₩{Number(p.payment_amount).toLocaleString()}</TableCell>
+                <TableCell className="text-emerald-600 dark:text-emerald-400 font-semibold">₩{Number(p.payment_amount).toLocaleString()}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">{formatDate(p.payment_date)}</TableCell>
                 {isSuperAdmin && (
                   <TableCell>
@@ -434,7 +434,7 @@ function BookingRow({ booking, onRefresh, isSuperAdmin }: { booking: any; onRefr
         </div>
         <div className="w-28 shrink-0 text-right">
           {totalPayment > 0
-            ? <span className="text-sm font-semibold text-emerald-400">₩{totalPayment.toLocaleString()}</span>
+            ? <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">₩{totalPayment.toLocaleString()}</span>
             : <span className="text-muted-foreground/60 text-sm">-</span>}
         </div>
         {open ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
@@ -578,11 +578,13 @@ export default function PatientsPage() {
 
   const initCreateForm = () => {
     const now = new Date()
-    const mins = Math.ceil(now.getMinutes() / 10) * 10
-    now.setMinutes(mins, 0, 0)
-    if (mins >= 60) now.setHours(now.getHours() + 1, 0, 0, 0)
+    const kstH = Number(now.toLocaleString('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', hour12: false }).replace(/\D/g, '')) % 24
+    const kstM = Number(now.toLocaleString('en-GB', { timeZone: 'Asia/Seoul', minute: '2-digit' }).replace(/\D/g, ''))
+    const rounded = Math.ceil(kstM / 10) * 10
+    const finalH = (rounded >= 60 ? kstH + 1 : kstH) % 24
+    const finalM = rounded >= 60 ? 0 : rounded
     const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const timeStr = `${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`
     setCreateForm({
       name: '', phone_number: '',
       booking_date: dateStr, booking_time: timeStr,
@@ -986,7 +988,6 @@ export default function PatientsPage() {
                 const dayBookings = bookingsByDate[dateKey] || []
                 const isToday = todayKey === dateKey
                 const isSelected = selectedDate === dateKey
-                const dayNames = DAY_NAMES
                 return (
                   <button
                     key={i}
@@ -998,7 +999,7 @@ export default function PatientsPage() {
                     }`}
                   >
                     <div className="text-center mb-3">
-                      <p className="text-[10px] text-muted-foreground">{dayNames[i]}</p>
+                      <p className="text-[10px] text-muted-foreground">{DAY_NAMES[i]}</p>
                       <p className={`text-lg font-bold ${isToday ? 'text-brand-400' : 'text-foreground'}`}>{date.getDate()}</p>
                       {dayBookings.length > 0 && (
                         <span className="text-[10px] text-muted-foreground">{dayBookings.length}건</span>
@@ -1082,7 +1083,7 @@ export default function PatientsPage() {
                         <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone size={10} /> {b.customer?.phone_number}</p>
                       </div>
                       <div className="shrink-0" onClick={e => e.stopPropagation()}>
-                        <Select value={b.status} onValueChange={async (newStatus) => {
+                        <Select value={b.status} disabled={loading} onValueChange={async (newStatus) => {
                           if (newStatus === b.status) return
                           try {
                             const res = await fetch('/api/bookings', {
