@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { TrendingUp, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -296,8 +296,15 @@ export default function MonitoringPage() {
                       )}
                       <tr className="border-b border-border dark:border-white/5">
                         <td className="sticky left-0 bg-card px-3 py-2.5 font-medium z-10">
-                          <span className={kw.is_active === false ? 'text-muted-foreground/60 line-through' : 'text-foreground/80'}>{kw.keyword}</span>
-                          {kw.is_active === false && <span className="ml-1 text-[9px] text-muted-foreground/60">(비활성)</span>}
+                          <div className="flex items-center gap-1.5">
+                            <span className={kw.is_active === false ? 'text-muted-foreground/60 line-through' : 'text-foreground/80'}>{kw.keyword}</span>
+                            {kw.is_active === false && <span className="text-[9px] text-muted-foreground/60">(비활성)</span>}
+                            {kw.url && (
+                              <a href={kw.url} target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 shrink-0" title={kw.url}>
+                                <ExternalLink size={11} />
+                              </a>
+                            )}
+                          </div>
                         </td>
                     {days.map(d => {
                       const rd = rankMap[kw.id]?.[d]

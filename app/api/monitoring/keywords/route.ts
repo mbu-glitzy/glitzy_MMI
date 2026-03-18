@@ -29,7 +29,7 @@ export const POST = withAuth(async (req, { user }) => {
     return apiError('키워드 관리 권한이 없습니다.', 403)
   }
 
-  const { clinic_id, keyword, category } = await req.json()
+  const { clinic_id, keyword, category, url } = await req.json()
 
   const cid = parseId(clinic_id)
   if (!cid) return apiError('병원을 선택해주세요.', 400)
@@ -51,14 +51,17 @@ export const POST = withAuth(async (req, { user }) => {
     if (!assignment) return apiError('배정되지 않은 병원입니다.', 403)
   }
 
+  const insertData: Record<string, any> = {
+    clinic_id: cid,
+    keyword: sanitizeString(keyword.trim(), 100),
+    category,
+    created_by: parseInt(user.id, 10),
+  }
+  if (url?.trim()) insertData.url = sanitizeString(url.trim(), 500)
+
   const { data, error } = await supabase
     .from('monitoring_keywords')
-    .insert({
-      clinic_id: cid,
-      keyword: sanitizeString(keyword.trim(), 100),
-      category,
-      created_by: parseInt(user.id, 10),
-    })
+    .insert(insertData)
     .select()
     .single()
 
@@ -76,7 +79,7 @@ export const PATCH = withAuth(async (req, { user }) => {
     return apiError('키워드 관리 권한이 없습니다.', 403)
   }
 
-  const { id, is_active, keyword } = await req.json()
+  const { id, is_active, keyword, url } = await req.json()
 
   const keywordId = parseId(id)
   if (!keywordId) return apiError('유효한 키워드 ID가 필요합니다.', 400)
@@ -84,6 +87,7 @@ export const PATCH = withAuth(async (req, { user }) => {
   const updates: Record<string, any> = {}
   if (typeof is_active === 'boolean') updates.is_active = is_active
   if (keyword?.trim()) updates.keyword = sanitizeString(keyword.trim(), 100)
+  if (typeof url === 'string') updates.url = url.trim() ? sanitizeString(url.trim(), 500) : null
 
   if (Object.keys(updates).length === 0) return apiError('변경할 항목이 없습니다.', 400)
 

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { TrendingUp, Plus, Power } from 'lucide-react'
+import { TrendingUp, Plus, Power, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,7 +50,7 @@ export default function MonitoringKeywordsPage() {
   const [keywords, setKeywords] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [form, setForm] = useState({ keyword: '', category: 'place' })
+  const [form, setForm] = useState({ keyword: '', category: 'place', url: '' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function MonitoringKeywordsPage() {
         const err = await res.json()
         throw new Error(err.error)
       }
-      setForm({ keyword: '', category: 'place' })
+      setForm({ keyword: '', category: 'place', url: '' })
       setDialogOpen(false)
       toast.success('키워드가 등록되었습니다.')
       fetchKeywords()
@@ -185,6 +185,14 @@ export default function MonitoringKeywordsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">URL</Label>
+              <Input
+                value={form.url}
+                onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+                placeholder="https://example.com (선택)"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialogOpen(false)}>취소</Button>
@@ -223,6 +231,7 @@ export default function MonitoringKeywordsPage() {
                   <TableHeader>
                     <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">키워드</TableHead>
+                      <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">URL</TableHead>
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium w-[100px]">상태</TableHead>
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium w-[80px]">활성화</TableHead>
                     </TableRow>
@@ -231,6 +240,16 @@ export default function MonitoringKeywordsPage() {
                     {items.map((kw: any) => (
                       <TableRow key={kw.id} className="border-b border-border dark:border-white/5">
                         <TableCell className="text-foreground">{kw.keyword}</TableCell>
+                        <TableCell>
+                          {kw.url ? (
+                            <a href={kw.url} target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 inline-flex items-center gap-1 text-xs max-w-[200px] overflow-hidden">
+                              <ExternalLink size={12} className="shrink-0" />
+                              <span className="truncate">{kw.url.replace(/^https?:\/\//, '')}</span>
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground/40 text-xs">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={kw.is_active ? 'success' : 'secondary'}>
                             {kw.is_active ? '활성' : '비활성'}
