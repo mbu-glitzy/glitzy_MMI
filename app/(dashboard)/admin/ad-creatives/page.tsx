@@ -221,12 +221,11 @@ export default function AdCreativesPage() {
     setPreviewType(null)
   }
 
-  const handleEdit = (creative: AdCreative) => {
-    setEditing(creative)
+  const openFormWith = (creative: AdCreative, nameOverride?: string, utmContentOverride?: string) => {
     setForm({
-      name: creative.name,
+      name: nameOverride ?? creative.name,
       description: creative.description || '',
-      utm_content: creative.utm_content,
+      utm_content: utmContentOverride ?? creative.utm_content,
       utm_source: creative.utm_source || '',
       utm_medium: creative.utm_medium || '',
       utm_campaign: creative.utm_campaign || '',
@@ -243,6 +242,16 @@ export default function AdCreativesPage() {
       setPreviewType(creative.file_type)
     }
     setDialogOpen(true)
+  }
+
+  const handleEdit = (creative: AdCreative) => {
+    setEditing(creative)
+    openFormWith(creative)
+  }
+
+  const handleDuplicate = (creative: AdCreative) => {
+    setEditing(null)
+    openFormWith(creative, `${creative.name} (복사)`, `${creative.utm_content}_copy`)
   }
 
   const handleDelete = (id: number) => {
@@ -526,7 +535,7 @@ export default function AdCreativesPage() {
                 <TableHead className="text-xs text-muted-foreground font-medium">소재명 / UTM Content</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">플랫폼 / 병원</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">상태</TableHead>
-                <TableHead className="text-xs text-muted-foreground font-medium w-[100px]">작업</TableHead>
+                <TableHead className="text-xs text-muted-foreground font-medium w-[120px]">작업</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -589,6 +598,14 @@ export default function AdCreativesPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDuplicate(creative) }}
+                            className="text-muted-foreground hover:text-brand-400 transition-colors"
+                            aria-label="복사"
+                            title="소재 복사"
+                          >
+                            <Copy size={14} />
+                          </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleEdit(creative) }}
                             className="text-muted-foreground hover:text-foreground transition-colors"
