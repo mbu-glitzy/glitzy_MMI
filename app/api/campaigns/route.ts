@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
-import { getKstDateString } from '@/lib/date'
+import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
 /**
  * 캠페인별 리드 목록 API
@@ -74,7 +74,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     today_count: number
   }> = {}
 
-  const todayStr = getKstDateString()
+  const todayStartISO = getKstDayStartISO()
+  const todayEndISO = getKstDayEndISO()
 
   for (const lead of leadsRes.data || []) {
     const name = lead.utm_campaign!
@@ -98,7 +99,9 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
       stat.landing_pages.add(lpMap.get(lead.landing_page_id)!)
     }
     if (lead.created_at > stat.latest_at) stat.latest_at = lead.created_at
-    if (lead.created_at?.startsWith(todayStr)) stat.today_count++
+    // KST 기준 오늘 범위 체크 (UTC ISO 비교)
+    const createdUtc = lead.created_at?.endsWith('Z') ? lead.created_at : (lead.created_at + 'Z')
+    if (createdUtc >= todayStartISO && createdUtc <= todayEndISO) stat.today_count++
   }
 
   const campaigns = Object.values(campaignMap)
