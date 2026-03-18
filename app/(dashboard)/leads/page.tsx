@@ -531,7 +531,7 @@ function LeadsContent() {
           )}
 
           {/* H: 정렬 */}
-          <Select value={sortBy} onValueChange={v => setSortBy(v as any)}>
+          <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
             <SelectTrigger className="w-[110px] glass-card border-0 text-foreground text-xs">
               <ArrowUpDown size={11} className="mr-1" />
               <SelectValue />
