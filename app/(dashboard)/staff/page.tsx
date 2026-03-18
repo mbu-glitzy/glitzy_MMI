@@ -1,15 +1,15 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, UserCog, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, UserCog } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -161,7 +161,7 @@ export default function StaffPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
-                {['아이디', '생성일', '상태', '활성화'].map(h => (
+                {['아이디', '생성일', '활성화'].map(h => (
                   <TableHead key={h} className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{h}</TableHead>
                 ))}
               </TableRow>
@@ -172,17 +172,10 @@ export default function StaffPage() {
                   <TableCell className="text-foreground font-medium">{s.username}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{formatDate(s.created_at)}</TableCell>
                   <TableCell>
-                    <Badge variant={s.is_active ? 'success' : 'secondary'}>
-                      {s.is_active ? '활성' : '비활성'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      onClick={() => toggleStaff(s.id, s.is_active)}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {s.is_active ? <ToggleRight size={20} className="text-emerald-400" /> : <ToggleLeft size={20} />}
-                    </button>
+                    <Switch
+                      checked={s.is_active}
+                      onCheckedChange={() => toggleStaff(s.id, s.is_active)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

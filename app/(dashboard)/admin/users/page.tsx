@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, UserCog, ToggleLeft, ToggleRight, Settings } from 'lucide-react'
+import { Plus, UserCog, Settings } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -371,7 +372,7 @@ export default function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
-                {['아이디', '역할', '담당 병원', '생성일', '상태', '활성화', '관리'].map(h => (
+                {['아이디', '역할', '담당 병원', '생성일', '활성화', '관리'].map(h => (
                   <TableHead key={h} className="text-xs text-muted-foreground font-medium">{h === '관리' ? '' : h}</TableHead>
                 ))}
               </TableRow>
@@ -395,18 +396,10 @@ export default function UsersPage() {
                 <TableCell className="text-muted-foreground text-xs">{u.clinic?.name || (u.role === 'agency_staff' ? '다중 배정' : '-')}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">{formatDate(u.created_at)}</TableCell>
                 <TableCell>
-                  <Badge variant={u.is_active ? 'success' : 'secondary'}>
-                    {u.is_active ? '활성' : '비활성'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <button
-                    onClick={() => toggleUser(u.id, u.is_active)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={u.is_active ? '계정 비활성화' : '계정 활성화'}
-                  >
-                    {u.is_active ? <ToggleRight size={20} className="text-emerald-400" /> : <ToggleLeft size={20} />}
-                  </button>
+                  <Switch
+                    checked={u.is_active}
+                    onCheckedChange={() => toggleUser(u.id, u.is_active)}
+                  />
                 </TableCell>
                 <TableCell>
                   {u.role === 'agency_staff' && (

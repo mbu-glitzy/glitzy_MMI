@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { TrendingUp, Plus, Power, ExternalLink } from 'lucide-react'
+import { TrendingUp, Plus, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -232,7 +232,6 @@ export default function MonitoringKeywordsPage() {
                     <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">키워드</TableHead>
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">URL</TableHead>
-                      <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium w-[100px]">상태</TableHead>
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium w-[80px]">활성화</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -251,17 +250,10 @@ export default function MonitoringKeywordsPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={kw.is_active ? 'success' : 'secondary'}>
-                            {kw.is_active ? '활성' : '비활성'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <button
-                            onClick={() => toggleActive(kw.id, kw.is_active)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <Power size={16} className={kw.is_active ? 'text-emerald-400' : ''} />
-                          </button>
+                          <Switch
+                            checked={kw.is_active}
+                            onCheckedChange={() => toggleActive(kw.id, kw.is_active)}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}

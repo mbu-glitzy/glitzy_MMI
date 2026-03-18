@@ -268,6 +268,7 @@ export default function MonitoringPage() {
               <thead>
                 <tr>
                   <th className="sticky left-0 bg-card text-left px-3 py-2.5 text-muted-foreground font-semibold border-b border-border dark:border-white/10 min-w-[140px] z-10">키워드</th>
+                  <th className="sticky left-[140px] bg-card text-left px-2 py-2.5 text-muted-foreground font-semibold border-b border-border dark:border-white/10 min-w-[160px] z-10">URL</th>
                   {days.map(d => (
                     <th
                       key={d}
@@ -289,22 +290,25 @@ export default function MonitoringPage() {
                     <React.Fragment key={kw.id}>
                       {showCategoryHeader && (
                         <tr>
-                          <td colSpan={days.length + 1} className="sticky left-0 bg-muted/50 dark:bg-card px-2 pt-4 pb-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium z-10">
+                          <td colSpan={days.length + 2} className="sticky left-0 bg-muted/50 dark:bg-card px-2 pt-4 pb-1 text-[10px] text-muted-foreground uppercase tracking-wider font-medium z-10">
                             {CATEGORY_LABELS[kw.category] || kw.category}
                           </td>
                         </tr>
                       )}
                       <tr className="border-b border-border dark:border-white/5">
                         <td className="sticky left-0 bg-card px-3 py-2.5 font-medium z-10">
-                          <div className="flex items-center gap-1.5">
-                            <span className={kw.is_active === false ? 'text-muted-foreground/60 line-through' : 'text-foreground/80'}>{kw.keyword}</span>
-                            {kw.is_active === false && <span className="text-[9px] text-muted-foreground/60">(비활성)</span>}
-                            {kw.url && (
-                              <a href={kw.url} target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 shrink-0" title={kw.url}>
-                                <ExternalLink size={11} />
-                              </a>
-                            )}
-                          </div>
+                          <span className={kw.is_active === false ? 'text-muted-foreground/60 line-through' : 'text-foreground/80'}>{kw.keyword}</span>
+                          {kw.is_active === false && <span className="ml-1 text-[9px] text-muted-foreground/60">(비활성)</span>}
+                        </td>
+                        <td className="sticky left-[140px] bg-card px-2 py-2.5 z-10">
+                          {kw.url ? (
+                            <a href={kw.url} target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 inline-flex items-center gap-1 text-[11px] max-w-[150px] overflow-hidden">
+                              <ExternalLink size={11} className="shrink-0" />
+                              <span className="truncate">{kw.url.replace(/^https?:\/\//, '')}</span>
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground/40 text-[11px]">-</span>
+                          )}
                         </td>
                     {days.map(d => {
                       const rd = rankMap[kw.id]?.[d]

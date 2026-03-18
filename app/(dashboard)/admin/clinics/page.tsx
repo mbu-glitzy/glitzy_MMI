@@ -7,7 +7,6 @@ import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -89,6 +88,21 @@ export default function ClinicsPage() {
       toast.error(e.message || '등록 실패')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const toggleClinicActive = async (id: number, currentActive: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/clinics/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !currentActive }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(currentActive ? '비활성화되었습니다.' : '활성화되었습니다.')
+      fetchClinics()
+    } catch {
+      toast.error('상태 변경에 실패했습니다.')
     }
   }
 
@@ -311,9 +325,10 @@ export default function ClinicsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={c.is_active ? 'success' : 'secondary'}>
-                        {c.is_active ? '활성' : '비활성'}
-                      </Badge>
+                      <Switch
+                        checked={c.is_active}
+                        onCheckedChange={() => toggleClinicActive(c.id, c.is_active)}
+                      />
                     </TableCell>
                     <TableCell>
                       <button onClick={() => openNotifyDialog(c)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="알림 설정">

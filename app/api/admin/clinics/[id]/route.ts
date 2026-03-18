@@ -41,6 +41,7 @@ export const PATCH = withSuperAdmin(async (req: Request) => {
   }
 
   if ('notify_enabled' in body) updateData.notify_enabled = body.notify_enabled
+  if ('is_active' in body) updateData.is_active = Boolean(body.is_active)
 
   if (Object.keys(updateData).length === 0) return apiError('수정할 항목이 없습니다.', 400)
 

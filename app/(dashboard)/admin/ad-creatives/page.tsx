@@ -271,6 +271,21 @@ export default function AdCreativesPage() {
     setDeleteTarget(null)
   }
 
+  const toggleActive = async (creative: AdCreative) => {
+    try {
+      const res = await fetch(`/api/admin/ad-creatives/${creative.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !creative.is_active }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(creative.is_active ? '비활성화되었습니다.' : '활성화되었습니다.')
+      fetchData()
+    } catch {
+      toast.error('상태 변경에 실패했습니다.')
+    }
+  }
+
   const filteredLandingPages = form.clinic_id
     ? landingPages.filter(lp => lp.clinic_id === Number(form.clinic_id) || !lp.clinic_id)
     : landingPages
@@ -592,9 +607,12 @@ export default function AdCreativesPage() {
                         <div className="text-muted-foreground text-xs mt-0.5">{creative.clinic?.name || '-'}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={creative.is_active ? 'success' : 'secondary'}>
-                          {creative.is_active ? '활성' : '비활성'}
-                        </Badge>
+                        <div onClick={e => e.stopPropagation()}>
+                          <Switch
+                            checked={creative.is_active}
+                            onCheckedChange={() => toggleActive(creative)}
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

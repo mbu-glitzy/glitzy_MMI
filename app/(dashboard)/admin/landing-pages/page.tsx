@@ -195,6 +195,21 @@ export default function LandingPagesPage() {
     setDeleteTarget(null)
   }
 
+  const toggleActive = async (id: number, currentActive: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/landing-pages/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !currentActive }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(currentActive ? '비활성화되었습니다.' : '활성화되었습니다.')
+      fetchData()
+    } catch {
+      toast.error('상태 변경에 실패했습니다.')
+    }
+  }
+
   const copyUrl = (id: number) => {
     const url = `${window.location.origin}/lp?id=${id}`
     navigator.clipboard.writeText(url)
@@ -446,9 +461,10 @@ export default function LandingPagesPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={lp.is_active ? 'success' : 'secondary'}>
-                      {lp.is_active ? '활성' : '비활성'}
-                    </Badge>
+                    <Switch
+                      checked={lp.is_active}
+                      onCheckedChange={() => toggleActive(lp.id, lp.is_active)}
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

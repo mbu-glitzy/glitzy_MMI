@@ -237,44 +237,53 @@ export default function MonitoringInputPage() {
           {Object.entries(groupedEntries).map(([cat, items]) => (
             <Card key={cat} variant="glass" className="p-5 mb-4">
               <h3 className="text-sm font-semibold text-foreground mb-4 pb-2 border-b border-border dark:border-white/10">{CATEGORY_LABELS[cat] || cat}</h3>
-              <div className="space-y-3">
-                {/* 헤더 */}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground font-semibold uppercase tracking-wider flex-wrap">
-                  <span className="min-w-[140px] shrink-0">키워드</span>
-                  <span className="w-[50px] text-center">전일</span>
-                  <span className="w-[90px] text-center">순위</span>
-                  {cat === 'smartblock' && <span className="flex-1 min-w-[200px]">URL</span>}
-                </div>
-                {items.map((entry) => (
-                  <div key={entry.keyword_id} className="flex items-center gap-4 flex-wrap py-1">
-                    <span className="text-sm text-foreground/80 min-w-[140px] shrink-0">{entry.keyword}</span>
-                    <span className={`w-[50px] text-center text-xs font-medium ${
-                      entry.prev_rank == null ? 'text-muted-foreground/60' :
-                      entry.prev_rank <= 3 ? 'text-emerald-400' :
-                      entry.prev_rank <= 10 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
-                      {entry.prev_rank ?? '-'}
-                    </span>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={entry.rank_position}
-                      onChange={e => updateEntry(entry._idx, 'rank_position', e.target.value)}
-                      placeholder="순위"
-                      className="w-[90px] bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground text-center"
-                    />
-                    {cat === 'smartblock' && (
-                      <Input
-                        type="text"
-                        value={entry.url}
-                        onChange={e => updateEntry(entry._idx, 'url', e.target.value)}
-                        placeholder="URL"
-                        className="flex-1 min-w-[200px] bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
+              <table className="w-full">
+                <thead>
+                  <tr className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                    <th className="text-left pb-2 w-[180px]">키워드</th>
+                    <th className="text-center pb-2 w-[60px]">전일</th>
+                    <th className="text-center pb-2 w-[90px]">순위</th>
+                    {cat === 'smartblock' && <th className="text-left pb-2">URL</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((entry) => (
+                    <tr key={entry.keyword_id} className="border-t border-border dark:border-white/5">
+                      <td className="text-sm text-foreground/80 py-2 pr-2">{entry.keyword}</td>
+                      <td className="py-2">
+                        <span className={`block text-center text-xs font-medium ${
+                          entry.prev_rank == null ? 'text-muted-foreground/60' :
+                          entry.prev_rank <= 3 ? 'text-emerald-400' :
+                          entry.prev_rank <= 10 ? 'text-yellow-400' : 'text-red-400'
+                        }`}>
+                          {entry.prev_rank ?? '-'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-1">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={entry.rank_position}
+                          onChange={e => updateEntry(entry._idx, 'rank_position', e.target.value)}
+                          placeholder="순위"
+                          className="w-[90px] bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground text-center"
+                        />
+                      </td>
+                      {cat === 'smartblock' && (
+                        <td className="py-2 pl-1">
+                          <Input
+                            type="text"
+                            value={entry.url}
+                            onChange={e => updateEntry(entry._idx, 'url', e.target.value)}
+                            placeholder="URL"
+                            className="w-full bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground"
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </Card>
           ))}
 
