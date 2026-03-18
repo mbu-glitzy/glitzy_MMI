@@ -223,6 +223,9 @@ export async function sendCapiEvent(
     body: JSON.stringify({
       data: [eventPayload],
       access_token: config.accessToken,
+      ...(process.env.META_TEST_EVENT_CODE && {
+        test_event_code: process.env.META_TEST_EVENT_CODE,
+      }),
     }),
     service: 'MetaCAPI',
     timeout: 15000,
