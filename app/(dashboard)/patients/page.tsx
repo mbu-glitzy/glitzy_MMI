@@ -480,8 +480,8 @@ function TreatmentManageDialog({ clinicId, open, onOpenChange }: { clinicId: num
 
 // H: POS형 결제 섹션 (시술 카탈로그 선택 + 금액 자동 채움 + 수정 가능)
 // D: 합계 표시, C: 폼 접기
-function PaymentSection({ customerId, payments, onSave, isSuperAdmin, clinicId }: {
-  customerId: number; payments: any[]; onSave: () => void; isSuperAdmin?: boolean; clinicId?: number | null
+function PaymentSection({ customerId, payments, onSave, isSuperAdmin, clinicId, treatmentRefreshKey }: {
+  customerId: number; payments: any[]; onSave: () => void; isSuperAdmin?: boolean; clinicId?: number | null; treatmentRefreshKey?: number
 }) {
   const [form, setForm] = useState({ treatmentName: '', paymentAmount: '', paymentDate: '' })
   const [saving, setSaving] = useState(false)
@@ -490,14 +490,14 @@ function PaymentSection({ customerId, payments, onSave, isSuperAdmin, clinicId }
   const [treatments, setTreatments] = useState<{ id: number; name: string; category: string | null; default_price: number }[]>([])
   const [customInput, setCustomInput] = useState(false)
 
-  // 시술 카탈로그 로드
+  // 시술 카탈로그 로드 (treatmentRefreshKey 변경 시 재로드)
   useEffect(() => {
     if (!clinicId) return
     fetch(`/api/clinic-treatments?clinic_id=${clinicId}`)
       .then(r => r.json())
       .then(d => setTreatments(Array.isArray(d) ? d : []))
       .catch(() => {})
-  }, [clinicId])
+  }, [clinicId, treatmentRefreshKey])
 
   const totalPayment = payments.reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
 
@@ -706,6 +706,7 @@ function BookingRow({ booking, onRefresh, isSuperAdmin, clinicId }: { booking: a
   const [open, setOpen] = useState(false)
   const [changingStatus, setChangingStatus] = useState(false)
   const [treatmentDialogOpen, setTreatmentDialogOpen] = useState(false)
+  const [treatmentRefreshKey, setTreatmentRefreshKey] = useState(0)
   const { data: session } = useSession()
   const canManageTreatments = session?.user?.role === 'superadmin' || session?.user?.role === 'clinic_admin'
 
@@ -827,9 +828,9 @@ function BookingRow({ booking, onRefresh, isSuperAdmin, clinicId }: { booking: a
                 </button>
               )}
             </h4>
-            <PaymentSection customerId={customer?.id} payments={customer?.payments || []} onSave={onRefresh} isSuperAdmin={isSuperAdmin} clinicId={clinicId} />
+            <PaymentSection customerId={customer?.id} payments={customer?.payments || []} onSave={onRefresh} isSuperAdmin={isSuperAdmin} clinicId={clinicId} treatmentRefreshKey={treatmentRefreshKey} />
             {canManageTreatments && clinicId && (
-              <TreatmentManageDialog clinicId={clinicId} open={treatmentDialogOpen} onOpenChange={setTreatmentDialogOpen} />
+              <TreatmentManageDialog clinicId={clinicId} open={treatmentDialogOpen} onOpenChange={(v) => { setTreatmentDialogOpen(v); if (!v) setTreatmentRefreshKey(k => k + 1) }} />
             )}
           </div>
 
