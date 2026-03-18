@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2, Trash2 } from 'lucide-react'
+import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2, Trash2, X } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useClinic } from '@/components/ClinicContext'
 import { toast } from 'sonner'
@@ -879,8 +879,9 @@ export default function PatientsPage() {
           )}
         </>
       ) : (
-        <>
-          <Card variant="glass" className="p-6">
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* 좌측: 캘린더 */}
+          <Card variant="glass" className="p-6 flex-1 min-w-0">
           {/* 캘린더 헤더: 네비게이션 + 일/주/월 토글 */}
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
@@ -1036,7 +1037,7 @@ export default function PatientsPage() {
           )}
 
           {/* 범례 */}
-          <div className="flex gap-4 mt-4 pt-4 border-t border-border dark:border-white/5">
+          <div className="flex gap-4 mt-4 pt-4 border-t border-border dark:border-white/5 flex-wrap">
             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
               <div key={k} className="flex items-center gap-1.5">
                 <Badge variant={v.variant} className="w-2.5 h-2.5 p-0 rounded-full" />
@@ -1046,21 +1047,21 @@ export default function PatientsPage() {
           </div>
         </Card>
 
-        {/* 선택된 날짜의 예약 상세 패널 */}
+        {/* 우측: 선택된 날짜의 예약 상세 패널 */}
         {selectedDate && (
-          <Card variant="glass" className="p-5 mt-3">
+          <Card variant="glass" className="w-full lg:w-[380px] lg:shrink-0 p-5 self-start lg:sticky lg:top-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-brand-400" />
                 <h3 className="text-sm font-semibold text-foreground">
-                  {new Date(selectedDate + 'T00:00:00+09:00').toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'long' })}
+                  {new Date(selectedDate + 'T00:00:00+09:00').toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short' })}
                 </h3>
                 <Badge variant="secondary" className="text-[10px]">
                   {(bookingsByDate[selectedDate] || []).length}건
                 </Badge>
               </div>
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setSelectedDate(null)}>
-                닫기
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedDate(null)}>
+                <X size={14} />
               </Button>
             </div>
             {(bookingsByDate[selectedDate] || []).length === 0 ? (
@@ -1071,49 +1072,51 @@ export default function PatientsPage() {
                   const c = STATUS_CONFIG[b.status] || { label: b.status, variant: 'secondary' as const }
                   const totalPayment = (b.customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
                   return (
-                    <div key={b.id} className="flex items-center gap-4 px-4 py-3 rounded-xl bg-muted/50 dark:bg-white/[0.03] border border-border dark:border-white/5">
-                      <div className="w-14 shrink-0 text-center">
-                        <p className="text-sm font-bold text-foreground">{formatTime(b.booking_datetime)}</p>
+                    <div key={b.id} className="rounded-xl bg-muted/50 dark:bg-white/[0.03] border border-border dark:border-white/5 p-3">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 font-bold text-xs shrink-0">
+                          {b.customer?.name?.[0] || '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{b.customer?.name || '이름 없음'}</p>
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone size={9} /> {b.customer?.phone_number}</p>
+                        </div>
+                        <p className="text-xs font-bold text-foreground shrink-0">{formatTime(b.booking_datetime)}</p>
                       </div>
-                      <div className="w-9 h-9 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 font-bold text-sm shrink-0">
-                        {b.customer?.name?.[0] || '?'}
+                      <div className="flex items-center justify-between">
+                        <div onClick={e => e.stopPropagation()}>
+                          <Select value={b.status} disabled={loading} onValueChange={async (newStatus) => {
+                            if (newStatus === b.status) return
+                            try {
+                              const res = await fetch('/api/bookings', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: b.id, status: newStatus }),
+                              })
+                              if (!res.ok) throw new Error()
+                              toast.success(`"${STATUS_CONFIG[newStatus]?.label}"(으)로 변경되었습니다.`)
+                              fetchBookings()
+                            } catch { toast.error('상태 변경 실패') }
+                          }}>
+                            <SelectTrigger className="h-7 px-2 text-xs border-0 bg-transparent hover:bg-muted dark:hover:bg-white/5 focus:ring-0 w-auto">
+                              <Badge variant={c.variant} className="whitespace-nowrap">{c.label}</Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                                <SelectItem key={k} value={k}>
+                                  <Badge variant={v.variant} className="text-[10px] px-1.5 py-0">{v.label}</Badge>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="text-right">
+                          {totalPayment > 0
+                            ? <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">₩{totalPayment.toLocaleString()}</span>
+                            : <span className="text-muted-foreground/60 text-xs">-</span>}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{b.customer?.name || '이름 없음'}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone size={10} /> {b.customer?.phone_number}</p>
-                      </div>
-                      <div className="shrink-0" onClick={e => e.stopPropagation()}>
-                        <Select value={b.status} disabled={loading} onValueChange={async (newStatus) => {
-                          if (newStatus === b.status) return
-                          try {
-                            const res = await fetch('/api/bookings', {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ id: b.id, status: newStatus }),
-                            })
-                            if (!res.ok) throw new Error()
-                            toast.success(`"${STATUS_CONFIG[newStatus]?.label}"(으)로 변경되었습니다.`)
-                            fetchBookings()
-                          } catch { toast.error('상태 변경 실패') }
-                        }}>
-                          <SelectTrigger className="h-7 px-2 text-xs border-0 bg-transparent hover:bg-muted dark:hover:bg-white/5 focus:ring-0 w-auto">
-                            <Badge variant={c.variant} className="whitespace-nowrap">{c.label}</Badge>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                              <SelectItem key={k} value={k}>
-                                <Badge variant={v.variant} className="text-[10px] px-1.5 py-0">{v.label}</Badge>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-24 shrink-0 text-right">
-                        {totalPayment > 0
-                          ? <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">₩{totalPayment.toLocaleString()}</span>
-                          : <span className="text-muted-foreground/60 text-xs">-</span>}
-                      </div>
-                      {b.notes && <p className="text-[10px] text-muted-foreground truncate max-w-[120px]" title={b.notes}>{b.notes}</p>}
+                      {b.notes && <p className="text-[10px] text-muted-foreground mt-1.5 truncate" title={b.notes}>{b.notes}</p>}
                     </div>
                   )
                 })}
@@ -1121,7 +1124,7 @@ export default function PatientsPage() {
             )}
           </Card>
         )}
-      </>
+        </div>
       )}
     </>
   )
