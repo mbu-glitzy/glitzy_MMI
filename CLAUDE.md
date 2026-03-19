@@ -1,483 +1,187 @@
-# CLAUDE.md
+<!--
+팀 공유 학습 시스템
+이 파일은 Git으로 관리됩니다. 규칙 추가/수정 시 PR을 통해 팀원 리뷰를 받아주세요.
+누군가 발견한 AI의 실수 패턴은 팀 전체가 공유하여 같은 실수를 반복하지 않도록 합니다.
+-->
+<!--
+이 파일은 점진적으로 개선됩니다.
+클로드가 실수하거나 의도와 다른 결과를 낼 때마다,
+해당 케이스를 방지하는 규칙을 한 줄씩 추가해 주세요.
+예: "API 응답 타입을 변경할 때 프론트엔드 타입도 반드시 함께 수정할 것"
+-->
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# MMI (Medical Marketing Intelligence)
 
-## 프로젝트 개요
+병원 마케팅 인텔리전스 멀티테넌트 SaaS 대시보드. 슈퍼어드민이 여러 병원 고객사를 통합 관리.
 
-MMI(Medical Marketing Intelligence) - 병원 마케팅 인텔리전스 멀티테넌트 SaaS 대시보드.
-슈퍼어드민이 여러 병원 고객사를 통합 관리하고, 병원별 독립된 데이터/계정/광고 API를 운영.
+**기술 스택**: Next.js 14 (App Router) · NextAuth.js (JWT) · Supabase (PostgreSQL) · Tailwind + shadcn/ui · Recharts · Sonner · Upstash QStash
 
-## 개발 명령어
+## 빌드 & 실행
 
 ```bash
-npm run dev      # 개발 서버 (http://localhost:3000)
-npm run build    # 프로덕션 빌드
-npm run lint     # ESLint 검사
-npm run start    # 프로덕션 서버 실행
-npm run analyze  # 번들 크기 분석 (브라우저에서 시각화)
+npm install          # 의존성 설치
+npm run dev          # 개발 서버 (:3000)
+npm run build        # 프로덕션 빌드 (타입 체크 포함)
+npm run lint         # ESLint
+npm run test:e2e     # Playwright E2E 테스트
+npm run analyze      # 번들 크기 분석
 ```
 
-## 기술 스택
+## 디렉토리 구조
 
-- **프레임워크**: Next.js 14 (App Router)
-- **인증**: NextAuth.js (Credentials Provider, JWT 전략)
-- **데이터베이스**: Supabase (PostgreSQL)
-- **스타일링**: Tailwind CSS + shadcn/ui
-- **차트**: Recharts (코드 스플리팅 래퍼 사용)
-- **토스트**: Sonner
-- **작업 큐**: Upstash QStash
+| 디렉토리 | 용도 | 하위 규칙 |
+|---------|------|----------|
+| `app/(dashboard)/` | 인증된 대시보드 페이지 (그룹 라우트) | |
+| `app/api/` | REST API 라우트 | `app/api/CLAUDE.md` |
+| `lib/` | 핵심 유틸리티 (auth, security, logger 등) | `lib/CLAUDE.md` |
+| `lib/services/` | 외부 API 동기화 서비스 | |
+| `components/` | UI 컴포넌트 | `components/CLAUDE.md` |
+| `components/attribution/` | 매출 기여 분석 UI (퍼널, CPL/ROAS, 고객 여정) | |
+| `supabase/migrations/` | DB 마이그레이션 (`YYYYMMDD_설명.sql`) | |
+| `e2e/` | Playwright E2E 테스트 | |
 
-## 문서
+## 도메인 용어
 
-| 문서 | 설명 |
-|------|------|
-| [docs/SPEC.md](docs/SPEC.md) | 프로젝트 요구사항 명세 |
-| [docs/API.md](docs/API.md) | REST API 엔드포인트 문서 |
-| [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI 컴포넌트 사용 가이드 |
-| [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 |
+| 용어 | 정의 | 혼동 주의 |
+|------|------|-----------|
+| `Clinic` | 병원 고객사 (테넌트 단위). `clinics` 테이블 | `User`(시스템 사용자)와 구분 |
+| `User` | 시스템 로그인 계정. 역할별 4종 | `Customer`와 구분 — User만 로그인 가능 |
+| `Customer` | 환자/고객. `phone_number`로 식별 | 시스템 로그인 불가. CDP에서 관리 |
+| `Lead` | 리드/문의. UTM + 랜딩페이지 추적 | `Customer`와 1:N. 유입 시점 데이터 |
+| `Booking` | 예약. `created_by`/`updated_by` 추적 | `Consultation`과 구분 — Booking은 일정, Consultation은 상담 기록 |
+| `Consultation` | 상담 기록. 예약 이후 실제 상담 내용 | `Booking`의 후속 단계 |
+| `Payment` | 결제. `created_by` 추적 | Booking/Consultation과 별도 테이블 |
+| `Campaign` | 광고 캠페인 (Meta/Google/Naver 플랫폼 레벨) | |
+| `AdSet`/`AdGroup` | 캠페인 하위 타겟팅 그룹 | Meta=AdSet, Google=AdGroup |
+| `LandingPage` | 리드 수집 랜딩페이지. 8자리 랜덤 ID | `landing_pages` 테이블 |
+| `UTM` | 유입 추적 파라미터 (source/medium/campaign/term/content) | `lib/utm.ts`로 파싱/검증 |
+| `CDP` | Customer Data Platform. 고객 통합 프로필 | 환자 관리 페이지의 내부 명칭 |
+| `KPI` | 핵심 성과 지표. 대시보드 상단 요약 카드 | clinic_staff는 접근 차단 |
+| `superadmin` | 전체 병원 접근. `?clinic_id=X`로 조회 | |
+| `agency_staff` | 다중 병원 배정. 메뉴 권한 제한 | superadmin과 달리 배정된 병원만 |
+| `clinic_admin` | 자기 병원 전체 데이터 + 담당자 관리 | |
+| `clinic_staff` | 예약/결제/고객/리드만. 광고/KPI 차단 | |
 
-## 아키텍처
+## 코딩 규칙
 
-### 멀티테넌트 구조
+### 필수 (위반 시 버그/보안 이슈)
+1. **멀티테넌트 격리**: 모든 DB 쿼리에 `clinic_id` 필터. INSERT 시 `clinic_id` 포함. 예외 없음
+2. **역할 검증**: API → `withSuperAdmin`/`withClinicAdmin`/`withClinicFilter` 래퍼. 페이지 → `useEffect` 역할 가드
+3. **보안**: 사용자 입력 → `sanitizeString()`. ID → `parseId()`. 상태값 → 화이트리스트 검증
+4. **활동 추적**: bookings/payments/consultations/leads 변경 시 `created_by`/`updated_by` + `logActivity()`
+5. **삭제 보관**: 데이터 삭제 시 `archiveBeforeDelete()` 호출하여 `deleted_records`에 스냅샷 보관
+6. **인증 타입**: `types/next-auth.d.ts` 수정 시 `password_version` 필드 반드시 유지
+7. **KST 타임존**: 날짜 표시는 `lib/date.ts` 포맷 함수 사용. `toISOString().split('T')[0]` 금지 (UTC 기준이라 KST 자정~09시 날짜 오류)
+
+### 네이밍 컨벤션
+- 파일명: `kebab-case` (예: `date-range-picker.tsx`, `api-middleware.ts`)
+- 컴포넌트: `PascalCase` (예: `DateRangePicker`, `StatsCard`)
+- 함수/변수: `camelCase` (예: `getClinicId`, `assignedClinicIds`)
+- DB 테이블/컬럼: `snake_case` (예: `clinic_api_configs`, `created_by`)
+- API 라우트 폴더: `kebab-case` (예: `app/api/landing-pages/`)
+- 환경변수: `UPPER_SNAKE_CASE` (예: `SUPABASE_SERVICE_ROLE_KEY`)
+
+### 파일/폴더 구조 규칙
+- 새 대시보드 페이지: `app/(dashboard)/페이지명/page.tsx`
+- 새 API 라우트: `app/api/리소스명/route.ts` (CRUD), `app/api/리소스명/[id]/route.ts` (개별)
+- 새 공용 컴포넌트: `components/common/컴포넌트명.tsx` → `components/common/index.ts`에 re-export
+- 페이지 전용 컴포넌트: `components/페이지명/컴포넌트명.tsx`
+- 새 유틸리티: `lib/모듈명.ts`. 한 파일 200줄 초과 시 분리 검토
+
+### 선호 패턴
+- 토스트: `import { toast } from 'sonner'` → `toast.success()`, `toast.error()`
+- 로깅: `createLogger('ServiceName')` → `logger.info/warn/error`
+- 외부 API: `fetchJSON<T>(url, { service, timeout, retries })`
+- 날짜: `lib/date.ts` 함수 사용 (`formatDate`, `formatDateTime`, `getKstDateString`)
+- 채널 정규화: `normalizeChannel()` 사용, 차트 색상은 `getChannelColor()`
+
+### 금지 패턴
+- `console.log` 직접 사용 → `createLogger` 사용
+- DB 쿼리에서 `clinic_id` 필터 누락
+- `any` 타입 남용 — 불가피 시 주석으로 사유 명시
+- `items-stretch`로 카드 높이 억지 정렬 (하단 빈 여백 발생)
+- `NextResponse.json()` 직접 사용 → `apiSuccess`/`apiError` 사용
+- `toISOString().split('T')[0]` → `getKstDateString()` 사용
+
+## 검증 규칙 (Self-Verification)
+
+코드 변경 후 반드시 아래 순서로 검증. **에러 발생 시 직접 원인을 분석하고 수정한 뒤 재검증. 사용자에게 에러만 보고하지 말 것.**
+
+### 항상 실행 (모든 변경)
+1. **빌드**: `npm run build` — 타입 에러, import 누락 검출. 실패 시 에러 파일 직접 수정 후 재빌드
+2. **린트**: `npm run lint` — ESLint 경고/에러 수정
+3. **영향 범위**: API 타입 변경 → 프론트도 수정. DB 스키마 변경 → `supabase/migrations/` 생성. `lib/` 변경 → 호출처 확인
+
+### DB 쿼리 변경 시 추가
+4. 새 쿼리에 `clinic_id` 필터 존재 확인
+5. `applyClinicFilter()` 사용 + `assignedClinicIds` 처리 확인
+
+### UI 변경 시 추가
+6. **기획/검토**: UI를 새로 만들거나 대폭 변경할 때, `.claude/skills/ui-ux-pro-max/SKILL.md` 스킬을 활용하여 디자인 시스템(스타일, 컬러, 타이포, 레이아웃 패턴)을 기획·검토할 것. 구현 전 설계 단계와 구현 후 품질 검토 모두에 활용
+7. `npm run dev` 실행 후 브라우저에서 직접 확인:
+   - [ ] 같은 행 카드 높이 균일한가?
+   - [ ] 차트 범례 5~6개 이내인가?
+   - [ ] 모바일 뷰포트(375px)에서 깨지지 않는가?
+   - [ ] 다크 테마에서 텍스트/배경 대비 정상인가?
+
+### 주요 기능 변경 시 추가
+8. **E2E 테스트**: `npm run test:e2e` — 기존 테스트 통과 확인. 새 기능이면 `e2e/` 테스트 추가 검토
+   - 인증 상태: `storageState` (`.auth/superadmin.json`)
+   - 특정 파일만: `npx playwright test e2e/tests/auth.spec.ts`
+   - 구조: `e2e/fixtures/` (인증), `e2e/pages/` (POM), `e2e/tests/` (스펙)
+
+### 반복 수정 루프 (핵심)
+**검증은 코드 구현이 끝날 때마다 매번 실행한다.** 한 번에 통과하지 않으면 아래 루프를 에러가 0건이 될 때까지 반복:
 ```
-슈퍼어드민 (Glitzy)
-├── 실행사 담당자 (agency_staff) ← 다중 병원 배정, 메뉴 권한 제한
-├── 병원 A (clinic_id: 1)
-│   ├── 병원 관리자 (clinic_admin) ← 전체 데이터 조회, 담당자 관리
-│   └── 병원 담당자 (clinic_staff) ← 예약/결제/고객/리드만
-├── 병원 B (clinic_id: 2)
-└── 병원 C (clinic_id: 3)
+구현 → build → 에러? → 수정 → build → 에러? → 수정 → ... → 통과
+                                                            ↓
+                                                      lint → 에러? → 수정 → lint → ... → 통과
 ```
+- 빌드/린트 에러가 남아 있는 상태로 사용자에게 결과를 보고하지 말 것
+- "에러가 있지만 이렇게 수정하면 됩니다" 식의 안내 금지 — 직접 수정 후 재검증 완료한 뒤 결과 보고
+- 3회 이상 같은 에러가 반복되면 접근 방식을 재검토할 것 (같은 수정을 반복하지 않기)
 
-### 역할 기반 접근 (4단계)
-| 역할 | 권한 |
-|------|------|
-| `superadmin` | 전체 병원 접근, 병원/계정 관리, `?clinic_id=X`로 특정 병원 조회 |
-| `agency_staff` | 다중 병원 배정(`user_clinic_assignments`), 계정별 메뉴 권한(`user_menu_permissions`), `?clinic_id=X`로 배정된 병원만 조회 |
-| `clinic_admin` | 자신의 병원 전체 데이터, KPI/광고/콘텐츠, 담당자 계정 관리 |
-| `clinic_staff` | 예약/결제, 고객(CDP), 캠페인 리드, 챗봇만 접근 (광고/KPI 차단) |
+## 환경 분리
 
-### 데이터 흐름
-```
-외부 API (Google/Meta/TikTok/YouTube/Instagram)
-    ↓ lib/services/* (동기화 함수)
-    ↓ app/api/*/route.ts (API 엔드포인트)
-    ↓ Supabase Database
-    ↓ app/(dashboard)/*/page.tsx (프론트엔드)
-```
+| 브랜치 | 용도 | Vercel |
+|--------|------|--------|
+| `main` | 프로덕션 | Production |
+| `develop` | 개발/스테이징 | Preview |
+| `feature/*` | 기능 개발 | Preview (PR) |
 
-### 주요 디렉토리
-| 디렉토리 | 용도 |
-|---------|------|
-| `app/(dashboard)/` | 인증된 대시보드 페이지들 (그룹 라우트) |
-| `app/api/` | API 라우트 |
-| `lib/services/` | 외부 API 동기화 서비스 |
-| `lib/` | 유틸리티 모듈 (아래 상세) |
-| `components/ui/` | shadcn/ui 컴포넌트 (다크테마 커스텀) |
-| `components/common/` | 프로젝트 공용 컴포넌트 |
-| `components/charts/` | Recharts 래퍼 (코드 스플리팅) |
-| `components/attribution/` | 매출 기여 분석 UI (퍼널, CPL/ROAS, 고객 여정 등) |
+`instrumentation.ts`에서 서버 시작 시 `lib/env.ts`의 `validateEnv()`를 호출하여 필수 환경변수 검증. 프로덕션 누락 시 서버 시작 실패.
 
-### 클라이언트 병원 선택 (ClinicContext)
-```typescript
-import { useClinic } from '@/components/ClinicContext'
-
-const { selectedClinicId, clinics, setSelectedClinicId } = useClinic()
-```
-- `ClinicProvider`가 대시보드 레이아웃을 감싸고 있음
-- `localStorage` 키 `mmi_selected_clinic`에 선택된 병원 ID 저장
-- agency_staff에게 배정된 병원이 1개뿐이면 자동 선택
-- `/api/my/clinics`와 `/api/my/menu-permissions`에서 데이터 로드
-
-## 인증 보안
-
-### 로그인 흐름
-```
-사용자 → NextAuth Credentials → lib/auth.ts authorize()
-  ├─ Rate Limit 체크 (lib/rate-limit.ts: IP:username 키, 15분/5회)
-  ├─ DB 사용자 조회 + bcrypt 검증
-  ├─ 성공/실패 로그 기록 (login_logs 테이블, non-blocking)
-  └─ JWT 토큰 발급 (password_version 포함)
-```
-
-### 세션 무효화 (password_version)
-- `users.password_version` 컬럼 (기본값 1)
-- 비밀번호 변경 시 `password_version` 증가
-- `getAuthUser()`에서 토큰의 `password_version`과 DB 비교 → 불일치 시 401
-- 레거시 토큰(password_version 없음)은 검증 건너뜀
-
-### IP/UA 전달 패턴
-`app/api/auth/[...nextauth]/route.ts`에서 `headers()`로 IP/UA 추출 → `setRequestContext()`로 모듈 레벨 변수에 저장 → `authorize()`에서 사용
-
-### 미들웨어 (middleware.ts)
-NextAuth 미들웨어로 인증 필수 경로 제어. 인증 불필요 경로: `api/`, `login`, `lp`(랜딩페이지)
-
-## 핵심 유틸리티 모듈
-
-### API 미들웨어 (lib/api-middleware.ts)
-```typescript
-import { withAuth, withClinicFilter, withClinicAdmin, withSuperAdmin, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
-
-// 인증만 필요한 경우
-export const GET = withAuth(async (req, { user }) => {
-  return apiSuccess({ data })
-})
-
-// clinic_id 필터링이 필요한 경우 (대부분의 API)
-export const GET = withClinicFilter(async (req, { user, clinicId, assignedClinicIds }) => {
-  let query = supabase.from('table').select('*')
-  // applyClinicFilter: clinicId, assignedClinicIds 자동 처리 (agency_staff 포함)
-  const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
-  if (!filtered) return apiSuccess([]) // agency_staff 배정 병원 0개
-  return apiSuccess(data)
-})
-
-// clinic_admin 이상 (clinic_staff 차단)
-export const GET = withClinicAdmin(async (req, { user, clinicId }) => {
-  return apiSuccess(data)
-})
-
-// superadmin 전용 API
-export const POST = withSuperAdmin(async (req, { user }) => {
-  return apiSuccess({ created: true })
-})
-```
-
-### 로깅 (lib/logger.ts)
-```typescript
-import { createLogger } from '@/lib/logger'
-
-const logger = createLogger('ServiceName')
-
-logger.debug('디버그 메시지', { context: 'value' })  // 개발환경만
-logger.info('정보 로그', { clinicId, action: 'sync' })
-logger.warn('경고', { reason: 'rate limit' })
-logger.error('에러 발생', error, { userId })
-```
-- 개발환경: 읽기 쉬운 형식 출력
-- 프로덕션: JSON 형식 (로그 수집 도구 호환)
-
-### 외부 API 클라이언트 (lib/api-client.ts)
-```typescript
-import { fetchJSON, fetchWithRetry } from '@/lib/api-client'
-
-// JSON 응답 처리 (재시도 + 타임아웃 내장)
-const result = await fetchJSON<ResponseType>(url, {
-  service: 'MetaAds',  // 로깅용
-  timeout: 30000,      // 타임아웃 (기본 30초)
-  retries: 3,          // 재시도 횟수 (기본 3회)
-})
-
-if (result.success) {
-  console.log(result.data)
-} else {
-  console.error(result.error, `시도 횟수: ${result.attempts}`)
-}
-```
-- 429 Too Many Requests: Retry-After 헤더 자동 처리
-- Exponential backoff 재시도
-
-### UTM 파라미터 처리 (lib/utm.ts)
-```typescript
-import { parseUtmFromUrl, sanitizeUtmParams, mergeUtmParams, getUtmSourceLabel } from '@/lib/utm'
-
-// URL에서 UTM 추출
-const utmFromUrl = parseUtmFromUrl(inflowUrl)
-
-// sanitize (XSS 방지)
-const safeUtm = sanitizeUtmParams(requestBody)
-
-// 병합 (명시적 값 우선)
-const finalUtm = mergeUtmParams(explicit, utmFromUrl)
-
-// 표시용 라벨
-getUtmSourceLabel('meta')  // → 'Meta'
-```
-
-### 보안 헬퍼 (lib/security.ts)
-```typescript
-import { parseId, sanitizeString, isValidBookingStatus, canModifyBooking } from '@/lib/security'
-
-// ID 파싱
-const bookingId = parseId(id)
-if (!bookingId) return apiError('유효한 ID가 필요합니다.')
-
-// 상태값 검증
-if (!isValidBookingStatus(status)) return apiError('유효하지 않은 상태')
-
-// XSS 방지 sanitize
-const safeNotes = sanitizeString(notes, 1000)
-
-// 리소스 소유권 검증
-const check = await canModifyBooking(bookingId, user)
-if (!check.allowed) return apiError(check.error, 403)
-```
-
-## UI 컴포넌트 (요약)
-
-```typescript
-// shadcn/ui 기본
-import { Button, Card, Badge, Input, Select, Dialog, Table, Skeleton } from '@/components/ui/*'
-import { toast } from 'sonner'
-
-// 커스텀 Variants
-<Card variant="glass" />      // 글래스모피즘
-<Button variant="glass" />    // 글래스 버튼
-<Badge variant="meta" />      // 채널별 색상 (meta/google/tiktok/naver/kakao)
-<Badge variant="success" />   // 상태별 색상 (success/warning/info)
-
-// 공용 컴포넌트
-import { PageHeader, ChannelBadge, StatusBadge, EmptyState } from '@/components/common'
-
-// 차트 (코드 스플리팅 적용)
-import { AreaChart, BarChart, PieChart, LineChart, ... } from '@/components/charts'
-```
-
-상세 사용법: [docs/COMPONENTS.md](docs/COMPONENTS.md)
-
-### 활동 추적 (lib/activity-log.ts)
-```typescript
-import { logActivity } from '@/lib/activity-log'
-
-// 데이터 변경 시 활동 로그 기록 (non-blocking, 실패해도 메인 플로우 안 막음)
-await logActivity(supabase, {
-  userId: user.id,
-  clinicId: targetClinicId,
-  action: 'booking_create',       // booking_create, booking_status_change, payment_create, lead_status_change 등
-  targetTable: 'bookings',
-  targetId: booking.id,
-  detail: { customer_id: 123, status: 'confirmed' },
-})
-```
-- bookings/payments/consultations/leads에 `created_by`/`updated_by` 컬럼으로 마지막 수정자 추적
-- `activity_logs` 테이블에 변경 이력 전체 기록
-
-### 삭제 데이터 보관 (lib/archive.ts)
-```typescript
-import { archiveBeforeDelete, archiveBulkBeforeDelete } from '@/lib/archive'
-
-// 단일 삭제 전 스냅샷 보관
-await archiveBeforeDelete(supabase, { table: 'bookings', recordId: id, deletedBy: user.id, clinicId })
-
-// 벌크 삭제 전 스냅샷 보관
-await archiveBulkBeforeDelete(supabase, { table: 'leads', recordIds: ids, deletedBy: user.id, clinicId })
-```
-- `deleted_records` 테이블에 삭제 전 데이터 전체 JSON 보관
-- 데이터 삭제 시 반드시 호출 (감사 추적 + 복구 가능)
-
-### 에러 알림 (lib/error-alert.ts)
-```typescript
-import { sendErrorAlert } from '@/lib/error-alert'
-
-await sendErrorAlert({ type: 'lead_webhook_fail', message: '에러 상세', clinicId })
-```
-- 프로덕션 에러 발생 시 관리자에게 SMS 알림 (`ADMIN_ALERT_PHONES` 환경변수)
-- 쿨다운 5분, 일일 최대 50건 제한
-- 에러 타입: `lead_webhook_fail`, `ad_sync_fail`, `press_sync_fail`, `db_connection_fail`
-
-### 채널 정규화 (lib/channel.ts)
-```typescript
-import { normalizeChannel } from '@/lib/channel'
-normalizeChannel('facebook')  // → 'Meta'
-```
-- utm_source/platform 값을 canonical 채널명으로 변환 (Meta, Google, TikTok 등)
-- `lib/channel-colors.ts`: 채널별 Recharts 색상 코드 (`getChannelColor(channel)`)
-
-### 날짜/시간 유틸 (lib/date.ts)
-```typescript
-import { formatDate, formatDateTime, formatTime, getKstDateString, getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
-
-// 표시용 포맷 (모두 KST 기준)
-formatDate('2026-03-18T15:00:00Z')     // → '2026. 3. 19.'
-formatDateTime('2026-03-18T15:00:00Z') // → '3월 19일 00:00'
-formatTime('2026-03-18T15:00:00Z')     // → '00:00'
-
-// 서버용 KST 날짜 유틸
-getKstDateString()       // → '2026-03-19' (KST 기준 YYYY-MM-DD)
-getKstDayStartISO()      // → KST 오늘 00:00의 UTC ISO 문자열
-getKstDayEndISO()        // → KST 오늘 23:59:59.999의 UTC ISO 문자열
-```
-- 모든 날짜 표시에 `timeZone: 'Asia/Seoul'` 명시 (서버/클라이언트 동일 결과)
-- 날짜 문자열 생성 시 `toISOString().split('T')[0]` 대신 `getKstDateString()` 사용 필수
-
-### SMS 발송 (lib/solapi.ts)
-```typescript
-import { sendSmsWithLog } from '@/lib/solapi'
-
-// 발송 + DB 로그 기록, 실패 시 logId 반환하여 QStash 재시도 활용
-const { success, logId, error } = await sendSmsWithLog(supabase, {
-  to: '010-1234-5678', text: '알림 메시지',
-  clinicId: 1, leadId: 123,
-})
-```
-- `sms_send_logs` 테이블에 모든 발송 내역 기록 (status: sent/retrying/failed)
-- 실패 시 `/api/qstash/sms-retry`로 자동 재시도 (최대 3회, 3분→5분 간격)
-- 병원별 알림 연락처 최대 3개 (`clinics.notify_phones TEXT[]`)
-
-## 데이터베이스 스키마
-
-### 핵심 테이블
-| 테이블 | 용도 |
-|--------|------|
-| `clinics` | 병원 고객사 (notify_phones, notify_enabled) |
-| `users` | 로그인 계정 (role: superadmin/clinic_admin/clinic_staff, clinic_id) |
-| `customers` | 고객 정보 (phone_number로 식별) |
-| `leads` | 리드/문의 (UTM 파라미터, landing_page_id, updated_by) |
-| `bookings` | 예약 (created_by, updated_by) |
-| `consultations` | 상담 (created_by, updated_by) |
-| `payments` | 결제 (created_by) |
-| `ad_campaign_stats` | 광고 통계 |
-| `clinic_api_configs` | 병원별 광고 API 키 |
-| `landing_pages` | 랜딩 페이지 (8자리 랜덤 ID) |
-| `lead_raw_logs` | 리드 원본 로그 (유실 방지, 멱등성 키) |
-| `sms_send_logs` | SMS 발송 로그 (재시도 추적) |
-| `activity_logs` | 활동 이력 (누가 무엇을 변경했는지) |
-| `user_clinic_assignments` | agency_staff 다중 병원 배정 |
-| `user_menu_permissions` | agency_staff 메뉴 권한 |
-| `monitoring_keywords` | 순위 모니터링 키워드 (place/website/smartblock) |
-| `monitoring_rankings` | 일별 순위 데이터 (keyword_id + rank_date UNIQUE) |
-| `login_logs` | 로그인 시도 이력 (user_id, ip_address, success, failure_reason) |
-| `deleted_records` | 삭제 데이터 스냅샷 보관 (감사/복구용) |
-
-### 멀티테넌트 필터링 (필수)
-```typescript
-// 모든 쿼리에 clinic_id 필터 적용
-const clinicId = await getClinicId(req.url)
-if (clinicId) query = query.eq('clinic_id', clinicId)
-
-// INSERT 시 clinic_id 포함
-await supabase.from('table').insert({ clinic_id: clinicId, ...data })
-```
-
-## 환경변수
-
-### 필수
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
-- `CRON_SECRET` (Cron Job 인증)
-
-### 선택 (서비스별)
-- 광고 API: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*`
-- 콘텐츠 API: `YOUTUBE_API_KEY`, `KAKAO_REST_API_KEY`
-- AI: `ANTHROPIC_API_KEY`
-- SMS: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`
-- 메시징: `QSTASH_*`, `KAKAO_*`
-- 에러 알림: `ADMIN_ALERT_PHONES` (프로덕션 에러 SMS 수신 번호)
-
-## 환경 분리 운영
-
-### 브랜치 전략
-```
-main (프로덕션) → Production 배포
-  └── develop (개발/스테이징) → Preview 배포
-        └── feature/* (기능 개발)
-```
-
-| 브랜치 | 용도 | Vercel 환경 |
-|--------|------|-------------|
-| `main` | 프로덕션 배포 | Production |
-| `develop` | 개발/테스트 | Preview |
-| `feature/*` | 기능 개발 | Preview (PR 생성 시) |
-
-### Cron Jobs
+## Cron Jobs
 
 | 경로 | 스케줄 | 용도 |
 |------|--------|------|
 | `/api/cron/sync-ads` | 매일 03:00 | 광고 데이터 동기화 |
 | `/api/cron/sync-press` | 매일 00:00 | 언론보도 동기화 |
 
-로컬 테스트:
-```bash
-curl -X POST http://localhost:3000/api/cron/sync-ads -H "Authorization: Bearer $CRON_SECRET"
-```
+## 참조 문서
 
-## 주의사항
+| 문서 | 내용 |
+|------|------|
+| [docs/SPEC.md](docs/SPEC.md) | 프로젝트 요구사항 명세 |
+| [docs/API.md](docs/API.md) | REST API 엔드포인트 상세 |
+| [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI 컴포넌트 사용 가이드 |
+| [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 인덱스 |
+| `app/api/CLAUDE.md` | API 라우트 작성 규칙 |
+| `components/CLAUDE.md` | UI 컴포넌트/레이아웃 규칙 |
+| `lib/CLAUDE.md` | 인증 흐름, 환경변수, DB 스키마 요약 |
+| `.claude/skills/ads-sync-guidelines.md` | 광고 동기화 가이드라인 |
+| `.claude/skills/multitenant-guidelines.md` | 멀티테넌트 가이드라인 |
+| `.claude/skills/security-guidelines.md` | 보안 가이드라인 |
+| `.claude/skills/supabase-guidelines.md` | Supabase 사용 가이드라인 |
+| `.claude/skills/nextjs-guidelines.md` | Next.js 규칙 |
+| `.claude/skills/paid-ads/SKILL.md` | 유료 광고 캠페인 가이드 |
+| `.claude/skills/ui-ux-pro-max/SKILL.md` | UI/UX 디자인 가이드 |
 
-### 코드 작성 시 필수 체크리스트
-1. **멀티테넌트 격리**: 모든 DB 쿼리에 `clinic_id` 필터 적용 확인
-2. **역할 검증**: API는 `withSuperAdmin`/`withClinicAdmin`/`withClinicFilter` 래퍼 사용, 페이지는 `useEffect`로 역할 가드 추가
-3. **활동 추적**: bookings/payments/consultations/leads 변경 시 `created_by`/`updated_by` + `logActivity()` 호출
-4. **보안**: 사용자 입력은 `sanitizeString`, ID는 `parseId`로 검증
-5. **타입 안전**: TypeScript strict 모드 준수
-6. **인증 타입**: `types/next-auth.d.ts`에서 Session/JWT 타입 확장 시 `password_version` 필드 유지
-7. **레이아웃 밸런스**: 아래 "UI 레이아웃 밸런스 규칙" 항목 준수
+## 변경 이력
 
-### UI 레이아웃 밸런스 규칙
-같은 그리드 행에 배치되는 카드/차트는 반드시 시각적으로 균형을 맞춰야 한다.
+규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
-**같은 행 카드 높이 통일**
-- 같은 그리드 행의 카드들은 동일한 콘텐츠 높이를 사용
-- 차트가 포함된 카드: `ResponsiveContainer height`를 양쪽 카드가 같은 값으로 설정
-- 데이터 건수가 다를 경우: `Math.max(좌측.length, 우측.length)` 기준으로 높이 계산
-- `items-stretch`로 억지로 늘리지 않음 (하단 빈 여백 발생)
-
-**리스트/범례 제한**
-- 차트 범례, 항목 목록 등은 **최대 5~6개**로 제한
-- 초과 항목은 "기타"로 합산하거나 "더보기"로 접기
-- 범례가 차트보다 길어지면 안 됨
-
-**차트 높이 가이드**
-```
-카드 내 차트: 160px ~ 360px (데이터 건수에 따라 동적)
-수평 바차트: items * 44px + 20px (항목당 44px)
-영역/라인 차트: 모바일 180px, 데스크탑 240px
-파이/도넛 차트: 160px (고정)
-```
-
-**간격 패턴**
-```
-섹션 간: mb-6 md:mb-8
-카드 그리드 gap: gap-2 md:gap-3 (KPI), gap-3 (차트)
-카드 내부 패딩: p-4 md:p-5 (기본), p-5 md:p-6 (강조)
-```
-
-**StatsCard 높이 정렬**
-- `h-full` 클래스로 같은 행의 카드 높이 통일
-- subtitle/trend 유무에 관계없이 높이가 맞아야 함
-
-### 페이지 역할 가드 패턴
-```typescript
-// superadmin 전용 페이지
-useEffect(() => {
-  if (user && user.role !== 'superadmin') router.replace('/')
-}, [user, router])
-if (user?.role !== 'superadmin') return null
-
-// clinic_admin 이상 (clinic_staff 차단)
-useEffect(() => {
-  if (user?.role === 'clinic_staff') router.replace('/patients')
-}, [user, router])
-```
-
-### 서버 시작 시 환경변수 검증
-`instrumentation.ts`에서 서버 시작 시 `lib/env.ts`의 `validateEnv()`를 호출하여 필수 환경변수를 검증. 프로덕션에서 누락 시 서버 시작 실패.
-
-### 테스트 방법
-```bash
-# 빌드 검증 (타입 에러 검출)
-npm run build
-
-# ESLint 검사
-npm run lint
-
-# E2E 테스트 (Playwright)
-npm run test:e2e           # 전체 실행
-npm run test:e2e:headed    # 브라우저 표시
-npm run test:e2e:ui        # Playwright UI 모드
-npm run test:e2e:report    # 리포트 보기
-
-# 특정 테스트 파일만 실행
-npx playwright test e2e/tests/auth.spec.ts
-```
-- 인증 상태는 `storageState` (`.auth/superadmin.json`)로 관리
-- `PLAYWRIGHT_BASE_URL` 환경변수로 테스트 대상 URL 변경 가능
-- 테스트 구조: `e2e/fixtures/` (인증 픽스처), `e2e/pages/` (Page Object Model), `e2e/tests/` (스펙)
-
-### 코드 작성 시 추가 참고
-8. **삭제 보관**: 데이터 삭제 시 `archiveBeforeDelete()` 호출하여 `deleted_records`에 스냅샷 보관
-9. **채널 정규화**: 광고 채널 표시 시 `normalizeChannel()` 사용, 차트 색상은 `getChannelColor()` 사용
-10. **KST 타임존**: 날짜 표시는 `lib/date.ts` 포맷 함수 사용, 날짜 문자열 생성은 `getKstDateString()` 사용. `toISOString().split('T')[0]` 금지 (UTC 기준이라 KST 자정~09시 사이 날짜 오류)
-
-### DB 마이그레이션
-SQL 마이그레이션 파일은 `supabase/migrations/`에 위치. 파일명은 `YYYYMMDD_설명.sql` 형식.
-테스트 시드 데이터: `supabase/seed_test_data.sql`
+| 날짜 | 내용 |
+|------|------|
+| 2026-03-19 | CLAUDE.md 재설계: 모듈 분리, 검증 루프, 도메인 용어, 네이밍 컨벤션, 팀 가이드 추가 |
+| 2026-03-19 | 원격 변경 병합: ClinicContext, archive, error-alert, channel, date 유틸, deleted_records, E2E 상세 |
