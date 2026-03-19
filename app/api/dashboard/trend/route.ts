@@ -1,19 +1,32 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { getKstDateString } from '@/lib/date'
+
+const DAYS = 28 // 최근 4주
 
 export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
 
-  // startDate 파라미터 지원 (기본값: 8주 전 = 56일)
-  const defaultStart = new Date(Date.now() - 56 * 86400000).toISOString()
-  const startDate = url.searchParams.get('startDate') || defaultStart
+  // 오늘(KST)부터 28일 전까지 모든 날짜를 미리 생성
+  const today = getKstDateString()
+  const startDate = url.searchParams.get('startDate') || getKstDateString(new Date(Date.now() - DAYS * 86400000))
+
+  // 28일 전~오늘까지 빈 날짜 틀 생성 (데이터 없는 날도 0으로)
+  const dayMap = new Map<string, { date: string; spend: number; leads: number }>()
+  for (let i = DAYS; i >= 0; i--) {
+    const d = getKstDateString(new Date(Date.now() - i * 86400000))
+    if (d >= startDate && d <= today) {
+      dayMap.set(d, { date: d, spend: 0, leads: 0 })
+    }
+  }
 
   // 광고 지출 + 리드 수 병렬 조회
   let adQuery = supabase
     .from('ad_campaign_stats')
     .select('stat_date, spend_amount')
     .gte('stat_date', startDate)
+    .lte('stat_date', today)
     .order('stat_date')
 
   let leadQuery = supabase
@@ -25,7 +38,10 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const adFiltered = applyClinicFilter(adQuery, { clinicId, assignedClinicIds })
   const leadFiltered = applyClinicFilter(leadQuery, { clinicId, assignedClinicIds })
 
-  if (adFiltered === null && leadFiltered === null) return apiSuccess([])
+  if (adFiltered === null && leadFiltered === null) {
+    // 병원 배정 없어도 빈 날짜 틀은 반환
+    return apiSuccess([...dayMap.values()])
+  }
   if (adFiltered) adQuery = adFiltered
   if (leadFiltered) leadQuery = leadFiltered
 
@@ -42,23 +58,19 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     return new Date(dateStr).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
   }
 
-  // 일별 집계
-  const dayMap = new Map<string, { date: string; spend: number; leads: number }>()
-
+  // 광고비 일별 집계
   for (const row of adRes.data || []) {
-    const key = row.stat_date.split('T')[0] // stat_date는 이미 YYYY-MM-DD 형식
-    if (!dayMap.has(key)) dayMap.set(key, { date: key, spend: 0, leads: 0 })
-    dayMap.get(key)!.spend += Number(row.spend_amount)
+    const key = row.stat_date.split('T')[0]
+    const entry = dayMap.get(key)
+    if (entry) entry.spend += Number(row.spend_amount)
   }
 
+  // 리드 일별 집계
   for (const row of leadRes.data || []) {
     const key = toKstDate(row.created_at)
-    if (!dayMap.has(key)) dayMap.set(key, { date: key, spend: 0, leads: 0 })
-    dayMap.get(key)!.leads += 1
+    const entry = dayMap.get(key)
+    if (entry) entry.leads += 1
   }
 
-  const result = [...dayMap.values()]
-    .sort((a, b) => a.date.localeCompare(b.date))
-
-  return apiSuccess(result)
+  return apiSuccess([...dayMap.values()])
 })
