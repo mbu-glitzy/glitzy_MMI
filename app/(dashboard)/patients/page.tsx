@@ -783,7 +783,12 @@ function BookingRow({ booking, onRefresh, isSuperAdmin, clinicId }: { booking: a
     <Card variant="glass" className="overflow-hidden">
       <button
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted dark:hover:bg-white/[0.03] transition-colors text-left"
-        onClick={() => setOpen(v => !v)}
+        onClick={() => {
+          setOpen(v => {
+            if (!v) setExpandedSection('booking')
+            return !v
+          })
+        }}
         aria-expanded={open}
         aria-label={`${customer?.name || '고객'} 상세정보 ${open ? '접기' : '펼치기'}`}
       >
