@@ -60,7 +60,17 @@ function DualChart({ data, height, fontSize, dotRadius, gradientId, showLegend }
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-        <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize }} axisLine={false} tickLine={false} />
+        <XAxis
+          dataKey="date"
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize }}
+          axisLine={false}
+          tickLine={false}
+          tickFormatter={(v: string) => {
+            const parts = v.split('-')
+            return `${Number(parts[1])}/${Number(parts[2])}`
+          }}
+          interval={6}
+        />
         <YAxis yAxisId="spend" tickFormatter={fmtKrw} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize }} axisLine={false} tickLine={false} />
         <YAxis yAxisId="leads" orientation="right" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize }} axisLine={false} tickLine={false} unit="건" />
         <Tooltip content={<DualTooltip />} />
@@ -74,7 +84,7 @@ function DualChart({ data, height, fontSize, dotRadius, gradientId, showLegend }
           />
         )}
         <Area yAxisId="spend" type="monotone" dataKey="spend" name="광고비" stroke={BRAND} fill={`url(#${gradientId})`} strokeWidth={2} />
-        <Line yAxisId="leads" type="monotone" dataKey="leads" name="리드 수" stroke={LEAD_COLOR} strokeWidth={2} dot={{ r: dotRadius, fill: LEAD_COLOR }} />
+        <Line yAxisId="leads" type="monotone" dataKey="leads" name="리드 수" stroke={LEAD_COLOR} strokeWidth={2} dot={dotRadius > 0 ? { r: dotRadius, fill: LEAD_COLOR } : false} />
       </ComposedChart>
     </ResponsiveContainer>
   )
@@ -85,7 +95,7 @@ export function SpendLeadTrend({ data, loading }: SpendLeadTrendProps) {
     <Card variant="glass" className="p-5 w-full">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground">광고비 · 리드 추이</h2>
-        <span className="text-xs text-muted-foreground">최근 8주</span>
+        <span className="text-xs text-muted-foreground">최근 8주 (일별)</span>
       </div>
       {loading ? (
         <Skeleton className="h-[240px] md:h-[300px] rounded-lg" />
@@ -95,7 +105,7 @@ export function SpendLeadTrend({ data, loading }: SpendLeadTrendProps) {
             <DualChart data={data} height={300} fontSize={11} dotRadius={3} gradientId="spendGradDual" showLegend />
           </div>
           <div className="block md:hidden">
-            <DualChart data={data} height={200} fontSize={10} dotRadius={2} gradientId="spendGradDualMobile" />
+            <DualChart data={data} height={200} fontSize={10} dotRadius={0} gradientId="spendGradDualMobile" />
           </div>
         </>
       ) : (

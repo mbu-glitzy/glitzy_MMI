@@ -57,7 +57,7 @@ export function useTrendData(clinicId: number | null, startDate: string, endDate
       if (trendRes.status === 'fulfilled') {
         const raw = Array.isArray(trendRes.value) ? trendRes.value : []
         setTrend(raw.map((r: any) => ({
-          date: new Date(r.week.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(r.week) ? r.week : r.week + 'Z').toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }),
+          date: r.date || '',
           spend: r.spend || 0,
           leads: r.leads || 0,
         })))
