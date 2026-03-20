@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { TrendingUp, Plus, ExternalLink } from 'lucide-react'
+import { TrendingUp, Plus, ExternalLink, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -24,6 +24,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Table,
   TableBody,
@@ -52,6 +62,8 @@ export default function MonitoringKeywordsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({ keyword: '', category: 'place', url: '' })
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; keyword: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (user && user.role !== 'superadmin' && user.role !== 'agency_staff') router.replace('/')
@@ -105,6 +117,29 @@ export default function MonitoringKeywordsPage() {
       toast.error(e.message || '등록 실패')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/monitoring/keywords', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: deleteTarget.id }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error)
+      }
+      toast.success('키워드가 삭제되었습니다.')
+      fetchKeywords()
+    } catch (e: any) {
+      toast.error(e.message || '삭제 실패')
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
     }
   }
 
@@ -203,6 +238,28 @@ export default function MonitoringKeywordsPage() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>키워드 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{deleteTarget?.keyword}&rdquo; 키워드를 삭제하시겠습니까?
+              해당 키워드의 모든 순위 기록도 함께 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete() }}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? '삭제 중...' : '삭제'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {!selectedClinicId ? (
         <Card variant="glass" className="p-12 text-center">
           <p className="text-muted-foreground">병원을 선택해주세요.</p>
@@ -233,6 +290,7 @@ export default function MonitoringKeywordsPage() {
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">키워드</TableHead>
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium">URL</TableHead>
                       <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium w-[80px]">활성화</TableHead>
+                      <TableHead className="text-xs text-muted-foreground uppercase tracking-wider font-medium w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -254,6 +312,15 @@ export default function MonitoringKeywordsPage() {
                             checked={kw.is_active}
                             onCheckedChange={() => toggleActive(kw.id, kw.is_active)}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            onClick={() => setDeleteTarget({ id: kw.id, keyword: kw.keyword })}
+                            className="p-1.5 rounded-md text-muted-foreground/50 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </TableCell>
                       </TableRow>
                     ))}

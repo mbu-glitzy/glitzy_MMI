@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, withAuth, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString, parseId } from '@/lib/security'
+import { archiveBeforeDelete } from '@/lib/archive'
 
 export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds }) => {
   const supabase = serverSupabase()
@@ -120,4 +121,43 @@ export const PATCH = withAuth(async (req, { user }) => {
 
   if (error) return apiError(error.message, 500)
   return apiSuccess(data)
+})
+
+export const DELETE = withAuth(async (req, { user }) => {
+  if (user.role !== 'superadmin' && user.role !== 'agency_staff') {
+    return apiError('키워드 관리 권한이 없습니다.', 403)
+  }
+
+  const { id } = await req.json()
+  const keywordId = parseId(id)
+  if (!keywordId) return apiError('유효한 키워드 ID가 필요합니다.', 400)
+
+  const supabase = serverSupabase()
+
+  const { data: kw } = await supabase
+    .from('monitoring_keywords')
+    .select('id, clinic_id')
+    .eq('id', keywordId)
+    .single()
+  if (!kw) return apiError('키워드를 찾을 수 없습니다.', 404)
+
+  if (user.role === 'agency_staff') {
+    const { data: assignment } = await supabase
+      .from('user_clinic_assignments')
+      .select('id')
+      .eq('user_id', parseInt(user.id, 10))
+      .eq('clinic_id', kw.clinic_id)
+      .single()
+    if (!assignment) return apiError('배정되지 않은 병원의 키워드입니다.', 403)
+  }
+
+  await archiveBeforeDelete(supabase, 'monitoring_keywords', keywordId, user.id, kw.clinic_id)
+
+  const { error } = await supabase
+    .from('monitoring_keywords')
+    .delete()
+    .eq('id', keywordId)
+  if (error) return apiError(error.message, 500)
+
+  return apiSuccess({ deleted: true })
 })
