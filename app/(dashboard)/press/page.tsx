@@ -165,7 +165,14 @@ export default function PressPage() {
       const qs = selectedClinicId ? `?clinic_id=${selectedClinicId}` : ''
       const res = await fetch(`/api/press/sync${qs}`, { method: 'POST' })
       const data = await res.json()
-      setSyncMsg({ ok: true, text: `수집 완료 — ${data.inserted || 0}건 업데이트` })
+      const errors: string[] = data.errors || []
+      if (errors.length > 0 && (data.inserted || 0) === 0) {
+        setSyncMsg({ ok: false, text: `수집 실패: ${errors[0]}` })
+      } else if (errors.length > 0) {
+        setSyncMsg({ ok: true, text: `${data.inserted}건 수집 (일부 오류: ${errors.length}건)` })
+      } else {
+        setSyncMsg({ ok: true, text: `수집 완료 — ${data.inserted || 0}건 업데이트` })
+      }
       await fetchArticles()
     } catch {
       setSyncMsg({ ok: false, text: '수집 실패' })

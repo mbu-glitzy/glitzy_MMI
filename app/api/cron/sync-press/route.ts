@@ -11,9 +11,9 @@ export async function GET(req: Request) {
   }
 
   try {
-    const inserted = await syncPressForClinic(null) // null = 전체 병원
-    console.log(`[CronJob] 언론보도 자동 수집 완료 — ${inserted}건`)
-    return apiSuccess({ success: true, inserted })
+    const result = await syncPressForClinic(null) // null = 전체 병원
+    console.log(`[CronJob] 언론보도 자동 수집 완료 — ${result.inserted}건`)
+    return apiSuccess({ success: true, inserted: result.inserted })
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err)
     sendErrorAlert('press_sync_fail', `언론보도 동기화 실패: ${errorMsg}`).catch(() => {})

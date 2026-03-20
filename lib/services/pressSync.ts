@@ -63,14 +63,19 @@ async function fetchRSS(query: string): Promise<PressItem[]> {
   return parseGoogleNewsRSS(xml)
 }
 
-export async function syncPressForClinic(clinicId: number | null): Promise<number> {
+export interface PressSyncResult {
+  inserted: number
+  errors: string[]
+}
+
+export async function syncPressForClinic(clinicId: number | null): Promise<PressSyncResult> {
   const supabase = serverSupabase()
   const startTime = Date.now()
 
   let clinicsQuery = supabase.from('clinics').select('id, name')
   if (clinicId) clinicsQuery = clinicsQuery.eq('id', clinicId)
   const { data: clinics } = await clinicsQuery
-  if (!clinics?.length) return 0
+  if (!clinics?.length) return { inserted: 0, errors: ['병원을 찾을 수 없습니다.'] }
 
   let totalInserted = 0
   const errors: string[] = []
@@ -155,5 +160,5 @@ export async function syncPressForClinic(clinicId: number | null): Promise<numbe
     })
   }
 
-  return totalInserted
+  return { inserted: totalInserted, errors }
 }
