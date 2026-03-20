@@ -272,14 +272,14 @@ export async function POST(req: Request) {
       // 알림 발송 실패는 리드 등록을 막지 않음
     }
 
-    // 4. QStash 챗봇 스케줄
-    if (process.env.QSTASH_TOKEN) {
-      await qstash.publishJSON({
-        url: `${process.env.NEXTAUTH_URL}/api/qstash/chatbot`,
-        body: { leadId: lead.id, phoneNumber: normalizedPhone, name: sanitizedName },
-        delay: 300,
-      })
-    }
+    // 4. QStash 챗봇 스케줄 — 카카오 알림톡 API 연동 전까지 비활성화
+    // if (process.env.QSTASH_TOKEN && process.env.KAKAO_API_KEY) {
+    //   await qstash.publishJSON({
+    //     url: `${process.env.NEXTAUTH_URL}/api/qstash/chatbot`,
+    //     body: { leadId: lead.id, phoneNumber: normalizedPhone, name: sanitizedName },
+    //     delay: 300,
+    //   })
+    // }
 
     // 5. Meta CAPI Lead 이벤트 전송 (async, non-blocking)
     // event_id 검증: UUID 형식이거나 100자 이내 영숫자+하이픈만 허용

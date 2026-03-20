@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, Users, MessageCircle, BarChart2, LogOut, Activity, Calendar, Film, Link2, Scan, Newspaper, Settings, ChevronUp, User, FileEdit, ClipboardList, LucideIcon, Building2, UserCog, FileText, Image, Megaphone, TrendingUp, Shield, KeyRound } from 'lucide-react'
+import { LayoutDashboard, Users, BarChart2, LogOut, Activity, Calendar, Film, Link2, Scan, Newspaper, Settings, ChevronUp, User, FileEdit, ClipboardList, LucideIcon, Building2, UserCog, FileText, Image, Megaphone, TrendingUp, Shield, KeyRound } from 'lucide-react'
 import { useClinic } from './ClinicContext'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,7 +59,6 @@ const menuGroups: MenuGroup[] = [
       { href: '/campaigns', label: '캠페인 리드', icon: Megaphone, menuKey: 'campaigns' },
       { href: '/leads', label: '고객', icon: Users, menuKey: 'leads' },
       { href: '/patients', label: '예약/결제', icon: Calendar, menuKey: 'patients' },
-      { href: '/chatbot', label: '챗봇 현황', icon: MessageCircle, menuKey: 'chatbot' },
       { href: '/lead-form', label: '리드 수집', icon: ClipboardList, minRole: 3, menuKey: 'lead-form' },
     ]
   },

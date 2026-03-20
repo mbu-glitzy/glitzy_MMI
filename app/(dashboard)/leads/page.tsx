@@ -443,7 +443,7 @@ function LeadsContent() {
     <>
       <PageHeader
         title="고객관리"
-        description="광고 인입 → 챗봇 → 상담 → 결제 전체 여정을 추적합니다."
+        description="광고 인입 → 상담 → 결제 전체 여정을 추적합니다."
         actions={
           <div className="flex items-center gap-2">
             {canExport && (
