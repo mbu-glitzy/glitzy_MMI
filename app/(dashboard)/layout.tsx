@@ -3,12 +3,14 @@ import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import Sidebar from '@/components/Sidebar'
 import { ClinicProvider } from '@/components/ClinicContext'
+import { WebVitals } from '@/components/common'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <ClinicProvider>
+      <WebVitals />
       <div className="flex h-screen overflow-hidden relative bg-background">
 
         {/* 배경 다이나믹 글로우 — 다크 모드 전용 */}

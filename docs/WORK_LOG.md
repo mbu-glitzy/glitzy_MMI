@@ -33,6 +33,8 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | P25-2 | 뉴스 검색 기간 제한 | Google News RSS에 `when:6m` 추가, 6개월 이상 오래된 기사 수집 차단 | 03-20 |
 | P25-3 | 광고 성과 날짜 포맷 수정 | `stat_date`(YYYY-MM-DD)와 ISO 형식 비교로 모든 광고 데이터가 필터링되던 **치명적 버그** 수정. 페이지→API 날짜를 YYYY-MM-DD로 통일, timestamptz 비교 시 KST 타임존 명시. 영향 범위: ads/page, stats, efficiency-trend, platform-summary, day-analysis, landing-page-performance, dashboard/kpi, dashboard/funnel (8개 파일) | 03-20 |
 | P25-4 | 예약 목록 유입 경로 표시 | API에 `leads(utm_source, utm_campaign)` 조인 추가, ChannelBadge + 캠페인명 컬럼 표시, `first_source` 폴백 | 03-20 |
+| P25-5 | 단위 테스트 인프라 | Jest + next/jest 설정, 4개 테스트 파일(security/channel/utm/date), 53개 테스트 | 03-20 |
+| P25-6 | Web Vitals 모니터링 | `useReportWebVitals` 기반 성능 측정, dev 콘솔 출력 + prod poor 등급 서버 로깅 | 03-20 |
 
 ---
 
@@ -159,5 +161,5 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | 작업 | 핵심 내용 | 상태 |
 |------|----------|------|
 | 예약 페이지 유입 경로 | 채널/캠페인 컬럼 추가 | ✅ 완료 |
-| 단위 테스트 | Jest + React Testing Library | 예정 |
-| 성능 모니터링 | Web Vitals 측정 | 예정 |
+| 단위 테스트 | Jest 53개 테스트 (security, channel, utm, date) | ✅ 완료 |
+| 성능 모니터링 | Web Vitals 측정 (dev: 콘솔, prod: poor만 로깅) | ✅ 완료 |
