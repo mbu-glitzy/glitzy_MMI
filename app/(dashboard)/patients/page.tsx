@@ -33,7 +33,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { PageHeader } from '@/components/common'
+import { PageHeader, ChannelBadge } from '@/components/common'
 import { formatDate, formatDateTime, formatTime, toUtcDate } from '@/lib/date'
 
 // 상수
@@ -756,6 +756,10 @@ function BookingRow({ booking, onRefresh, isSuperAdmin, clinicId }: { booking: a
   const cfg = STATUS_CONFIG[booking.status] || { label: booking.status, variant: 'secondary' as const }
   const totalPayment = (customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
   const consultations: any[] = customer?.consultations || []
+  // 유입 경로: 리드의 utm_source (최초 리드 기준) 또는 first_source 폴백
+  const leads: any[] = customer?.leads || []
+  const channelSource = leads[0]?.utm_source || customer?.first_source || null
+  const campaignName = leads[0]?.utm_campaign || null
   const latestConsult = consultations[0]
   const consultCount = consultations.length
 
@@ -806,6 +810,16 @@ function BookingRow({ booking, onRefresh, isSuperAdmin, clinicId }: { booking: a
           </div>
           {booking.created_at && (
             <p className="text-[10px] text-muted-foreground/60 mt-0.5">등록: {formatDateTime(booking.created_at)}</p>
+          )}
+        </div>
+        <div className="w-32 shrink-0 min-w-0">
+          {channelSource ? (
+            <div className="space-y-0.5">
+              <ChannelBadge channel={channelSource} className="text-[10px] px-1.5 py-0" />
+              {campaignName && <p className="text-[10px] text-muted-foreground/70 truncate">{campaignName}</p>}
+            </div>
+          ) : (
+            <span className="text-muted-foreground/60 text-xs">-</span>
           )}
         </div>
         <div className="flex-1" />
@@ -1326,17 +1340,18 @@ export default function PatientsPage() {
           ) : (
             <div className="overflow-x-auto">
               {/* 컬럼 헤더 */}
-              <Card variant="glass" className="flex items-center gap-4 px-5 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 min-w-[640px]">
+              <Card variant="glass" className="flex items-center gap-4 px-5 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 min-w-[720px]">
                 <div className="w-9 shrink-0" />
                 <div className="w-40 shrink-0">고객명</div>
                 <div className="w-40 shrink-0">예약 일시</div>
+                <div className="w-32 shrink-0">유입 경로</div>
                 <div className="flex-1" />
                 <div className="w-28 shrink-0">예약 상태</div>
                 <div className="w-24 shrink-0">상담</div>
                 <div className="w-28 shrink-0 text-right">결제 금액</div>
                 <div className="w-4 shrink-0" />
               </Card>
-              <div className="space-y-2 min-w-[640px]">
+              <div className="space-y-2 min-w-[720px]">
                 {filtered.map(b => (
                   <BookingRow key={b.id} booking={b} onRefresh={fetchBookings} isSuperAdmin={isSuperAdmin} clinicId={selectedClinicId} />
                 ))}

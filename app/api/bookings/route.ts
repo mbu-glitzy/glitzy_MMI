@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('bookings')
-    .select('*, customer:customers(id, name, phone_number, first_source, consultations(*), payments(*))')
+    .select('*, customer:customers(id, name, phone_number, first_source, leads(utm_source, utm_campaign), consultations(*), payments(*))')
     .order('booking_datetime', { ascending: false })
 
   if (clinicId) query = query.eq('clinic_id', clinicId)
