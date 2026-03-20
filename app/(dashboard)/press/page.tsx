@@ -2,7 +2,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Newspaper, ExternalLink, Play, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { subDays, startOfDay } from 'date-fns'
+import { DateRange } from 'react-day-picker'
 import { useClinic } from '@/components/ClinicContext'
+import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { PageHeader, EmptyState } from '@/components/common'
-import { toUtcDate } from '@/lib/date'
+import { toUtcDate, getKstDateString } from '@/lib/date'
 
 interface PressKeyword {
   id: number
@@ -45,6 +48,12 @@ export default function PressPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  // 기간 필터 (기본: 최근 90일)
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: subDays(startOfDay(new Date()), 90),
+    to: startOfDay(new Date()),
+  })
 
   // 키워드 상태
   const [keywords, setKeywords] = useState<PressKeyword[]>([])
@@ -75,17 +84,21 @@ export default function PressPage() {
     }
   }, [selectedClinicId])
 
-  // 기사 목록 로드 (전체 조회 후 클라이언트에서 필터)
+  // 기사 목록 로드
   const fetchArticles = useCallback(async () => {
     setLoading(true)
     try {
-      const qs = selectedClinicId ? `?clinic_id=${selectedClinicId}` : ''
+      const params = new URLSearchParams()
+      if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+      if (dateRange.from) params.set('from', getKstDateString(dateRange.from))
+      if (dateRange.to) params.set('to', getKstDateString(dateRange.to))
+      const qs = params.toString() ? `?${params.toString()}` : ''
       const data = await fetch(`/api/press${qs}`).then(r => r.json())
       setArticles(Array.isArray(data) ? data : [])
     } finally {
       setLoading(false)
     }
-  }, [selectedClinicId])
+  }, [selectedClinicId, dateRange])
 
   useEffect(() => { fetchKeywords() }, [fetchKeywords])
   useEffect(() => { fetchArticles() }, [fetchArticles])
@@ -182,6 +195,7 @@ export default function PressPage() {
         description="Google 뉴스에서 키워드별 보도를 수집합니다. 매일 오전 9시 자동 갱신."
         actions={
           <>
+            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
             <Button variant="glass" size="icon" onClick={fetchArticles} disabled={loading}>
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             </Button>

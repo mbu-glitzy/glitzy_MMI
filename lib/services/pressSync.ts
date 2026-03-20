@@ -44,7 +44,8 @@ function parseGoogleNewsRSS(xml: string): PressItem[] {
 }
 
 async function fetchRSS(query: string): Promise<PressItem[]> {
-  const q = encodeURIComponent(query)
+  // Google News 검색에 최근 6개월로 기간 제한
+  const q = encodeURIComponent(`${query} when:6m`)
   const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`
 
   const { response: res } = await fetchWithRetry(rssUrl, {

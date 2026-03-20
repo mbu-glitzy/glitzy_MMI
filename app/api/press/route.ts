@@ -16,12 +16,19 @@ import { withClinicFilter, applyClinicFilter, apiError, apiSuccess } from '@/lib
 
 export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds }) => {
   const supabase = serverSupabase()
+  const url = new URL(req.url)
+  const from = url.searchParams.get('from')
+  const to = url.searchParams.get('to')
 
   let query = supabase
     .from('press_coverage')
     .select('*')
     .order('published_at', { ascending: false })
-    .limit(200)
+    .limit(500)
+
+  // 날짜 필터
+  if (from) query = query.gte('published_at', `${from}T00:00:00+09:00`)
+  if (to) query = query.lte('published_at', `${to}T23:59:59+09:00`)
 
   const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
   if (filtered === null) return apiSuccess([])
