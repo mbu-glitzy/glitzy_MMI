@@ -199,7 +199,7 @@ export default function PressPage() {
     <>
       <PageHeader
         title="언론보도"
-        description="Google 뉴스에서 키워드별 보도를 수집합니다. 매일 오전 9시 자동 갱신."
+        description="네이버 뉴스에서 키워드별 보도를 수집합니다. 매일 오전 9시 자동 갱신."
         actions={
           <>
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />

@@ -27,6 +27,7 @@
 - AI: `ANTHROPIC_API_KEY`
 - SMS: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`
 - 메시징: `QSTASH_*`, `KAKAO_*`
+- 뉴스: `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` (네이버 뉴스 검색 API)
 - 에러 알림: `ADMIN_ALERT_PHONES` (프로덕션 에러 SMS 수신 번호)
 
 ## DB 핵심 테이블
