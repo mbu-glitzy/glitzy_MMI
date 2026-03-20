@@ -46,8 +46,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   let leadQuery = supabase
     .from('leads')
     .select('created_at')
-    .gte('created_at', startDate)
-    .lte('created_at', endDate + 'T23:59:59.999Z')
+    .gte('created_at', `${startDate}T00:00:00+09:00`)
+    .lte('created_at', `${endDate}T23:59:59+09:00`)
     .order('created_at')
 
   const adFiltered = applyClinicFilter(adQuery, { clinicId, assignedClinicIds })

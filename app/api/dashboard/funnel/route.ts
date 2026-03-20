@@ -26,8 +26,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   }
   const applyDateFilter = <T>(q: T, dateField: string): T => {
     let query = q
-    if (startDate) query = (query as any).gte(dateField, startDate)
-    if (endDate) query = (query as any).lte(dateField, endDate)
+    if (startDate) query = (query as any).gte(dateField, `${startDate}T00:00:00+09:00`)
+    if (endDate) query = (query as any).lte(dateField, `${endDate}T23:59:59+09:00`)
     return query
   }
 

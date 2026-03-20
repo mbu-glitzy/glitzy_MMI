@@ -34,8 +34,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
     if (filteredLeads === null) return apiSuccess({ byDay: buildEmptyResult() })
     leadsQuery = filteredLeads
-    if (startDate) leadsQuery = leadsQuery.gte('created_at', startDate)
-    if (endDate) leadsQuery = leadsQuery.lte('created_at', endDate)
+    if (startDate) leadsQuery = leadsQuery.gte('created_at', `${startDate}T00:00:00+09:00`)
+    if (endDate) leadsQuery = leadsQuery.lte('created_at', `${endDate}T23:59:59+09:00`)
 
     // 2. 광고 지출 stat_date + spend_amount 조회
     let adStatsQuery = supabase

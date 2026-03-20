@@ -38,8 +38,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
     if (filteredLeads === null) return apiSuccess({ pages: [] })
     leadsQuery = filteredLeads
-    if (startDate) leadsQuery = leadsQuery.gte('created_at', startDate)
-    if (endDate) leadsQuery = leadsQuery.lte('created_at', endDate)
+    if (startDate) leadsQuery = leadsQuery.gte('created_at', `${startDate}T00:00:00+09:00`)
+    if (endDate) leadsQuery = leadsQuery.lte('created_at', `${endDate}T23:59:59+09:00`)
 
     // 3. 기간 내 결제 조회 (customer_id, payment_amount)
     let paymentsQuery = supabase

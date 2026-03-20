@@ -11,7 +11,7 @@ import { useClinic } from '@/components/ClinicContext'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
-import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
+import { getKstDateString } from '@/lib/date'
 import AttributionView from '@/components/attribution/AttributionView'
 import AdsOverviewTab from '@/components/ads/ads-overview-tab'
 import AdsCampaignTab from '@/components/ads/ads-campaign-tab'
@@ -41,9 +41,9 @@ export default function AdsPage() {
   const [syncing, setSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // KST ISO 문자열로 변환 (하위 컴포넌트/API 전달용)
-  const startDate = dateRange.from ? getKstDayStartISO(dateRange.from) : getKstDayStartISO(subDays(new Date(), 30))
-  const endDate = dateRange.to ? getKstDayEndISO(dateRange.to) : getKstDayEndISO(new Date())
+  // KST 기준 YYYY-MM-DD 문자열 (ad_campaign_stats.stat_date와 동일 형식)
+  const startDate = dateRange.from ? getKstDateString(dateRange.from) : getKstDateString(subDays(new Date(), 30))
+  const endDate = dateRange.to ? getKstDateString(dateRange.to) : getKstDateString(new Date())
 
   // 기간 일수 계산 (표시용 + 캠페인 탭 stats API용)
   const daysDiff = dateRange.from && dateRange.to

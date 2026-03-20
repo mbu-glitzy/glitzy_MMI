@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext } from '@/lib/api-middleware'
 import { SupabaseClient } from '@supabase/supabase-js'
-import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
+import { getKstDateString, getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
 // 메트릭 계산 함수 추출
 async function fetchMetrics(
@@ -18,10 +18,14 @@ async function fetchMetrics(
     return q
   }
 
+  // stat_date(YYYY-MM-DD)용 날짜 추출
+  const statStart = start.split('T')[0]
+  const statEnd = end.split('T')[0]
+
   const [adStatsRes, leadsRes, paymentsRes, bookingsRes, consultRes, contentBudgetRes] = await Promise.all([
-    applyFilter(supabase.from('ad_campaign_stats').select('spend_amount, clicks, impressions').gte('stat_date', start).lte('stat_date', end)),
+    applyFilter(supabase.from('ad_campaign_stats').select('spend_amount, clicks, impressions').gte('stat_date', statStart).lte('stat_date', statEnd)),
     applyFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)),
-    applyFilter(supabase.from('payments').select('customer_id, payment_amount').gte('payment_date', start).lte('payment_date', end)),
+    applyFilter(supabase.from('payments').select('customer_id, payment_amount').gte('payment_date', statStart).lte('payment_date', statEnd)),
     applyFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })
       .neq('status', 'cancelled').gte('created_at', start).lte('created_at', end)),
     applyFilter(supabase.from('consultations').select('*', { count: 'exact', head: true })
@@ -130,8 +134,11 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
 
   const supabase = serverSupabase()
   const url = new URL(req.url)
-  const start = url.searchParams.get('startDate') || getKstDayStartISO(new Date(Date.now() - 30 * 86400000))
-  const end = url.searchParams.get('endDate') || getKstDayEndISO()
+  const startParam = url.searchParams.get('startDate') || getKstDateString(new Date(Date.now() - 30 * 86400000))
+  const endParam = url.searchParams.get('endDate') || getKstDateString()
+  // YYYY-MM-DD → KST 기준 ISO 범위로 변환 (timestamptz 컬럼 비교용)
+  const start = `${startParam.split('T')[0]}T00:00:00+09:00`
+  const end = `${endParam.split('T')[0]}T23:59:59+09:00`
   const compare = url.searchParams.get('compare') === 'true'
 
   // 기간 KPI + 오늘 요약 병렬 조회
