@@ -101,6 +101,12 @@ export async function syncPressForClinic(clinicId: number | null): Promise<Press
       for (const target of searchTargets) {
         try {
           const items = await fetchRSS(target.query)
+          logger.info('RSS fetch result', {
+            action: 'fetch_rss',
+            clinicId: clinic.id,
+            keyword: target.query,
+            itemCount: items.length,
+          })
           if (!items.length) continue
 
           const rows = items
