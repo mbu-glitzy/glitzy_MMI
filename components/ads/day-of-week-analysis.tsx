@@ -15,8 +15,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from '@/components/charts'
-import { getKstDateString } from '@/lib/date'
 import { CalendarDays } from 'lucide-react'
+
+function fmtShort(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
+}
 
 const BAR_MAX_COLOR = '#6366f1'
 const BAR_DEFAULT_COLOR = '#a5b4fc'
@@ -34,7 +38,8 @@ interface DayAnalysisResponse {
 }
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
 }
 
 function DayTooltip({ active, payload, label }: any) {
@@ -78,7 +83,7 @@ function CplLabel(props: any) {
   )
 }
 
-export default function DayOfWeekAnalysis({ days }: Props) {
+export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
   const [data, setData] = useState<DayAnalysisResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -86,8 +91,6 @@ export default function DayOfWeekAnalysis({ days }: Props) {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const endDate = getKstDateString()
-      const startDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
       const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -103,7 +106,7 @@ export default function DayOfWeekAnalysis({ days }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   useEffect(() => {
     fetchData()
@@ -130,7 +133,7 @@ export default function DayOfWeekAnalysis({ days }: Props) {
     <Card variant="glass" className="p-5">
       <div className="flex items-center justify-between mb-4 gap-4">
         <h2 className="font-semibold text-foreground shrink-0">요일별 리드 분석</h2>
-        <span className="text-xs text-muted-foreground">최근 {days}일</span>
+        <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {loading ? (

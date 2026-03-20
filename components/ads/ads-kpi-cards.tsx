@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useClinic } from '@/components/ClinicContext'
 import { StatsCard } from '@/components/common'
-import { getKstDateString } from '@/lib/date'
 
 interface KpiComparison {
   cpl: number
@@ -30,10 +29,11 @@ interface KpiData {
 }
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
 }
 
-export default function AdsKpiCards({ days }: Props) {
+export default function AdsKpiCards({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
   const [data, setData] = useState<KpiData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -41,8 +41,6 @@ export default function AdsKpiCards({ days }: Props) {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const endDate = getKstDateString()
-      const startDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
       const qs = new URLSearchParams({ compare: 'true', startDate, endDate })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -58,7 +56,7 @@ export default function AdsKpiCards({ days }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   useEffect(() => {
     fetchData()

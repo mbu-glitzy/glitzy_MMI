@@ -16,7 +16,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from '@/components/charts'
-import { getKstDateString } from '@/lib/date'
 import { TrendingUp } from 'lucide-react'
 
 const CPL_COLOR = '#6366f1'
@@ -35,7 +34,8 @@ interface EfficiencyDataItem {
 }
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
 }
 
 function fmtKrw(v: number) {
@@ -175,7 +175,7 @@ function EfficiencyChart({
   )
 }
 
-export default function EfficiencyTrendChart({ days }: Props) {
+export default function EfficiencyTrendChart({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
   const [data, setData] = useState<EfficiencyDataItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -183,8 +183,6 @@ export default function EfficiencyTrendChart({ days }: Props) {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const endDate = getKstDateString()
-      const startDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
       const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -200,7 +198,7 @@ export default function EfficiencyTrendChart({ days }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   useEffect(() => {
     fetchData()
@@ -212,7 +210,7 @@ export default function EfficiencyTrendChart({ days }: Props) {
     <Card variant="glass" className="p-5">
       <div className="flex items-center justify-between mb-4 gap-4">
         <h2 className="font-semibold text-foreground shrink-0">효율 추이</h2>
-        <span className="text-xs text-muted-foreground">{days}일 (일별)</span>
+        <span className="text-xs text-muted-foreground">일별</span>
       </div>
 
       {loading ? (

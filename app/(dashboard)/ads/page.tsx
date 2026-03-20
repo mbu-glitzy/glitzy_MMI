@@ -3,18 +3,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { subDays, startOfDay } from 'date-fns'
+import { DateRange } from 'react-day-picker'
 import { RefreshCw, Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { useClinic } from '@/components/ClinicContext'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { PageHeader } from '@/components/common'
+import { DateRangePicker } from '@/components/dashboard/date-range-picker'
+import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 import AttributionView from '@/components/attribution/AttributionView'
 import AdsOverviewTab from '@/components/ads/ads-overview-tab'
 import AdsCampaignTab from '@/components/ads/ads-campaign-tab'
@@ -37,9 +34,21 @@ export default function AdsPage() {
 
   const { selectedClinicId } = useClinic()
   const [activeTab, setActiveTab] = useState('overview')
-  const [days, setDays] = useState('30')
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const today = startOfDay(new Date())
+    return { from: subDays(today, 30), to: today }
+  })
   const [syncing, setSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+
+  // KST ISO 문자열로 변환 (하위 컴포넌트/API 전달용)
+  const startDate = dateRange.from ? getKstDayStartISO(dateRange.from) : getKstDayStartISO(subDays(new Date(), 30))
+  const endDate = dateRange.to ? getKstDayEndISO(dateRange.to) : getKstDayEndISO(new Date())
+
+  // 기간 일수 계산 (표시용 + 캠페인 탭 stats API용)
+  const daysDiff = dateRange.from && dateRange.to
+    ? Math.max(1, Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / 86400000) + 1)
+    : 30
 
   // Restore tab from URL on mount (avoids hydration mismatch)
   useEffect(() => {
@@ -93,18 +102,7 @@ export default function AdsPage() {
         actions={
           showActions ? (
             <>
-              <Select value={days} onValueChange={setDays}>
-                <SelectTrigger className="w-[130px] glass-card border-0 text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[7, 14, 30, 90].map(d => (
-                    <SelectItem key={d} value={String(d)}>
-                      최근 {d}일
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
               <Button variant="ghost" size="icon" onClick={handleRefresh}>
                 <RefreshCw size={16} />
               </Button>
@@ -142,10 +140,10 @@ export default function AdsPage() {
 
       {/* Tab content */}
       {activeTab === 'overview' && (
-        <AdsOverviewTab key={`overview-${days}-${refreshKey}`} days={days} />
+        <AdsOverviewTab key={`overview-${startDate}-${endDate}-${refreshKey}`} startDate={startDate} endDate={endDate} />
       )}
       {activeTab === 'campaigns' && (
-        <AdsCampaignTab key={`campaigns-${days}-${refreshKey}`} days={days} />
+        <AdsCampaignTab key={`campaigns-${startDate}-${endDate}-${refreshKey}`} startDate={startDate} endDate={endDate} days={String(daysDiff)} />
       )}
       {activeTab === 'attribution' && <AttributionView />}
     </>

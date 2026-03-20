@@ -5,8 +5,12 @@ import { useClinic } from '@/components/ClinicContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
-import { getKstDateString } from '@/lib/date'
 import { TrendingDown } from 'lucide-react'
+
+function fmtShort(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
+}
 
 interface AdStatsRecord {
   impressions: number
@@ -40,12 +44,13 @@ interface FunnelStageDisplay {
 }
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
 }
 
 const STAGE_GRADIENT = 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)'
 
-export default function AdsFunnel({ days }: Props) {
+export default function AdsFunnel({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
 
   const [adsLoading, setAdsLoading] = useState(true)
@@ -62,6 +67,7 @@ export default function AdsFunnel({ days }: Props) {
   const fetchAdsStats = useCallback(async () => {
     setAdsLoading(true)
     try {
+      const days = String(Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1))
       const qs = new URLSearchParams({ days })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -81,13 +87,11 @@ export default function AdsFunnel({ days }: Props) {
     } finally {
       setAdsLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   const fetchFunnelData = useCallback(async () => {
     setFunnelLoading(true)
     try {
-      const endDate = getKstDateString()
-      const startDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
       const qs = new URLSearchParams({ groupBy: 'total', startDate, endDate })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -109,7 +113,7 @@ export default function AdsFunnel({ days }: Props) {
     } finally {
       setFunnelLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   useEffect(() => {
     fetchAdsStats()
@@ -175,7 +179,7 @@ export default function AdsFunnel({ days }: Props) {
     <Card variant="glass" className="p-5 md:p-6">
       <div className="flex items-center justify-between mb-5 gap-4">
         <h2 className="font-semibold text-foreground shrink-0">광고 퍼널 분석</h2>
-        <span className="text-xs text-muted-foreground">최근 {days}일</span>
+        <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {loading ? (

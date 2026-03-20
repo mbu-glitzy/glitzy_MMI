@@ -13,8 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getKstDateString } from '@/lib/date'
 import { BarChart2 } from 'lucide-react'
+
+/** ISO 날짜 → "M/D" 형식 (KST) */
+function fmtShort(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
+}
 
 interface PlatformRow {
   channel: string
@@ -32,10 +37,11 @@ interface PlatformRow {
 }
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
 }
 
-export default function PlatformComparisonTable({ days }: Props) {
+export default function PlatformComparisonTable({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
   const [rows, setRows] = useState<PlatformRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,8 +49,6 @@ export default function PlatformComparisonTable({ days }: Props) {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const endDate = getKstDateString()
-      const startDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
       const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -60,7 +64,7 @@ export default function PlatformComparisonTable({ days }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   useEffect(() => {
     fetchData()
@@ -82,7 +86,7 @@ export default function PlatformComparisonTable({ days }: Props) {
     <Card variant="glass" className="p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-foreground">매체별 성과 비교</h2>
-        <span className="text-xs text-muted-foreground">최근 {days}일</span>
+        <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {loading ? (

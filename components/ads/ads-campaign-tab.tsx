@@ -7,10 +7,12 @@ import CampaignRankingTable from '@/components/ads/campaign-ranking-table'
 import CreativePerformance from '@/components/ads/CreativePerformance'
 
 interface Props {
+  startDate: string
+  endDate: string
   days: string
 }
 
-export default function AdsCampaignTab({ days }: Props) {
+export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
   const { selectedClinicId } = useClinic()
   const [platformFilter, setPlatformFilter] = useState('all')
   const [platforms, setPlatforms] = useState<string[]>(['all'])
@@ -56,7 +58,8 @@ export default function AdsCampaignTab({ days }: Props) {
         ))}
       </div>
       <CampaignRankingTable
-        days={days}
+        startDate={startDate}
+        endDate={endDate}
         platformFilter={platformFilter === 'all' ? undefined : platformFilter}
       />
       <CreativePerformance parentDays={days} />

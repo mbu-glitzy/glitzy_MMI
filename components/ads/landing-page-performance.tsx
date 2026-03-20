@@ -13,8 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getKstDateString } from '@/lib/date'
 import { FileText } from 'lucide-react'
+
+function fmtShort(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
+}
 
 interface LandingPageRow {
   landingPageId: string
@@ -27,10 +31,11 @@ interface LandingPageRow {
 }
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
 }
 
-export default function LandingPagePerformance({ days }: Props) {
+export default function LandingPagePerformance({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
   const [rows, setRows] = useState<LandingPageRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,8 +43,6 @@ export default function LandingPagePerformance({ days }: Props) {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const endDate = getKstDateString()
-      const startDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
       const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -55,7 +58,7 @@ export default function LandingPagePerformance({ days }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   useEffect(() => {
     fetchData()
@@ -67,7 +70,7 @@ export default function LandingPagePerformance({ days }: Props) {
     <Card variant="glass" className="p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-foreground">랜딩페이지별 성과</h2>
-        <span className="text-xs text-muted-foreground">최근 {days}일</span>
+        <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {loading ? (

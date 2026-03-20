@@ -8,23 +8,24 @@ import DayOfWeekAnalysis from '@/components/ads/day-of-week-analysis'
 import LandingPagePerformance from '@/components/ads/landing-page-performance'
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
 }
 
-export default function AdsOverviewTab({ days }: Props) {
+export default function AdsOverviewTab({ startDate, endDate }: Props) {
   return (
     <>
-      <AdsKpiCards days={days} />
+      <AdsKpiCards startDate={startDate} endDate={endDate} />
       <div className="mb-6" />
-      <EfficiencyTrendChart days={days} />
+      <EfficiencyTrendChart startDate={startDate} endDate={endDate} />
       <div className="mb-6" />
-      <PlatformComparisonTable days={days} />
+      <PlatformComparisonTable startDate={startDate} endDate={endDate} />
       <div className="mb-6" />
-      <AdsFunnel days={days} />
+      <AdsFunnel startDate={startDate} endDate={endDate} />
       <div className="mb-6" />
       <div className="grid lg:grid-cols-2 gap-3">
-        <DayOfWeekAnalysis days={days} />
-        <LandingPagePerformance days={days} />
+        <DayOfWeekAnalysis startDate={startDate} endDate={endDate} />
+        <LandingPagePerformance startDate={startDate} endDate={endDate} />
       </div>
     </>
   )

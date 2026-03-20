@@ -14,8 +14,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getKstDateString } from '@/lib/date'
 import { BarChart2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
+
+function fmtShort(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
+}
 
 interface AdStatRecord {
   campaign_name: string | null
@@ -39,7 +43,8 @@ type SortField = 'campaign_name' | 'spend' | 'clicks' | 'impressions' | 'cpc' | 
 type SortDir = 'asc' | 'desc'
 
 interface Props {
-  days: string
+  startDate: string
+  endDate: string
   platformFilter?: string
 }
 
@@ -58,7 +63,7 @@ function StatusDot({ cpc, avgCpc }: { cpc: number; avgCpc: number }) {
   return <span className="text-amber-400" title="평균 수준">🟡</span>
 }
 
-export default function CampaignRankingTable({ days, platformFilter }: Props) {
+export default function CampaignRankingTable({ startDate, endDate, platformFilter }: Props) {
   const { selectedClinicId } = useClinic()
   const [rawData, setRawData] = useState<AdStatRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,6 +75,7 @@ export default function CampaignRankingTable({ days, platformFilter }: Props) {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
+      const days = String(Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1))
       const qs = new URLSearchParams({ days })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
       if (platformFilter) qs.set('platform', platformFilter)
@@ -86,7 +92,7 @@ export default function CampaignRankingTable({ days, platformFilter }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [days, selectedClinicId, platformFilter])
+  }, [startDate, endDate, selectedClinicId, platformFilter])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -171,7 +177,7 @@ export default function CampaignRankingTable({ days, platformFilter }: Props) {
     <Card variant="glass" className="p-5 md:p-6">
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
         <h2 className="font-semibold text-foreground shrink-0">캠페인 성과 순위</h2>
-        <span className="text-xs text-muted-foreground">최근 {days}일</span>
+        <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {/* Search */}
