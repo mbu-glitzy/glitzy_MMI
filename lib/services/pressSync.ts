@@ -112,6 +112,17 @@ export async function syncPressForClinic(clinicId: number | null): Promise<Press
 
   for (const clinic of clinics) {
     try {
+      // 기존 기사 삭제 후 현재 키워드 기준으로 새로 수집
+      const { error: deleteError } = await supabase
+        .from('press_coverage')
+        .delete()
+        .eq('clinic_id', clinic.id)
+
+      if (deleteError) {
+        errors.push(`Clinic ${clinic.id}: 기존 기사 삭제 실패 - ${deleteError.message}`)
+        continue
+      }
+
       // press_keywords에서 활성 키워드 조회
       const { data: keywords } = await supabase
         .from('press_keywords')
@@ -159,7 +170,7 @@ export async function syncPressForClinic(clinicId: number | null): Promise<Press
 
           const { error } = await supabase
             .from('press_coverage')
-            .upsert(rows, { onConflict: 'clinic_id,url', ignoreDuplicates: true })
+            .insert(rows)
 
           if (error) {
             errors.push(`Clinic ${clinic.id} keyword "${target.query}": DB error - ${error.message}`)
