@@ -97,16 +97,16 @@ export default function CreativePerformance({ parentDays }: Props) {
         />
       ) : (
         <div className="overflow-x-auto">
-          <Table className="min-w-[750px]">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
-                <TableHead className="text-[11px] text-muted-foreground font-medium w-[52px]">소재</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium w-[180px]">소재명</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground font-medium w-14 px-2">소재</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground font-medium">소재명</TableHead>
                 <TableHead className="text-[11px] text-muted-foreground font-medium w-[70px]">플랫폼</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">리드</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[60px]">결제</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[70px]">전환율</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[100px]">매출</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground font-medium w-[160px]">리드</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[50px]">결제</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[60px]">전환율</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[90px]">매출</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,25 +119,27 @@ export default function CreativePerformance({ parentDays }: Props) {
                     key={row.utm_content}
                     className={`border-b border-border/50 dark:border-white/[0.03] ${idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : ''}`}
                   >
-                    <TableCell className="py-2">
-                      {row.file_name ? (
-                        row.file_type?.startsWith('video/') ? (
-                          <div className="w-10 h-10 rounded-md bg-muted dark:bg-white/5 overflow-hidden relative shrink-0">
-                            <video src={getCreativeUrl(row.file_name)} className="w-full h-full object-cover" muted preload="metadata" />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                              <Film size={12} className="text-white/80" />
+                    <TableCell className="py-2 px-2">
+                      <div className="w-9 h-9 shrink-0">
+                        {row.file_name ? (
+                          row.file_type?.startsWith('video/') ? (
+                            <div className="w-9 h-9 rounded-md bg-muted dark:bg-white/5 overflow-hidden relative">
+                              <video src={getCreativeUrl(row.file_name)} className="w-full h-full object-cover" muted preload="metadata" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Film size={11} className="text-white/80" />
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <img src={getCreativeUrl(row.file_name)} alt={row.name} className="w-9 h-9 rounded-md object-cover bg-muted dark:bg-white/5" />
+                          )
                         ) : (
-                          <img src={getCreativeUrl(row.file_name)} alt={row.name} className="w-10 h-10 rounded-md object-cover bg-muted dark:bg-white/5 shrink-0" />
-                        )
-                      ) : (
-                        <div className="w-10 h-10 rounded-md bg-muted dark:bg-white/5 flex items-center justify-center text-muted-foreground/40 shrink-0">
-                          <Image size={14} />
-                        </div>
-                      )}
+                          <div className="w-9 h-9 rounded-md bg-muted dark:bg-white/5 flex items-center justify-center text-muted-foreground/40">
+                            <Image size={13} />
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="py-3 max-w-[180px]" title={row.utm_content}>
+                    <TableCell className="py-3" title={row.utm_content}>
                       <span className={`text-sm truncate block ${row.registered ? 'text-foreground/90' : 'text-muted-foreground italic'}`}>
                         {row.name}
                       </span>
