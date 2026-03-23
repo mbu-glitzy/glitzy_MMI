@@ -452,7 +452,7 @@ Phase 1 시작 전에 반드시 아래를 확인하고 결과를 Notes에 기록
 - 마이그레이션 2개 Supabase SQL Editor에서 실행 완료
 - JSONB 이중 인코딩 버그 발견 → API_ENCRYPTION_KEY 미설정 시 객체 직접 저장으로 수정 (route.ts, test/route.ts, adSyncManager.ts)
 - Meta API 연결 테스트: 토큰 저장/복호화 정상 확인 (DB 저장값 = 입력값 일치)
-- Meta 토큰 발급 이슈: 시스템 사용자 토큰 `Malformed access token` 에러 → 앱 연결/권한 설정 재확인 필요 (MMI 시스템 문제 아님)
+- Meta 토큰 발급 이슈: 시스템 사용자 토큰 `Malformed access token` 에러 → 앱 연결/권한 설정 재확인 필요 (Samantha 시스템 문제 아님)
 
 ---
 

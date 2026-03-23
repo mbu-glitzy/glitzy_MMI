@@ -1,4 +1,4 @@
-# MMI 프로젝트 작업 로그
+# Samantha 프로젝트 작업 로그
 
 ## 개요
 
@@ -119,7 +119,7 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | P22-5 | 연동 테스트 | 마이그레이션 실행, JSONB 이중 인코딩 버그 수정, Meta 토큰 저장/복호화 정상 확인 | 03-19 |
 
 > 상세 구현 계획: [PLAN_clinic-api-configs.md](plans/PLAN_clinic-api-configs.md)
-> 잔여: Meta 토큰 발급 이슈 (앱 연결/권한 재확인 필요, MMI 시스템 문제 아님)
+> 잔여: Meta 토큰 발급 이슈 (앱 연결/권한 재확인 필요, Samantha 시스템 문제 아님)
 
 ---
 

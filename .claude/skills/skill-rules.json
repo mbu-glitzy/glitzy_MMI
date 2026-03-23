@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "description": "MMI 프로젝트 스킬 자동 활성화 규칙",
+  "description": "Samantha 프로젝트 스킬 자동 활성화 규칙",
   "skills": [
     {
       "name": "nextjs-guidelines",

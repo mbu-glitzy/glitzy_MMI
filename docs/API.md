@@ -1,8 +1,8 @@
-# MMI API 문서
+# Samantha API 문서
 
 ## 개요
 
-MMI 대시보드의 REST API 엔드포인트 문서입니다.
+Samantha 대시보드의 REST API 엔드포인트 문서입니다.
 모든 API는 NextAuth.js 인증이 필요하며, 멀티테넌트 환경에서 `clinic_id` 기반 데이터 격리를 지원합니다.
 
 ---

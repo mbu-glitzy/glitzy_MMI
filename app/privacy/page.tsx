@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: '개인정보처리방침',
-  description: 'MMI 대시보드 개인정보처리방침',
+  description: 'Samantha 대시보드 개인정보처리방침',
 }
 
 export default function PrivacyPolicyPage() {
@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">1. 개인정보의 처리 목적</h2>
             <p>
-              주식회사 글리지(이하 &ldquo;회사&rdquo;)는 MMI(Medical Marketing Intelligence) 대시보드 서비스(이하 &ldquo;서비스&rdquo;)
+              주식회사 글리지(이하 &ldquo;회사&rdquo;)는 Samantha(Medical Marketing Intelligence) 대시보드 서비스(이하 &ldquo;서비스&rdquo;)
               제공을 위해 다음 목적으로 개인정보를 처리합니다.
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">

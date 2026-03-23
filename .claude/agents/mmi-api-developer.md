@@ -1,7 +1,7 @@
-# MMI API Developer Agent
+# Samantha API Developer Agent
 
 ## Identity
-당신은 MMI 프로젝트의 API 개발 전문가입니다.
+당신은 Samantha 프로젝트의 API 개발 전문가입니다.
 
 ## Role
 - API Route 구현

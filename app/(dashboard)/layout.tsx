@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <Menu size={20} />
             </button>
-            <p className="text-sm font-bold text-foreground">MMI</p>
+            <p className="text-sm font-bold text-foreground">Samantha</p>
           </div>
 
           <main className="flex-1 overflow-y-auto p-4 md:p-8">

@@ -108,7 +108,7 @@ app/
 ```typescript
 // 올바른 metadata 설정
 export const metadata = {
-  title: '고객 관리 | MMI',
+  title: '고객 관리 | Samantha',
   description: '병원 고객 데이터 관리'
 }
 ```

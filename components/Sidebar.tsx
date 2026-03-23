@@ -147,7 +147,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
           <Activity size={16} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-foreground">MMI</p>
+          <p className="text-sm font-bold text-foreground">Samantha</p>
           <p className="text-xs text-muted-foreground">마케팅 인텔리전스</p>
         </div>
         <ThemeToggle />
