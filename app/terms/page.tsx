@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: '서비스 이용약관 | MMI 대시보드',
+  title: '서비스 이용약관',
   description: 'MMI 대시보드 서비스 이용약관',
 }
 

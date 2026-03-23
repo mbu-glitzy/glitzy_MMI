@@ -11,7 +11,10 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'MMI 대시보드',
+  title: {
+    default: '대시보드',
+    template: '%s',
+  },
   description: 'Medical Marketing Intelligence Dashboard',
 }
 
