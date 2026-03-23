@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2, Trash2, X, Settings, Filter } from 'lucide-react'
+import { Search, Plus, ChevronDown, ChevronUp, Check, AlertCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Phone, Edit2, Trash2, X, Settings } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useClinic } from '@/components/ClinicContext'
 import { toast } from 'sonner'
@@ -37,7 +37,7 @@ import { PageHeader, ChannelBadge, SortSelect } from '@/components/common'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { formatDate, formatDateTime, formatTime, toUtcDate } from '@/lib/date'
 import { DateRange } from 'react-day-picker'
-import { subDays, startOfDay } from 'date-fns'
+import { subDays, startOfDay, endOfDay } from 'date-fns'
 
 // 상수
 const STATUS_CONFIG: Record<string, { label: string; variant: 'info' | 'success' | 'default' | 'secondary' | 'destructive' }> = {
@@ -1138,7 +1138,7 @@ export default function PatientsPage() {
       if (dateRange.from && b.booking_datetime) {
         const bDate = toUtcDate(b.booking_datetime)
         const from = startOfDay(dateRange.from)
-        const to = dateRange.to ? new Date(startOfDay(dateRange.to).getTime() + 86400000 - 1) : new Date(from.getTime() + 86400000 - 1)
+        const to = endOfDay(dateRange.to || dateRange.from)
         matchDate = bDate >= from && bDate <= to
       }
       // 유입 경로
@@ -1178,20 +1178,39 @@ export default function PatientsPage() {
     paymentFilter !== 'all',
   ].filter(Boolean).length
 
-  const stats = {
-    total: bookings.length,
-    treatmentConfirmed: bookings.filter(b => b.status === 'treatment_confirmed').length,
-    noshow: bookings.filter(b => b.status === 'noshow').length,
-    revenue: bookings.reduce((s, b) => s + (b.customer?.payments || []).reduce((ps: number, p: any) => ps + Number(p.payment_amount), 0), 0),
-  }
+  const stats = useMemo(() => ({
+    total: filtered.length,
+    treatmentConfirmed: filtered.filter(b => b.status === 'treatment_confirmed').length,
+    noshow: filtered.filter(b => b.status === 'noshow').length,
+    revenue: filtered.reduce((s, b) => s + (b.customer?.payments || []).reduce((ps: number, p: any) => ps + Number(p.payment_amount), 0), 0),
+  }), [filtered])
 
-  // 캘린더 데이터 준비
+  // 캘린더 데이터 준비 (상태·유입경로·결제 필터 반영, 날짜 필터는 캘린더 자체 네비게이션 사용)
+  const calendarBookings = useMemo(() => {
+    return bookings.filter(b => {
+      const matchStatus = statusFilter === 'all' || b.status === statusFilter
+      let matchSource = true
+      if (sourceFilter !== 'all') {
+        const leads = b.customer?.leads || []
+        const lead = leads.find((l: any) => l.utm_source) || leads[0]
+        const src = lead?.utm_source || b.customer?.first_source || ''
+        matchSource = src === sourceFilter
+      }
+      let matchPayment = true
+      if (paymentFilter !== 'all') {
+        const totalPay = (b.customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
+        matchPayment = paymentFilter === 'paid' ? totalPay > 0 : totalPay === 0
+      }
+      return matchStatus && matchSource && matchPayment
+    })
+  }, [bookings, statusFilter, sourceFilter, paymentFilter])
+
   const year = currentMonth.getFullYear()
   const month = currentMonth.getMonth()
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const bookingsByDate: Record<string, any[]> = {}
-  for (const b of bookings) {
+  for (const b of calendarBookings) {
     if (!b.booking_datetime) continue
     const key = toUtcDate(b.booking_datetime).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
     if (!bookingsByDate[key]) bookingsByDate[key] = []
