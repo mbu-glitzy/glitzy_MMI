@@ -25,10 +25,26 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | Phase 11: 예약/결제 필터·정렬 | 2026-03-23 | 기간·상태·유입경로·결제 필터, 정렬, SortSelect 공용 컴포넌트 | 완료 | - |
 | Phase 12: 캠페인 리드 필터·페이지네이션 | 2026-03-23 | 캠페인 목록/상세 검색·채널·정렬·DateRangePicker·50건 페이지네이션 | 완료 | - |
 | Phase 13: UI/UX 감사 + Polish | 2026-03-23 | 접근성(A11y), 색상 토큰화, 타이포 상향, 반응형, 코드품질, LP 분석 분리 | 완료 | - |
+| Phase 14: MediChecker 통합 | 2026-03-24 | 의료광고법 제56조 AI 검증 (7단계 파이프라인, RAG, 온톨로지) | 완료 | - |
 
 ---
 
-## 최신 작업 (Phase 13: UI/UX 감사 + Polish)
+## 최신 작업 (Phase 14: MediChecker 통합)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| P29-1 | DB 마이그레이션 | `mc_law_articles`, `mc_procedures`, `mc_relations`, `mc_chunks`, `mc_verification_logs` 5개 테이블 + pgvector/pg_trgm 함수 3개 | 03-24 |
+| P29-2 | 도메인 서비스 | `lib/medichecker/` 12개 파일: types, prompts(4), embedding, claude-client, rag, ontology, analysis, highlight, verification | 03-24 |
+| P29-3 | API 라우트 | SSE 스트리밍 검증 (`/api/medichecker/verify`), 이력 목록/상세 (`/api/medichecker/history`) | 03-24 |
+| P29-4 | 프론트엔드 | `useVerification` SSE 훅, 8개 컴포넌트 (text-input-card, ad-type-selector, verify-progress, result-kpi-cards, violation-card, violation-highlight, history-table), 메인 페이지 | 03-24 |
+| P29-5 | 사이드바 | "광고 검수" 메뉴 그룹 추가 (ShieldCheck 아이콘, minRole: 2, menuKey: medichecker) | 03-24 |
+| P29-6 | 코드 리뷰 수정 | RPC 시그니처 3개 일치, HistoryTable 응답 매핑, SSE 이벤트 구조, confidence 범위 0-100 통일, clinic_staff API 차단 | 03-24 |
+| P29-7 | 시드 데이터 | `data/medichecker-seed/` JSON 6개 파일 (법조문 15건, 시술 50건, 관계 ~100건, 청크 ~46건) | 03-24 |
+| P29-8 | 환경변수 | `OPENAI_API_KEY` AI 그룹에 추가, `@anthropic-ai/sdk` + `openai` 의존성 추가 | 03-24 |
+
+---
+
+## Phase 13 (UI/UX 감사 + Polish)
 
 | # | 작업 | 핵심 내용 | 날짜 |
 |---|------|----------|------|
@@ -191,6 +207,7 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | `20260316_sms_send_logs.sql` | SMS 발송 로그 테이블 | ⚠️ |
 | `20260316_clinic_staff_activity.sql` | 활동 추적 컬럼 + activity_logs 테이블 | ⚠️ |
 | `20260316_monitoring_agency.sql` | agency_staff 배정/권한 + 모니터링 키워드/순위 테이블 | ⚠️ |
+| `20260324_add_medichecker.sql` | MediChecker 5테이블 + pgvector/pg_trgm 함수 3개 | ⚠️ |
 
 ---
 

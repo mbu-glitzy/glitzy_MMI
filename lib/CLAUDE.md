@@ -57,6 +57,11 @@
 | `clinic_treatments` | 병원별 시술 메뉴 카탈로그 | POS형 결제 입력용, UNIQUE(clinic_id, name) |
 | `press_coverage` | 언론보도 기사 | Google News RSS 수집, UNIQUE(clinic_id, url) |
 | `press_keywords` | 언론보도 검색 키워드 | 병원당 최대 5개, UNIQUE(clinic_id, keyword) |
+| `mc_law_articles` | 의료광고법 조문 (공용) | 15개 법조문, keywords 정규식 패턴 |
+| `mc_procedures` | 의료 시술 정보 (공용) | 50개 시술, aliases/부작용/규제 |
+| `mc_relations` | 법령-시술 온톨로지 관계 (공용) | 8종 관계 타입, 1홉 탐색 |
+| `mc_chunks` | RAG 임베딩 청크 (공용) | pgvector 1536차원, pg_trgm 키워드 |
+| `mc_verification_logs` | 광고 검증 이력 (테넌트) | clinic_id + user_id 추적, violations JSONB |
 
 ## SMS 발송 (lib/solapi.ts)
 
@@ -83,3 +88,11 @@
 | `date.ts` | `formatDate`, `getKstDateString`, `getKstDayStartISO` | KST 기준 날짜 포맷/생성 |
 | `services/metaCapi.ts` | Meta CAPI 전송 | 리드 유입 시 서버사이드 전환 이벤트 전송 |
 | `services/pressSync.ts` | `syncPressForClinic` | 언론보도 수집 (다중 키워드 → Google News RSS → upsert) |
+| `medichecker/types.ts` | 전체 타입 정의 | VerifyRequest, Violation, VerifyResult, Chunk, LawArticle 등 |
+| `medichecker/verification.ts` | `verify` | 7단계 파이프라인 오케스트레이터 (SSE 진행 콜백) |
+| `medichecker/rag.ts` | `hybridSearch` | pgvector 시맨틱 + pg_trgm 키워드 RRF 결합 |
+| `medichecker/ontology.ts` | `enrichContext` | 1홉 관계 탐색, 시술 특화 정보 |
+| `medichecker/analysis.ts` | `scanKeywords`, `classifyContent` | 키워드 스캔 + Claude Haiku 분류 |
+| `medichecker/claude-client.ts` | `judgeViolation`, `verifySelf` | Claude Sonnet/Haiku API 래퍼 |
+| `medichecker/embedding.ts` | `embeddingProvider` | OpenAI text-embedding-3-small |
+| `medichecker/highlight.ts` | `findViolationRanges` | 위반 텍스트 위치 4단계 매칭 |

@@ -42,6 +42,9 @@ npm run analyze      # 번들 크기 분석
 | `components/` | UI 컴포넌트 | `components/CLAUDE.md` |
 | `components/ads/` | 광고 성과 UI (KPI카드, 효율추이, 매체비교, 퍼널, 캠페인, 요일, LP) | |
 | `components/attribution/` | 매출 기여 분석 UI (퍼널, CPL/ROAS, 고객 여정) | |
+| `components/medichecker/` | 광고 검수 UI (텍스트 입력, 위반 하이라이트, 진행 표시, 이력) | |
+| `lib/medichecker/` | 의료광고 검증 도메인 서비스 (7단계 AI 파이프라인, RAG, 온톨로지) | |
+| `data/medichecker-seed/` | 의료광고법 시드 데이터 (법조문 15건, 시술 50건, 관계, 청크) | |
 | `supabase/migrations/` | DB 마이그레이션 (`YYYYMMDD_설명.sql`) | |
 | `e2e/` | Playwright E2E 테스트 | |
 
@@ -62,6 +65,8 @@ npm run analyze      # 번들 크기 분석
 | `UTM` | 유입 추적 파라미터 (source/medium/campaign/term/content) | `lib/utm.ts`로 파싱/검증 |
 | `CDP` | Customer Data Platform. 고객 통합 프로필 | 환자 관리 페이지의 내부 명칭 |
 | `KPI` | 핵심 성과 지표. 대시보드 상단 요약 카드 | clinic_staff는 접근 차단 |
+| `MediChecker` | 의료광고법 제56조 기반 AI 위반 검증 도구 | 7단계 파이프라인: 키워드→분류→RAG→온톨로지→판단→검증 |
+| `Verification` | 광고 텍스트 검증 1건. `mc_verification_logs` 테이블 | SSE 스트리밍으로 진행 상황 전달 |
 | `superadmin` | 전체 병원 접근. `?clinic_id=X`로 조회 | |
 | `agency_staff` | 다중 병원 배정. 메뉴 권한 제한 | superadmin과 달리 배정된 병원만 |
 | `clinic_admin` | 자기 병원 전체 데이터 + 담당자 관리 | |
@@ -150,10 +155,28 @@ npm run analyze      # 번들 크기 분석
                                                         build → 에러? → 수정 → build → ... → 통과
                                                                                               ↓
                                                                                         lint → 에러? → 수정 → lint → ... → 통과
+                                                                                                                              ↓
+                                                                                                                        2차 코드 리뷰 → 이슈? → 수정 → 빌드 → ... → 이슈 0건까지 반복
+                                                                                                                                                                              ↓
+                                                                                                                                                                        문서 업데이트
 ```
 - 빌드/린트 에러가 남아 있는 상태로 사용자에게 결과를 보고하지 말 것
 - "에러가 있지만 이렇게 수정하면 됩니다" 식의 안내 금지 — 직접 수정 후 재검증 완료한 뒤 결과 보고
 - 3회 이상 같은 에러가 반복되면 접근 방식을 재검토할 것 (같은 수정을 반복하지 않기)
+- **코드 리뷰는 수정사항이 0건이 될 때까지 반복**한다 (1차 빌드/린트 통과 후에도 데이터 흐름·타입·RPC 시그니처 등 런타임 이슈를 잡기 위해 반드시 추가 리뷰 실행)
+
+### 문서 업데이트 (필수 — 코드 리뷰 완료 후)
+**모든 기능 구현이 완료되고 코드 리뷰 이슈가 0건이 된 후, 반드시 관련 문서를 업데이트한다.** 문서 업데이트 없이 작업 완료를 보고하지 말 것.
+
+| 변경 유형 | 업데이트 대상 문서 |
+|-----------|-------------------|
+| 새 페이지/기능 추가 | `CLAUDE.md` (디렉토리 구조, 도메인 용어, 변경 이력), `docs/WORK_LOG.md` (Phase/작업 항목) |
+| 새 API 엔드포인트 | `docs/API.md` (엔드포인트 스펙, 요청/응답 예시) |
+| 새 컴포넌트 | `docs/COMPONENTS.md` (디렉토리 구조, 사용법 예시) |
+| 새 DB 테이블/마이그레이션 | `lib/CLAUDE.md` (DB 핵심 테이블), `docs/WORK_LOG.md` (마이그레이션 현황) |
+| 새 유틸리티/서비스 | `lib/CLAUDE.md` (유틸리티 모듈 요약) |
+| 환경변수 추가 | `lib/CLAUDE.md` (환경변수 섹션) |
+| 참조 문서 신규 생성 | `CLAUDE.md` (참조 문서 테이블) |
 
 ## 환경 분리
 
@@ -183,6 +206,7 @@ npm run analyze      # 번들 크기 분석
 | [docs/BRAND.md](docs/BRAND.md) | Samantha 브랜드 가이드 (컬러, 타이포, 심볼) |
 | [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 인덱스 |
 | [docs/INTEGRATION.md](docs/INTEGRATION.md) | glitzy-web ERP 연동 가이드 (견적서/계산서) |
+| [docs/MEDICHECKER.md](docs/MEDICHECKER.md) | MediChecker 의료광고 검증 모듈 가이드 |
 | `app/api/CLAUDE.md` | API 라우트 작성 규칙 |
 | `components/CLAUDE.md` | UI 컴포넌트/레이아웃 규칙 |
 | `lib/CLAUDE.md` | 인증 흐름, 환경변수, DB 스키마 요약 |
@@ -216,3 +240,4 @@ npm run analyze      # 번들 크기 분석
 | 2026-03-23 | Samantha 브랜드: 서비스명 확정, 컬러 마이그레이션 Indigo→Blue (15개 파일), `docs/BRAND.md` 생성 |
 | 2026-03-23 | agency_staff 메뉴 권한에 키워드 관리 항목 추가 |
 | 2026-03-24 | glitzy-web ERP 연동 가이드 문서 추가 (`docs/INTEGRATION.md`): 견적서/계산서 읽기 전용 연동 설계 |
+| 2026-03-24 | MediChecker 통합: 의료광고법 제56조 AI 검증 기능 (7단계 파이프라인, 5 DB 테이블, 3 API, 8 컴포넌트, 사이드바 메뉴) |

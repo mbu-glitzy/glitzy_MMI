@@ -71,7 +71,7 @@ const ENV_GROUPS: EnvGroup[] = [
   {
     name: 'AI',
     required: [],
-    optional: ['ANTHROPIC_API_KEY'],
+    optional: ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'],
   },
 ]
 

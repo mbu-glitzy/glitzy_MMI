@@ -59,6 +59,15 @@ components/
 │   ├── ads-campaign-tab.tsx        # 캠페인 분석 탭 레이아웃
 │   └── CreativePerformance.tsx     # 소재별 성과 (기존)
 │
+├── medichecker/         # 광고 검수 (MediChecker)
+│   ├── text-input-card.tsx       # 텍스트 입력 + 하이라이트 뷰
+│   ├── ad-type-selector.tsx      # 매체 유형 선택 (blog/instagram/youtube/other)
+│   ├── verify-progress.tsx       # 7단계 검증 진행 표시
+│   ├── result-kpi-cards.tsx      # 결과 KPI 4카드 (위험도/위반/시간/참조)
+│   ├── violation-card.tsx        # 위반 카드 (접기/펼치기, 수정 제안, 법령 근거)
+│   ├── violation-highlight.tsx   # 텍스트 하이라이트 (신뢰도별 색상)
+│   └── history-table.tsx         # 검수 이력 테이블 (페이지네이션)
+│
 ├── admin/               # 관리자 전용 컴포넌트
 │   └── ClinicApiConfigDialog.tsx  # 매체별 API 키 관리 다이얼로그
 │
@@ -541,6 +550,94 @@ import LandingPagePerformance from '@/components/ads/landing-page-performance'
 ```
 
 LP별 리드·결제 고객·전환율·매출. 활성/비활성 상태 표시.
+
+---
+
+## 광고 검수 컴포넌트
+
+`/medichecker` 페이지의 AI 기반 의료광고법 위반 검증 UI입니다. SSE 스트리밍으로 7단계 진행 상황을 실시간 표시합니다.
+
+### TextInputCard
+
+텍스트 입력 + 하이라이트 모드 전환 컴포넌트.
+
+```tsx
+import { TextInputCard } from '@/components/medichecker/text-input-card'
+
+<TextInputCard
+  text={text}
+  onTextChange={setText}
+  violations={result?.violations}
+  highlightMode={highlightMode}
+  onToggleHighlight={() => setHighlightMode(!highlightMode)}
+  selectedViolationIndex={selectedViolationIndex}
+  onSelectViolation={setSelectedViolationIndex}
+  disabled={isLoading}
+/>
+```
+
+| Prop | 타입 | 설명 |
+|------|------|------|
+| `text` | `string` | 입력 텍스트 |
+| `onTextChange` | `(text: string) => void` | 텍스트 변경 콜백 |
+| `violations` | `Violation[]` | 검증 결과 위반 목록 |
+| `highlightMode` | `boolean` | 하이라이트 모드 활성화 |
+| `onToggleHighlight` | `() => void` | 모드 전환 콜백 |
+| `selectedViolationIndex` | `number \| null` | 선택된 위반 인덱스 |
+| `onSelectViolation` | `(index: number) => void` | 위반 선택 콜백 |
+
+### ViolationCard
+
+위반 상세 카드 (접기/펼치기, 수정 제안, 법령 근거).
+
+```tsx
+import { ViolationCard } from '@/components/medichecker/violation-card'
+
+<ViolationCard
+  violation={violation}
+  index={idx}
+  isSelected={selectedViolationIndex === idx}
+  onSelect={setSelectedViolationIndex}
+/>
+```
+
+**신뢰도별 색상:**
+- 90%+ (높음): `rose-500` 계열
+- 60-89% (중간): `amber-500` 계열
+- 60% 미만 (낮음): `muted` 계열
+
+### VerifyProgress
+
+7단계 검증 진행 표시 (접기/펼치기 가능).
+
+```tsx
+import { VerifyProgress } from '@/components/medichecker/verify-progress'
+
+<VerifyProgress
+  progress={progress}          // Map<VerifyStage, VerifyProgress>
+  currentStage={currentStage}  // VerifyStage | null
+  isComplete={!!result}
+/>
+```
+
+### useVerification Hook
+
+SSE 스트리밍 검증 훅.
+
+```tsx
+import { useVerification } from '@/hooks/use-verification'
+
+const {
+  result,          // VerifyResult | null
+  progress,        // Map<VerifyStage, VerifyProgress>
+  isLoading,       // boolean
+  error,           // string | null
+  currentStage,    // VerifyStage | null
+  verify,          // (text, adType) => Promise<void>
+  abort,           // () => void
+  reset,           // () => void
+} = useVerification({ clinicId: selectedClinicId })
+```
 
 ---
 

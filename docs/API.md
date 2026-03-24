@@ -803,6 +803,111 @@ Authorization: Bearer $CRON_SECRET
 
 ---
 
+## 광고 검수 API (MediChecker)
+
+### POST /api/medichecker/verify
+
+의료광고법 제56조 기반 광고 텍스트 위반 검증 (SSE 스트리밍).
+
+**권한:** clinic_admin 이상 (clinic_staff 차단)
+
+**Request Body:**
+```json
+{
+  "text": "검증할 광고 텍스트",
+  "adType": "blog"
+}
+```
+
+- `text`: 필수, 최대 5000자 (sanitizeString 적용)
+- `adType`: `blog` | `instagram` | `youtube` | `other`
+
+**Response:** Server-Sent Events (SSE) 스트리밍
+
+진행 이벤트:
+```
+data: {"type":"progress","stage":"keyword_scan","status":"running"}
+data: {"type":"progress","stage":"keyword_scan","status":"done"}
+data: {"type":"progress","stage":"classification","status":"running"}
+...
+```
+
+결과 이벤트:
+```
+data: {"type":"result","result":{"violations":[...],"riskScore":75,"summary":"...","metadata":{...}}}
+```
+
+에러 이벤트:
+```
+data: {"type":"error","error":"에러 메시지"}
+```
+
+**7단계 파이프라인:**
+1. 키워드 스캔 (regex, ~50ms)
+2. 컨텍스트 분류 (Claude Haiku)
+3. 쿼리 변환 (Claude Haiku)
+4. RAG 하이브리드 검색 (pgvector + pg_trgm)
+5. 온톨로지 관계 확장 (1홉)
+6. 위반 판단 (Claude Sonnet)
+7. 자기 검증 (Claude Sonnet)
+
+> `maxDuration = 120`. 결과는 `mc_verification_logs`에 자동 저장.
+
+### GET /api/medichecker/history
+
+검증 이력 목록 조회 (페이지네이션).
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 20, max: 100)
+- `clinic_id`
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "clinic_id": 1,
+      "user_id": 1,
+      "ad_type": "blog",
+      "risk_score": 75,
+      "violation_count": 3,
+      "summary": "3건의 위반 의심 항목 발견",
+      "processing_time_ms": 8500,
+      "created_at": "2026-03-24T10:30:00Z"
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
+```
+
+### GET /api/medichecker/history/{id}
+
+검증 이력 단건 상세 조회.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "clinic_id": 1,
+  "user_id": 1,
+  "ad_text": "원본 광고 텍스트",
+  "ad_type": "blog",
+  "risk_score": 75,
+  "violation_count": 3,
+  "violations": [...],
+  "summary": "...",
+  "metadata": {...},
+  "processing_time_ms": 8500,
+  "created_at": "2026-03-24T10:30:00Z"
+}
+```
+
+---
+
 ## 병원 API 키 관리 API (superadmin 전용)
 
 ### GET /api/admin/clinics/{id}/api-configs
