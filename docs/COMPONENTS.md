@@ -59,7 +59,7 @@ components/
 │   ├── ads-campaign-tab.tsx        # 캠페인 분석 탭 레이아웃
 │   └── CreativePerformance.tsx     # 소재별 성과 (기존)
 │
-├── medichecker/         # 광고 검수 (MediChecker)
+├── medichecker/         # 원고 검수 (MediChecker)
 │   ├── text-input-card.tsx       # 텍스트 입력 + 하이라이트 뷰
 │   ├── ad-type-selector.tsx      # 매체 유형 선택 (blog/instagram/youtube/other)
 │   ├── verify-progress.tsx       # 7단계 검증 진행 표시
@@ -553,7 +553,7 @@ LP별 리드·결제 고객·전환율·매출. 활성/비활성 상태 표시.
 
 ---
 
-## 광고 검수 컴포넌트
+## 원고 검수 컴포넌트
 
 `/medichecker` 페이지의 AI 기반 의료광고법 위반 검증 UI입니다. SSE 스트리밍으로 7단계 진행 상황을 실시간 표시합니다.
 

@@ -803,7 +803,7 @@ Authorization: Bearer $CRON_SECRET
 
 ---
 
-## 광고 검수 API (MediChecker)
+## 원고 검수 API (MediChecker)
 
 ### POST /api/medichecker/verify
 

@@ -42,7 +42,7 @@ npm run analyze      # 번들 크기 분석
 | `components/` | UI 컴포넌트 | `components/CLAUDE.md` |
 | `components/ads/` | 광고 성과 UI (KPI카드, 효율추이, 매체비교, 퍼널, 캠페인, 요일, LP) | |
 | `components/attribution/` | 매출 기여 분석 UI (퍼널, CPL/ROAS, 고객 여정) | |
-| `components/medichecker/` | 광고 검수 UI (텍스트 입력, 위반 하이라이트, 진행 표시, 이력) | |
+| `components/medichecker/` | 원고 검수 UI (텍스트 입력, 위반 하이라이트, 진행 표시, 이력) | |
 | `lib/medichecker/` | 의료광고 검증 도메인 서비스 (7단계 AI 파이프라인, RAG, 온톨로지) | |
 | `data/medichecker-seed/` | 의료광고법 시드 데이터 (법조문 15건, 시술 50건, 관계, 청크) | |
 | `supabase/migrations/` | DB 마이그레이션 (`YYYYMMDD_설명.sql`) | |

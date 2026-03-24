@@ -129,7 +129,7 @@ export default function MediCheckerPage() {
     <div className="space-y-4 md:space-y-6">
       {/* 헤더 */}
       <PageHeader
-        title="광고 검수"
+        title="원고 검수"
         icon={ShieldCheck}
         description="의료광고법 제56조 기반 AI 위반 검증"
         actions={

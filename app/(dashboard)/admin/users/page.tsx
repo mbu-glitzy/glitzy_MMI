@@ -56,7 +56,7 @@ const MENU_OPTIONS = [
   { key: 'monitor', label: '콘텐츠 모니터링' },
   { key: 'press', label: '언론보도' },
   { key: 'monitoring', label: '순위 현황' },
-  { key: 'medichecker', label: '광고 검수' },
+  { key: 'medichecker', label: '원고 검수' },
 ]
 
 export default function UsersPage() {
