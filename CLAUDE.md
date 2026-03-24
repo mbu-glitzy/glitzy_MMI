@@ -182,6 +182,7 @@ npm run analyze      # 번들 크기 분석
 | [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI 컴포넌트 사용 가이드 |
 | [docs/BRAND.md](docs/BRAND.md) | Samantha 브랜드 가이드 (컬러, 타이포, 심볼) |
 | [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 인덱스 |
+| [docs/INTEGRATION.md](docs/INTEGRATION.md) | glitzy-web ERP 연동 가이드 (견적서/계산서) |
 | `app/api/CLAUDE.md` | API 라우트 작성 규칙 |
 | `components/CLAUDE.md` | UI 컴포넌트/레이아웃 규칙 |
 | `lib/CLAUDE.md` | 인증 흐름, 환경변수, DB 스키마 요약 |
@@ -214,3 +215,4 @@ npm run analyze      # 번들 크기 분석
 | 2026-03-23 | 페이지별 브라우저 탭 제목: thin server layout.tsx 래퍼 패턴 (18개 페이지), `metadata.title.template` 설정 |
 | 2026-03-23 | Samantha 브랜드: 서비스명 확정, 컬러 마이그레이션 Indigo→Blue (15개 파일), `docs/BRAND.md` 생성 |
 | 2026-03-23 | agency_staff 메뉴 권한에 키워드 관리 항목 추가 |
+| 2026-03-24 | glitzy-web ERP 연동 가이드 문서 추가 (`docs/INTEGRATION.md`): 견적서/계산서 읽기 전용 연동 설계 |
