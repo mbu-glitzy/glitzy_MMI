@@ -49,3 +49,9 @@ export interface ERPPagination {
   totalPages: number
   totalCount: number
 }
+
+export interface ERPRespondResult {
+  success: boolean
+  data?: { id: string; status: ERPQuoteStatus }
+  error?: string
+}

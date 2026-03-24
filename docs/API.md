@@ -950,6 +950,36 @@ glitzy-web 외부 API 프록시. 읽기 전용.
 }
 ```
 
+### PATCH /api/erp-documents/{id}/respond
+
+견적서를 승인 또는 반려합니다. `sent` 상태에서만 가능.
+
+**Query Parameters:**
+- `clinic_id`: 병원 ID (필수)
+
+**Request Body:**
+```json
+{
+  "action": "approve",
+  "reason": "반려 사유 (reject 시 선택)"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `action` | string | O | `approve` 또는 `reject` |
+| `reason` | string | X | 반려 사유 (max 1000자) |
+
+**Response (성공):**
+```json
+{
+  "success": true,
+  "data": { "success": true, "data": { "id": "uuid", "status": "approved" } }
+}
+```
+
+**에러:** 400 (잘못된 요청), 403 (clinic_staff), 409 (상태 전이 불가), 500 (서버 오류)
+
 ---
 
 ## 병원 API 키 관리 API (superadmin 전용)

@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Receipt, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Receipt, ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -21,6 +22,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { EmptyState } from '@/components/common'
 import { formatDate } from '@/lib/date'
 import type {
@@ -54,6 +65,11 @@ export default function QuoteList({ clinicId }: QuoteListProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<ERPQuoteDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+
+  // 승인/반려 상태
+  const [responding, setResponding] = useState(false)
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
 
   const fetchList = useCallback(async () => {
     setLoading(true)
@@ -98,6 +114,44 @@ export default function QuoteList({ clinicId }: QuoteListProps) {
     } finally {
       setDetailLoading(false)
     }
+  }
+
+  const handleRespond = async (action: 'approve' | 'reject', reason?: string) => {
+    if (!selectedId || !detail) return
+    setResponding(true)
+    try {
+      const res = await fetch(
+        `/api/erp-documents/${selectedId}/respond?clinic_id=${clinicId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, reason }),
+        }
+      )
+      const json = await res.json()
+      if (json.success) {
+        toast.success(action === 'approve' ? '견적서가 승인되었습니다' : '견적서가 반려되었습니다')
+        // 상세 상태 즉시 반영
+        const newStatus = json.data?.data?.status || (action === 'approve' ? 'approved' : 'rejected')
+        setDetail({ ...detail, status: newStatus })
+        // 목록도 새로고침
+        fetchList()
+      } else {
+        toast.error(json.error || '처리에 실패했습니다')
+      }
+    } catch {
+      toast.error('처리에 실패했습니다')
+    } finally {
+      setResponding(false)
+    }
+  }
+
+  const handleApprove = () => handleRespond('approve')
+
+  const handleRejectConfirm = async () => {
+    setRejectDialogOpen(false)
+    await handleRespond('reject', rejectReason || undefined)
+    setRejectReason('')
   }
 
   if (loading) {
@@ -315,10 +369,63 @@ export default function QuoteList({ clinicId }: QuoteListProps) {
                   </div>
                 </div>
               )}
+
+              {/* 승인/반려 버튼 — sent 상태에서만 노출 */}
+              {detail.status === 'sent' && (
+                <div className="flex gap-3 pt-2 border-t border-border">
+                  <Button
+                    className="flex-1"
+                    disabled={responding}
+                    onClick={handleApprove}
+                  >
+                    <Check size={16} className="mr-1.5" />
+                    {responding ? '처리 중...' : '승인'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={responding}
+                    onClick={() => setRejectDialogOpen(true)}
+                  >
+                    <X size={16} className="mr-1.5" />
+                    반려
+                  </Button>
+                </div>
+              )}
             </div>
           ) : null}
         </SheetContent>
       </Sheet>
+
+      {/* 반려 사유 입력 다이얼로그 */}
+      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>견적서 반려</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 견적서를 반려합니다. 사유를 입력해주세요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            placeholder="반려 사유 (선택)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            maxLength={1000}
+            rows={3}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setRejectReason(''); setRejectDialogOpen(false) }}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRejectConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              반려
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

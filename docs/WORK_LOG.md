@@ -41,6 +41,7 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | P30-4 | 프론트엔드 | 견적서/계산서 탭 페이지 + quote-list/invoice-list 컴포넌트 + Sheet 상세 | 03-24 |
 | P30-5 | 사이드바 | 견적/계산서 메뉴 추가 (Receipt 아이콘, minRole: 2, menuKey: erp-documents) | 03-24 |
 | P30-6 | 문서 수정 | INTEGRATION.md 스펙 오류 3건 수정 (fetchJSON, clinic_staff 차단, UUID ID) | 03-24 |
+| P30-7 | 견적 승인/반려 | `erpClient.respondToQuote()`, PATCH API, quote-list 승인/반려 버튼 + 반려 사유 다이얼로그 | 03-24 |
 
 ---
 

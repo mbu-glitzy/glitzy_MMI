@@ -1,8 +1,8 @@
 # Samantha ↔ glitzy-web ERP 연동 가이드
 
 > 최종 갱신: 2026-03-24
-> glitzy-web 외부 API: **구현 완료**
-> Samantha 측: **구현 완료** (프로덕션 배포 확인)
+> Phase 1 (읽기 전용): **구현 완료** (프로덕션 배포 확인)
+> Phase 2 (견적 승인/반려): **구현 중**
 
 ---
 
@@ -449,11 +449,102 @@ components/erp-documents/
 - 네트워크 장애 대비: `fetchWithRetry` 재시도 로직 활용
 - glitzy-web 외부 API가 내려가면 에러 UI 표시 (빈 상태가 아닌 명시적 에러)
 
-## Phase 2 (향후)
+## Phase 2: 견적서 승인/반려
 
-Samantha에서 병원 고객이 견적을 승인/반려하는 기능:
+### 개요
+
+glitzy-web ERP에서 견적서를 발송(`sent`)하면, Samantha에서 병원 admin이 해당 견적서를 승인/반려할 수 있다.
+
+### glitzy-web 새 엔드포인트
+
 ```
 PATCH /api/external/quotes/:id/respond
-Body: { action: 'approve' | 'reject', reason?: string }
+Authorization: Bearer {SERVICE_KEY}
 ```
-glitzy-web 측에 `quote-status.ts` 로직이 이미 분리되어 있어 엔드포인트 추가만 필요.
+
+기존 조회 API(GET /api/external/quotes)와 동일한 인증 방식.
+
+**요청 Body:**
+```json
+{
+  "clinic_id": 2,
+  "action": "approve",
+  "reason": "단가 조정 필요"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `clinic_id` | number | O | `clinics.id` (소유권 검증에 사용) |
+| `action` | string | O | `"approve"` 또는 `"reject"` |
+| `reason` | string | X | 반려 사유 (max 1000자, 반려 시 권장) |
+
+**성공 응답 (200):**
+```json
+{
+  "success": true,
+  "data": { "id": "uuid", "status": "approved" }
+}
+```
+
+**에러 응답:**
+
+| 코드 | 의미 | 예시 |
+|------|------|------|
+| 400 | 잘못된 요청 | action 누락, clinic_id 누락 |
+| 401 | SERVICE_KEY 불일치 | |
+| 404 | 견적서 없음 또는 해당 병원 소유 아님 | |
+| 409 | 상태 전이 불가 | 이미 승인/반려된 견적서 |
+
+**상태 전이 규칙:**
+- `sent` → `approved` (승인)
+- `sent` → `rejected` (반려)
+- 그 외 상태에서는 변경 불가 (409)
+- `draft` 상태는 외부에 노출되지 않음
+
+### Samantha 측 구현
+
+**변경 파일:**
+
+| 파일 | 변경 | 설명 |
+|------|------|------|
+| `types/erp.ts` | 수정 | `ERPRespondResult` 타입 추가 |
+| `lib/services/erpClient.ts` | 수정 | `respondToQuote()` 함수 추가, `erpFetch` method/body 지원 확장 |
+| `app/api/erp-documents/[id]/respond/route.ts` | 신규 | PATCH 프록시, clinic_staff 차단, action 화이트리스트, `logActivity()` |
+| `components/erp-documents/quote-list.tsx` | 수정 | Sheet 상세에 승인/반려 버튼, 반려 사유 다이얼로그, 성공 후 목록 새로고침 |
+
+**역할별 접근:**
+- `superadmin`: 모든 병원 견적 응답 가능
+- `agency_staff`: 배정 병원만
+- `clinic_admin`: 자기 병원만
+- `clinic_staff`: 차단 (기존과 동일)
+
+**활동 로그:** `logActivity` — `action: 'quote_approved' | 'quote_rejected'`, `targetTable: 'erp_quotes'`
+
+### 테스트
+
+```bash
+# 승인
+curl -X PATCH https://glitzy.kr/api/external/quotes/{id}/respond \
+  -H "Authorization: Bearer {SERVICE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"clinic_id": 2, "action": "approve"}'
+
+# 반려
+curl -X PATCH https://glitzy.kr/api/external/quotes/{id}/respond \
+  -H "Authorization: Bearer {SERVICE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"clinic_id": 2, "action": "reject", "reason": "단가 재협의 필요"}'
+
+# 이미 처리된 건 → 409
+# 다른 병원 건 → 404
+```
+
+### 요약
+
+| 항목 | 내용 |
+|------|------|
+| 환경변수 | 추가 없음 (기존 `ERP_SERVICE_KEY` 사용) |
+| 새 파일 | 1개 (`app/api/erp-documents/[id]/respond/route.ts`) |
+| 수정 파일 | 3개 (`types/erp.ts`, `erpClient.ts`, `quote-list.tsx`) |
+| DB 변경 | 없음 |

@@ -1,7 +1,7 @@
 import { fetchJSON } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
 import type {
-  ERPQuote, ERPQuoteDetail, ERPInvoice, ERPPagination,
+  ERPQuote, ERPQuoteDetail, ERPInvoice, ERPPagination, ERPRespondResult,
 } from '@/types/erp'
 
 const logger = createLogger('ERPClient')
@@ -24,13 +24,17 @@ function getConfig() {
   return { url, key }
 }
 
-async function erpFetch<T>(path: string): Promise<T> {
+async function erpFetch<T>(path: string, options?: {
+  method?: string; body?: string
+}): Promise<T> {
   const { url, key } = getConfig()
   const result = await fetchJSON<T>(`${url}${path}`, {
+    method: options?.method || 'GET',
     headers: {
       'Authorization': `Bearer ${key}`,
       'Content-Type': 'application/json',
     },
+    body: options?.body,
     service: 'ERPClient',
     timeout: 15000,
     retries: 2,
@@ -77,4 +81,16 @@ export async function fetchInvoices(clinicId: number, params?: {
 
 export async function fetchInvoiceDetail(clinicId: number, id: string): Promise<ERPDetailResponse<ERPInvoice>> {
   return erpFetch<ERPDetailResponse<ERPInvoice>>(`/invoices/${id}?clinic_id=${clinicId}`)
+}
+
+export async function respondToQuote(
+  clinicId: number,
+  quoteId: string,
+  action: 'approve' | 'reject',
+  reason?: string,
+): Promise<ERPRespondResult> {
+  return erpFetch<ERPRespondResult>(`/quotes/${quoteId}/respond`, {
+    method: 'PATCH',
+    body: JSON.stringify({ clinic_id: clinicId, action, reason }),
+  })
 }

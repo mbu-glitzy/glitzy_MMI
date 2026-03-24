@@ -69,7 +69,7 @@ components/
 │   └── history-table.tsx         # 검수 이력 테이블 (페이지네이션)
 │
 ├── erp-documents/       # ERP 문서 (견적서/계산서)
-│   ├── quote-list.tsx          # 견적서 목록 테이블 + Sheet 상세
+│   ├── quote-list.tsx          # 견적서 목록 테이블 + Sheet 상세 + 승인/반려 (sent 상태)
 │   └── invoice-list.tsx        # 계산서 목록 테이블 + Sheet 상세
 │
 ├── admin/               # 관리자 전용 컴포넌트
