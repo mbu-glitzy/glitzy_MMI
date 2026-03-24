@@ -241,3 +241,7 @@ npm run analyze      # 번들 크기 분석
 | 2026-03-23 | agency_staff 메뉴 권한에 키워드 관리 항목 추가 |
 | 2026-03-24 | glitzy-web ERP 연동 가이드 문서 추가 (`docs/INTEGRATION.md`): 견적서/계산서 읽기 전용 연동 설계 |
 | 2026-03-24 | MediChecker 통합: 의료광고법 제56조 AI 검증 기능 (7단계 파이프라인, 5 DB 테이블, 3 API, 8 컴포넌트, 사이드바 메뉴) |
+| 2026-03-24 | MediChecker UI/UX 감사: 2컬럼 레이아웃, 심각도 그룹핑, 컴팩트 카드, A11y 13건 수정, getRiskLevel 유틸 추출 |
+| 2026-03-24 | 검증 규칙에 '문서 업데이트 필수' 단계 추가 — 코드 리뷰 완료 후 관련 문서(CLAUDE.md, API.md, COMPONENTS.md 등) 반드시 업데이트 |
+| 2026-03-24 | MediChecker Phase 2: logActivity 연동 + 이력 상세 보기 |
+| 2026-03-24 | MediChecker Phase 3: agency_staff 메뉴 권한에 `medichecker` 항목 추가 (MENU_OPTIONS) |

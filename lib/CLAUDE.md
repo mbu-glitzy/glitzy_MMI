@@ -96,3 +96,4 @@
 | `medichecker/claude-client.ts` | `judgeViolation`, `verifySelf` | Claude Sonnet/Haiku API 래퍼 |
 | `medichecker/embedding.ts` | `embeddingProvider` | OpenAI text-embedding-3-small |
 | `medichecker/highlight.ts` | `findViolationRanges` | 위반 텍스트 위치 4단계 매칭 |
+| `medichecker/risk-level.ts` | `getRiskLevel` | 위험도 점수 → 라벨/색상/배지 매핑 (공용) |

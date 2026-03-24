@@ -14,6 +14,7 @@ import { findViolationRanges } from '@/lib/medichecker/highlight'
 import { serverSupabase } from '@/lib/supabase'
 import { sanitizeString } from '@/lib/security'
 import { createLogger } from '@/lib/logger'
+import { logActivity } from '@/lib/activity-log'
 
 const logger = createLogger('MediCheckerVerify')
 
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
           // mc_verification_logs에 저장
           const supabase = serverSupabase()
-          const { error: insertError } = await supabase
+          const { data: insertedLog, error: insertError } = await supabase
             .from('mc_verification_logs')
             .insert({
               clinic_id: effectiveClinicId,
@@ -100,10 +101,22 @@ export async function POST(request: NextRequest) {
               metadata: { ranges },
               processing_time_ms: processingTimeMs,
             })
+            .select('id')
+            .single()
 
           if (insertError) {
             logger.error('검증 로그 저장 실패', insertError, { clinicId: effectiveClinicId })
           }
+
+          // 활동 로그 기록
+          logActivity(supabase, {
+            userId: user.id,
+            clinicId: effectiveClinicId,
+            action: 'medichecker_verify',
+            targetTable: 'mc_verification_logs',
+            targetId: insertedLog?.id ?? null,
+            detail: { adType, riskScore: result.riskScore, violationCount: result.violations.length },
+          })
 
           sendEvent({
             type: 'result',

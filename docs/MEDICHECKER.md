@@ -170,6 +170,30 @@ CREATE INDEX idx_mc_chunks_embedding ON mc_chunks USING ivfflat (embedding vecto
 
 ---
 
+## 로드맵
+
+### Phase 1: 핵심 기능 (완료)
+- 7단계 AI 파이프라인 (키워드→분류→RAG→온톨로지→판단→검증)
+- SSE 스트리밍 검증 API + 이력 목록/상세 API
+- 2컬럼 결과 레이아웃 + 심각도 그룹핑 + 컴팩트 위반 카드
+- DB 5테이블 + 시드 데이터 + 임베딩
+
+### Phase 2: 운영 기능 (완료)
+- logActivity 연동 — 검증 활동을 activity_logs에 기록 (verify route에서 INSERT 후 호출)
+- 이력 상세 보기 — 이력 테이블에서 클릭 시 과거 검수 결과를 결과 UI에 로드
+
+### Phase 3: 기존 기능 연계 (부분 완료)
+- agency_staff 메뉴 권한에 medichecker 추가 (완료)
+- 광고 소재 관리 → "검수" 버튼 연동 (예정)
+
+### Phase 4: 고도화 (실사용 후 결정)
+- 사용량 추적 / 월 quota 제한 (실사용 패턴 파악 후)
+- 검증 결과 PDF 내보내기
+- 반복 위반 패턴 분석
+- 법률 데이터 CRUD 어드민
+
+---
+
 ## 위반 신뢰도 색상 체계
 
 | 신뢰도 | 레벨 | 하이라이트 | 카드 테두리 |

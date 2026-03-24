@@ -26,10 +26,25 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | Phase 12: 캠페인 리드 필터·페이지네이션 | 2026-03-23 | 캠페인 목록/상세 검색·채널·정렬·DateRangePicker·50건 페이지네이션 | 완료 | - |
 | Phase 13: UI/UX 감사 + Polish | 2026-03-23 | 접근성(A11y), 색상 토큰화, 타이포 상향, 반응형, 코드품질, LP 분석 분리 | 완료 | - |
 | Phase 14: MediChecker 통합 | 2026-03-24 | 의료광고법 제56조 AI 검증 (7단계 파이프라인, RAG, 온톨로지) | 완료 | - |
+| Phase 14b: MediChecker UI/UX 감사 | 2026-03-24 | 2컬럼 sticky 레이아웃, 심각도 그룹핑, 컴팩트 카드, A11y 13건 수정 | 완료 | - |
 
 ---
 
-## 최신 작업 (Phase 14: MediChecker 통합)
+## 최신 작업 (Phase 14b: MediChecker UI/UX 감사)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| P29b-1 | 레이아웃 개선 | 검증 전/후 UI 분리, 데스크톱 2컬럼(좌: 원문 max-height, 우: 위반 스크롤), 모바일 스택 | 03-24 |
+| P29b-2 | 위반 카드 압축 | 컴팩트 기본(번호+타입+법조문+위반텍스트+제안 1줄), 확장 시 상세. 심각도별 3그룹(높음/주의/참고) | 03-24 |
+| P29b-3 | 접근성 수정 | textarea label 연결, ViolationCard 이중 인터랙티브 해소, focus-visible 추가, aria-label/aria-pressed | 03-24 |
+| P29b-4 | 코드품질 | getRiskLevel 유틸 추출(3파일 중복 제거), indexOf→Map, unused ref 제거, import 정리 | 03-24 |
+| P29b-5 | UX 개선 | 클립보드 실패 toast, 면책 조항 opacity 제거, sticky→max-height(overflow 컨테이너 대응) | 03-24 |
+| P29b-6 | logActivity 연동 | verify route에서 mc_verification_logs INSERT 후 activity_logs에 기록 | 03-24 |
+| P29b-7 | 이력 상세 보기 | HistoryTable에서 클릭 → /api/medichecker/history/[id] → 결과 UI에 로드 (isFromHistory 표시) | 03-24 |
+
+---
+
+## Phase 14 (MediChecker 통합)
 
 | # | 작업 | 핵심 내용 | 날짜 |
 |---|------|----------|------|

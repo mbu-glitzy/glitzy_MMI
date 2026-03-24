@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { ShieldCheck, History, Loader2, CheckCircle, AlertTriangle } from 'lucide-react'
@@ -15,7 +15,7 @@ import { VerifyProgress } from '@/components/medichecker/verify-progress'
 import { ResultKpiCards } from '@/components/medichecker/result-kpi-cards'
 import { ViolationCard } from '@/components/medichecker/violation-card'
 import { HistoryTable } from '@/components/medichecker/history-table'
-import type { AdType, Violation } from '@/lib/medichecker/types'
+import type { AdType, Violation, VerifyResult } from '@/lib/medichecker/types'
 import { getRiskLevel } from '@/lib/medichecker/risk-level'
 
 export default function MediCheckerPage() {
@@ -33,6 +33,8 @@ export default function MediCheckerPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [highlightMode, setHighlightMode] = useState(false)
   const [selectedViolationIndex, setSelectedViolationIndex] = useState<number | null>(null)
+  const [historyResult, setHistoryResult] = useState<VerifyResult | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const {
     result,
@@ -67,22 +69,61 @@ export default function MediCheckerPage() {
     setText('')
     setHighlightMode(false)
     setSelectedViolationIndex(null)
+    setHistoryResult(null)
     reset()
   }
 
+  const handleSelectHistory = useCallback(async (id: number) => {
+    reset() // 실시간 결과 초기화
+    setHistoryLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+      const res = await fetch(`/api/medichecker/history/${id}?${params}`)
+      if (!res.ok) throw new Error('조회 실패')
+      const data = await res.json()
+
+      // 이력 데이터를 VerifyResult 형태로 변환
+      setText(data.ad_text || '')
+      setAdType(data.ad_type || 'blog')
+      setHistoryResult({
+        violations: data.violations || [],
+        riskScore: data.risk_score ?? 0,
+        summary: data.summary || '',
+        metadata: {
+          keywordMatches: 0,
+          ragChunksUsed: 0,
+          ontologyChunksUsed: 0,
+          totalTimeMs: data.processing_time_ms ?? 0,
+          stageTimings: {},
+        },
+      })
+      setHighlightMode(data.violations?.length > 0)
+      setSelectedViolationIndex(null)
+      setShowHistory(false)
+    } catch {
+      toast.error('이력을 불러올 수 없습니다.')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [selectedClinicId])
+
   if (user?.role === 'clinic_staff') return null
 
-  const isComplete = !!result
+  // 실시간 결과 또는 이력 결과
+  const activeResult = result || historyResult
+  const isComplete = !!activeResult
   const hasProgress = progress.size > 0
-  const hasViolations = result && result.violations.length > 0
+  const hasViolations = activeResult && activeResult.violations.length > 0
+  const isFromHistory = !result && !!historyResult
 
   // 심각도별 위반 그룹핑 + 글로벌 인덱스 맵
-  const highViolations = result?.violations.filter(v => v.confidence >= 90) ?? []
-  const mediumViolations = result?.violations.filter(v => v.confidence >= 60 && v.confidence < 90) ?? []
-  const lowViolations = result?.violations.filter(v => v.confidence < 60) ?? []
+  const highViolations = activeResult?.violations.filter(v => v.confidence >= 90) ?? []
+  const mediumViolations = activeResult?.violations.filter(v => v.confidence >= 60 && v.confidence < 90) ?? []
+  const lowViolations = activeResult?.violations.filter(v => v.confidence < 60) ?? []
 
   const globalIndexMap = new Map<Violation, number>()
-  result?.violations.forEach((v, i) => globalIndexMap.set(v, i))
+  activeResult?.violations.forEach((v, i) => globalIndexMap.set(v, i))
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -106,10 +147,18 @@ export default function MediCheckerPage() {
       />
 
       {/* 이력 섹션 */}
-      {showHistory && <HistoryTable />}
+      {showHistory && <HistoryTable onSelectHistory={handleSelectHistory} />}
+
+      {/* 이력 로딩 */}
+      {historyLoading && (
+        <Card variant="glass" className="p-6 flex items-center justify-center gap-3">
+          <Loader2 size={16} className="animate-spin text-brand-400" />
+          <span className="text-sm text-muted-foreground">이력을 불러오는 중...</span>
+        </Card>
+      )}
 
       {/* === 검증 전: 단일 컬럼 입력 UI === */}
-      {!isComplete && (
+      {!isComplete && !historyLoading && (
         <>
           <TextInputCard
             text={text}
@@ -158,14 +207,15 @@ export default function MediCheckerPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               {(() => {
-                const risk = getRiskLevel(result.riskScore)
+                const risk = getRiskLevel(activeResult.riskScore)
                 const Icon = risk.color === 'emerald' ? CheckCircle : AlertTriangle
                 const colorClass = risk.color === 'rose' ? 'text-rose-400' : risk.color === 'amber' ? 'text-amber-400' : 'text-emerald-400'
                 return (
                   <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${colorClass}`}>
                     <Icon size={16} />
-                    {risk.label} ({result.riskScore}점)
-                    {result.violations.length > 0 && ` · 위반 ${result.violations.length}건`}
+                    {risk.label} ({activeResult.riskScore}점)
+                    {activeResult.violations.length > 0 && ` · 위반 ${activeResult.violations.length}건`}
+                    {isFromHistory && <span className="text-xs text-muted-foreground ml-1">(이력)</span>}
                   </span>
                 )
               })()}
@@ -178,12 +228,12 @@ export default function MediCheckerPage() {
             </div>
           </div>
 
-          <ResultKpiCards result={result} />
+          <ResultKpiCards result={activeResult} />
 
           {/* 요약 */}
-          {result.summary && (
+          {activeResult.summary && (
             <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 border border-border">
-              {result.summary}
+              {activeResult.summary}
             </div>
           )}
 
@@ -195,7 +245,7 @@ export default function MediCheckerPage() {
                 <TextInputCard
                   text={text}
                   onTextChange={setText}
-                  violations={result.violations}
+                  violations={activeResult.violations}
                   highlightMode={highlightMode}
                   onToggleHighlight={() => setHighlightMode(!highlightMode)}
                   selectedViolationIndex={selectedViolationIndex}
