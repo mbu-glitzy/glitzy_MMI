@@ -653,6 +653,38 @@ agency_staff 계정의 병원 배정 및 메뉴 권한을 수정합니다.
 }
 ```
 
+### POST /api/admin/backfill-ads
+
+특정 병원의 과거 광고 데이터를 일괄 수집합니다 (최대 90일). `CRON_SECRET` Bearer 토큰 인증.
+
+**Request Body:**
+```json
+{
+  "clinicId": 19,
+  "startDate": "2026-03-01",
+  "endDate": "2026-03-25"
+}
+```
+
+**Response:**
+```json
+{
+  "clinicId": 19,
+  "syncedDays": 25,
+  "totalCount": 12,
+  "errorCount": 0,
+  "results": [
+    { "date": "2026-03-13", "platform": "Meta", "count": 1, "error": null },
+    { "date": "2026-03-14", "platform": "Meta", "count": 1, "error": null }
+  ]
+}
+```
+
+**참고:**
+- `maxDuration: 300` (5분 타임아웃, Vercel Pro 기준)
+- 해당 clinic의 `clinic_api_configs`에 등록된 매체를 날짜별 순차 동기화
+- 결과는 `ad_campaign_stats`에 upsert (중복 safe)
+
 ---
 
 ## 내 정보 API

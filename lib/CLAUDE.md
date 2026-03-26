@@ -41,7 +41,8 @@
 | `bookings` | 예약 | `created_by`, `updated_by` |
 | `consultations` | 상담 | `created_by`, `updated_by` |
 | `payments` | 결제 | `created_by` |
-| `ad_campaign_stats` | 광고 통계 | 일별 집계 |
+| `ad_campaign_stats` | 캠페인 레벨 광고 통계 | 일별 집계 |
+| `ad_stats` | 광고(ad) 레벨 성과 | utm_content 매핑, campaign_id 역추적 |
 | `clinic_api_configs` | 병원별 광고 API 키 | |
 | `landing_pages` | 랜딩 페이지 | 8자리 랜덤 ID |
 | `lead_raw_logs` | 리드 원본 로그 | 멱등성 키로 유실 방지 |
@@ -74,7 +75,7 @@
 | 모듈 | 핵심 export | 용도 |
 |------|------------|------|
 | `api-middleware.ts` | `withAuth`, `withClinicFilter`, `apiSuccess`, `apiError` | API 인증/필터 래퍼 |
-| `security.ts` | `parseId`, `sanitizeString`, `canModifyBooking` | 입력 검증/권한 체크 |
+| `security.ts` | `parseId`, `sanitizeString`, `sanitizeUrl`, `canModifyBooking` | 입력 검증/권한 체크. URL에는 `sanitizeUrl` 사용 (`&` 보존) |
 | `logger.ts` | `createLogger` | 환경별 로깅 (dev=readable, prod=JSON) |
 | `api-client.ts` | `fetchJSON`, `fetchWithRetry` | 외부 API 호출 (재시도+타임아웃) |
 | `utm.ts` | `parseUtmFromUrl`, `sanitizeUtmParams`, `mergeUtmParams` | UTM 파싱/검증 |
@@ -86,6 +87,7 @@
 | `channel.ts` | `normalizeChannel` | utm_source → canonical 채널명 (Meta, Google 등) |
 | `channel-colors.ts` | `getChannelColor` | 채널별 Recharts 색상 코드 |
 | `date.ts` | `formatDate`, `getKstDateString`, `getKstDayStartISO` | KST 기준 날짜 포맷/생성 |
+| `services/metaAds.ts` | `fetchMetaAds`, `fetchMetaAdStats` | 캠페인 레벨 + ad 레벨 수집 (ad_stats: utm_content 자동 매핑) |
 | `services/metaCapi.ts` | Meta CAPI 전송 | 리드 유입 시 서버사이드 전환 이벤트 전송 |
 | `services/pressSync.ts` | `syncPressForClinic` | 언론보도 수집 (다중 키워드 → Google News RSS → upsert) |
 | `services/erpClient.ts` | `fetchQuotes`, `fetchInvoices`, `respondToQuote` 등 | glitzy-web ERP 외부 API 프록시 (fetchJSON 기반, GET/PATCH 지원) |

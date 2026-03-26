@@ -96,6 +96,18 @@ export function sanitizeString(str: string, maxLength: number = 200): string {
     .replace(/[<>'"&]/g, '') // XSS 위험 문자 제거
 }
 
+// URL 전용 sanitize — &?=# 등 URL 구조 문자를 보존하고 XSS 문자만 제거
+export function sanitizeUrl(url: string, maxLength: number = 2000): string {
+  const cleaned = String(url)
+    .slice(0, maxLength)
+    .replace(/[<>'"]/g, '') // & 는 URL 쿼리 구분자이므로 유지
+  // javascript: / data: 등 위험 스킴 차단
+  if (/^(javascript|data|vbscript):/i.test(cleaned.trim())) {
+    return ''
+  }
+  return cleaned
+}
+
 // 숫자 ID 파싱 (문자열/숫자 모두 허용)
 export function parseId(value: unknown): number | null {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {

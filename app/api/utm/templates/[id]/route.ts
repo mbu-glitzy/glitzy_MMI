@@ -7,7 +7,7 @@
 import { withClinicFilter, apiError, apiSuccess, ClinicContext } from '@/lib/api-middleware'
 import { serverSupabase } from '@/lib/supabase'
 import { sanitizeUtmParam } from '@/lib/utm'
-import { parseId, sanitizeString } from '@/lib/security'
+import { parseId, sanitizeString, sanitizeUrl } from '@/lib/security'
 import { archiveBeforeDelete } from '@/lib/archive'
 
 export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: ClinicContext) => {
@@ -68,7 +68,7 @@ export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: Cli
     updateData.name = name
   }
 
-  if (body.base_url !== undefined) updateData.base_url = sanitizeString(body.base_url, 500) || null
+  if (body.base_url !== undefined) updateData.base_url = sanitizeUrl(body.base_url, 500) || null
   if (body.utm_source !== undefined) updateData.utm_source = sanitizeUtmParam(body.utm_source, 50)
   if (body.utm_medium !== undefined) updateData.utm_medium = sanitizeUtmParam(body.utm_medium, 50)
   if (body.utm_campaign !== undefined) updateData.utm_campaign = sanitizeUtmParam(body.utm_campaign, 100)

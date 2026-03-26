@@ -29,10 +29,25 @@ shadcn/ui 기반 UI/UX 개선 및 기능 개발 작업 기록.
 | Phase 14b: MediChecker UI/UX 감사 | 2026-03-24 | 2컬럼 sticky 레이아웃, 심각도 그룹핑, 컴팩트 카드, A11y 13건 수정 | 완료 | - |
 | Phase 15: ERP 연동 | 2026-03-24 | glitzy-web 견적서/계산서 읽기 전용 프록시, Sheet 상세, 탭 UI, 견적 승인/반려 | 완료 | - |
 | 버그 수정 | 2026-03-24 | 대시보드 퍼널 날짜 이중 타임존 버그 수정 (전 단계 0명 표시) | 완료 | - |
+| Phase 16: Backfill + URL Sanitize | 2026-03-26 | 광고 backfill API, sanitizeUrl 도입 (CAPI event_source_url `&` 누락 수정) | 완료 | - |
 
 ---
 
-## 최신 작업 (Phase 15: ERP 연동)
+## 최신 작업 (Phase 16: Backfill + URL Sanitize)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| P31-1 | Backfill API | `POST /api/admin/backfill-ads` — CRON_SECRET 인증, 최대 90일, 날짜별 syncClinic 순차 실행, JSON 파싱/타입/형식 검증, try-catch | 03-26 |
+| P31-2 | sanitizeUrl 도입 | `lib/security.ts`에 `sanitizeUrl()` 추가 — URL 구조 문자(`&?=#`) 보존, `<>'"` 제거, `javascript:/data:` 스킴 차단 | 03-26 |
+| P31-3 | URL sanitize 일괄 교체 | `sanitizeString→sanitizeUrl` 교체: webhook lead (inflow_url, CAPI event_source_url), UTM templates (base_url), monitoring keywords (url) — 총 6곳 | 03-26 |
+| P31-4 | ad_stats 마이그레이션 | `ad_stats` 테이블 신규 — ad 레벨 일별 성과 (clinic_id, ad_id, utm_content, spend/clicks/impressions) | 03-26 |
+| P31-5 | Ad 레벨 수집 | `fetchMetaAdStats()` — insights?level=ad 페이지네이션, url_tags/effective_link→utm_content 자동 추출, DB 캐시 | 03-26 |
+| P31-6 | 소재별 성과 통합 | creatives-performance API에 ad_stats 4번째 쿼리 추가, 지출/노출/클릭/CPC/CTR/CPL 13컬럼 + 정렬 | 03-26 |
+| P31-7 | 캠페인 CPL | ads/stats API에 campaignLeadCounts 추가 (ad_stats→utm_content→leads 경유), campaign-ranking-table CPL 실제 값 표시 | 03-26 |
+
+---
+
+## 이전 최신 작업 (Phase 15: ERP 연동)
 
 | # | 작업 | 핵심 내용 | 날짜 |
 |---|------|----------|------|

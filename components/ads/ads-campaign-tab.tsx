@@ -24,7 +24,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
       const res = await fetch(`/api/ads/stats?${qs}`)
       if (!res.ok) return
       const json = await res.json()
-      const data = Array.isArray(json) ? json : []
+      const data = Array.isArray(json) ? json : (Array.isArray(json?.stats) ? json.stats : [])
       const unique = [...new Set(data.map((s: { platform?: string }) => s.platform).filter(Boolean))] as string[]
       setPlatforms(['all', ...unique])
     } catch {

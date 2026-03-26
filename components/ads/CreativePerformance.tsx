@@ -5,7 +5,6 @@ import { useClinic } from '@/components/ClinicContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelBadge, EmptyState } from '@/components/common'
-import { getChannelColor } from '@/lib/channel-colors'
 import {
   Table,
   TableBody,
@@ -18,7 +17,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog'
-import { ImageOff, Film, Image } from 'lucide-react'
+import { ImageOff, Film, Image, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { getKstDateString } from '@/lib/date'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -31,6 +30,12 @@ interface CreativeData {
   utm_content: string
   name: string
   platform: string | null
+  spend: number
+  clicks: number
+  impressions: number
+  cpc: number
+  ctr: number
+  cpl: number
   leads: number
   customers: number
   revenue: number
@@ -44,8 +49,16 @@ interface CreativePerformanceResponse {
   creatives: CreativeData[]
 }
 
+type SortField = 'spend' | 'impressions' | 'clicks' | 'cpc' | 'ctr' | 'leads' | 'cpl' | 'customers' | 'conversionRate' | 'revenue'
+
 interface Props {
   parentDays?: string
+}
+
+function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: 'asc' | 'desc' }) {
+  if (field !== current) return <ChevronsUpDown size={10} className="ml-0.5 text-muted-foreground/50 inline" />
+  if (dir === 'asc') return <ChevronUp size={10} className="ml-0.5 text-primary inline" />
+  return <ChevronDown size={10} className="ml-0.5 text-primary inline" />
 }
 
 export default function CreativePerformance({ parentDays }: Props) {
@@ -55,6 +68,8 @@ export default function CreativePerformance({ parentDays }: Props) {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerSrc, setViewerSrc] = useState<string | null>(null)
   const [viewerType, setViewerType] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<SortField>('spend')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   const days = parentDays || '30'
 
@@ -83,7 +98,28 @@ export default function CreativePerformance({ parentDays }: Props) {
   useEffect(() => { fetchData() }, [fetchData])
 
   const creatives = useMemo(() => data?.creatives || [], [data])
-  const maxLeads = useMemo(() => Math.max(...creatives.map(c => c.leads), 1), [creatives])
+
+  const sorted = useMemo(() => {
+    const copy = [...creatives]
+    copy.sort((a, b) => {
+      const aVal = a[sortField] as number
+      const bVal = b[sortField] as number
+      return sortDir === 'asc' ? aVal - bVal : bVal - aVal
+    })
+    return copy
+  }, [creatives, sortField, sortDir])
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('desc')
+    }
+  }
+
+  const thBase = 'text-[11px] text-muted-foreground font-medium whitespace-nowrap'
+  const thSort = `${thBase} cursor-pointer select-none hover:text-foreground transition-colors`
 
   return (
     <>
@@ -105,91 +141,124 @@ export default function CreativePerformance({ parentDays }: Props) {
         />
       ) : (
         <div className="overflow-x-auto">
-          <Table className="min-w-[700px]">
+          <Table className="min-w-[1100px]">
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
-                <TableHead className="text-[11px] text-muted-foreground font-medium w-14 px-2">소재</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">소재명</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium w-[70px]">플랫폼</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium w-[160px]">리드</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[50px]">결제</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[60px]">전환율</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium text-right w-[90px]">매출</TableHead>
+                <TableHead className={`${thBase} w-14 px-2`}>소재</TableHead>
+                <TableHead className={thBase}>소재명</TableHead>
+                <TableHead className={`${thBase} w-[70px]`}>플랫폼</TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('spend')}>
+                  지출 <SortIcon field="spend" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('impressions')}>
+                  노출 <SortIcon field="impressions" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('clicks')}>
+                  클릭 <SortIcon field="clicks" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('cpc')}>
+                  CPC <SortIcon field="cpc" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('ctr')}>
+                  CTR <SortIcon field="ctr" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('leads')}>
+                  리드 <SortIcon field="leads" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('cpl')}>
+                  CPL <SortIcon field="cpl" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('customers')}>
+                  결제 <SortIcon field="customers" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('conversionRate')}>
+                  전환율 <SortIcon field="conversionRate" current={sortField} dir={sortDir} />
+                </TableHead>
+                <TableHead className={`${thSort} text-right`} onClick={() => handleSort('revenue')}>
+                  매출 <SortIcon field="revenue" current={sortField} dir={sortDir} />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {creatives.map((row, idx) => {
-                const barWidth = maxLeads > 0 ? (row.leads / maxLeads) * 100 : 0
-                const barColor = row.registered ? getChannelColor(row.platform || '') : 'hsl(var(--muted-foreground))'
-
-                return (
-                  <TableRow
-                    key={row.utm_content}
-                    className={`border-b border-border/50 dark:border-white/[0.03] ${idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : ''}`}
-                  >
-                    <TableCell className="py-2 px-2">
-                      <div
-                        className={`w-9 h-9 shrink-0 ${row.file_name ? 'cursor-pointer' : ''}`}
-                        onClick={() => {
-                          if (row.file_name) {
-                            setViewerSrc(getCreativeUrl(row.file_name))
-                            setViewerType(row.file_type)
-                            setViewerOpen(true)
-                          }
-                        }}
-                      >
-                        {row.file_name ? (
-                          row.file_type?.startsWith('video/') ? (
-                            <div className="w-9 h-9 rounded-md bg-muted dark:bg-white/5 overflow-hidden relative">
-                              <video src={getCreativeUrl(row.file_name)} className="w-full h-full object-cover" muted preload="metadata" />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
-                                <Film size={11} className="text-white/80" />
-                              </div>
+              {sorted.map((row, idx) => (
+                <TableRow
+                  key={row.utm_content}
+                  className={`border-b border-border/50 dark:border-white/[0.03] ${idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : ''}`}
+                >
+                  <TableCell className="py-2 px-2">
+                    <div
+                      className={`w-9 h-9 shrink-0 ${row.file_name ? 'cursor-pointer' : ''}`}
+                      onClick={() => {
+                        if (row.file_name) {
+                          setViewerSrc(getCreativeUrl(row.file_name))
+                          setViewerType(row.file_type)
+                          setViewerOpen(true)
+                        }
+                      }}
+                    >
+                      {row.file_name ? (
+                        row.file_type?.startsWith('video/') ? (
+                          <div className="w-9 h-9 rounded-md bg-muted dark:bg-white/5 overflow-hidden relative">
+                            <video src={getCreativeUrl(row.file_name)} className="w-full h-full object-cover" muted preload="metadata" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition-colors">
+                              <Film size={11} className="text-white/80" />
                             </div>
-                          ) : (
-                            <img src={getCreativeUrl(row.file_name)} alt={row.name} className="w-9 h-9 rounded-md object-cover bg-muted dark:bg-white/5 hover:opacity-80 transition-opacity" />
-                          )
-                        ) : (
-                          <div className="w-9 h-9 rounded-md bg-muted dark:bg-white/5 flex items-center justify-center text-muted-foreground/40">
-                            <Image size={13} />
                           </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3" title={row.utm_content}>
-                      <span className={`text-sm truncate block ${row.registered ? 'text-foreground/90' : 'text-muted-foreground italic'}`}>
-                        {row.name}
-                      </span>
-                      {!row.registered && (
-                        <span className="text-[10px] text-muted-foreground/60">미등록</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3">
-                      {row.platform ? <ChannelBadge channel={row.platform} /> : <span className="text-muted-foreground text-xs">-</span>}
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-foreground font-medium tabular-nums text-sm w-8 shrink-0">{row.leads}</span>
-                        <div className="flex-1 h-4 bg-muted/50 dark:bg-white/[0.03] rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-300"
-                            style={{ width: `${barWidth}%`, backgroundColor: barColor, opacity: row.registered ? 0.7 : 0.3 }}
-                          />
+                        ) : (
+                          <img src={getCreativeUrl(row.file_name)} alt={row.name} className="w-9 h-9 rounded-md object-cover bg-muted dark:bg-white/5 hover:opacity-80 transition-opacity" />
+                        )
+                      ) : (
+                        <div className="w-9 h-9 rounded-md bg-muted dark:bg-white/5 flex items-center justify-center text-muted-foreground/40">
+                          <Image size={13} />
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right text-foreground/80 tabular-nums py-3 text-sm">{row.customers}</TableCell>
-                    <TableCell className="text-right py-3">
-                      <span className={`font-semibold tabular-nums text-sm ${row.conversionRate >= 10 ? 'text-emerald-600 dark:text-emerald-400' : row.conversionRate > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {row.conversionRate.toFixed(1)}%
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-foreground tabular-nums py-3 text-sm">
-                      ₩{row.revenue.toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3" title={row.utm_content}>
+                    <span className={`text-sm truncate block ${row.registered ? 'text-foreground/90' : 'text-muted-foreground italic'}`}>
+                      {row.name}
+                    </span>
+                    {!row.registered && (
+                      <span className="text-[10px] text-muted-foreground/60">미등록</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {row.platform ? <ChannelBadge channel={row.platform} /> : <span className="text-muted-foreground text-xs">-</span>}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
+                    {row.spend > 0 ? `₩${row.spend.toLocaleString()}` : '-'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
+                    {row.impressions > 0 ? row.impressions.toLocaleString() : '-'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
+                    {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
+                    {row.cpc > 0 ? `₩${row.cpc.toLocaleString()}` : '-'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
+                    {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : '-'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm font-medium text-foreground">
+                    {row.leads > 0 ? row.leads : '-'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
+                    {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
+                    {row.customers > 0 ? row.customers : '-'}
+                  </TableCell>
+                  <TableCell className="text-right py-3">
+                    <span className={`font-semibold tabular-nums text-sm ${row.conversionRate >= 10 ? 'text-emerald-600 dark:text-emerald-400' : row.conversionRate > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {row.conversionRate > 0 ? `${row.conversionRate.toFixed(1)}%` : '-'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-foreground tabular-nums py-3 text-sm">
+                    {row.revenue > 0 ? `₩${row.revenue.toLocaleString()}` : '-'}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>

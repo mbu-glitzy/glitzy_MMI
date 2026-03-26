@@ -43,7 +43,8 @@ npm run analyze      # 번들 크기 분석
 | `components/ads/` | 광고 성과 UI (KPI카드, 효율추이, 매체비교, 퍼널, 캠페인, 요일, LP) | |
 | `components/attribution/` | 매출 기여 분석 UI (퍼널, CPL/ROAS, 고객 여정) | |
 | `components/medichecker/` | 원고 검수 UI (텍스트 입력, 위반 하이라이트, 진행 표시, 이력) | |
-| `components/erp-documents/` | ERP 문서 UI (견적서/계산서 목록, Sheet 상세) | |
+| `components/erp-documents/` | ERP 문서 UI (견적서/계산서 목록, Sheet 상세) |
+| `app/api/admin/backfill-ads/` | 광고 데이터 backfill (CRON_SECRET 인증, 최대 90일) | |
 | `lib/medichecker/` | 의료광고 검증 도메인 서비스 (7단계 AI 파이프라인, RAG, 온톨로지) | |
 | `data/medichecker-seed/` | 의료광고법 시드 데이터 (법조문 15건, 시술 50건, 관계, 청크) | |
 | `supabase/migrations/` | DB 마이그레이션 (`YYYYMMDD_설명.sql`) | |
@@ -252,4 +253,5 @@ npm run analyze      # 번들 크기 분석
 | 2026-03-24 | fix: 대시보드 퍼널 API `applyDateFilter` 날짜 이중 타임존 버그 수정 (전 단계 0명 표시) |
 | 2026-03-26 | 광고 backfill API (`/api/admin/backfill-ads`): 특정 병원의 과거 광고 데이터 일괄 수집 (최대 90일, CRON_SECRET 인증) |
 | 2026-03-26 | `sanitizeUrl()` 도입: URL용 sanitize 함수 추가 (`&` 보존, 위험 스킴 차단). `sanitizeString`이 URL의 `&`를 제거하여 CAPI event_source_url/DB inflow_url 깨지는 버그 수정 (6곳 교체) |
+| 2026-03-26 | Ad 레벨 수집: `ad_stats` 테이블, `fetchMetaAdStats()` (페이지네이션+url_tags/effective_link→utm_content), 소재별 성과에 광고 지표(지출/노출/클릭/CPC/CTR/CPL) 통합, 캠페인 CPL ad_stats 경유 매칭 |
 | 2026-03-26 | StatsCard 동적 폰트 크기: 값 길이에 따라 폰트 자동 축소 (`getValueSizeClass`), `truncate` 제거 → `break-all` 적용. 좁은 카드에서 금액 잘림 방지 |

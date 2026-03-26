@@ -22,6 +22,7 @@ function fmtShort(iso: string) {
 }
 
 interface AdStatRecord {
+  campaign_id: string | null
   campaign_name: string | null
   platform: string | null
   spend_amount: number
@@ -31,15 +32,18 @@ interface AdStatRecord {
 
 interface CampaignRow {
   campaign_name: string
+  campaign_id: string | null
   platform: string | null
   spend: number
   clicks: number
   impressions: number
   cpc: number
   ctr: number
+  leads: number
+  cpl: number
 }
 
-type SortField = 'campaign_name' | 'spend' | 'clicks' | 'impressions' | 'cpc' | 'ctr'
+type SortField = 'campaign_name' | 'spend' | 'clicks' | 'impressions' | 'cpc' | 'ctr' | 'leads' | 'cpl'
 type SortDir = 'asc' | 'desc'
 
 interface Props {
@@ -66,6 +70,7 @@ function StatusDot({ cpc, avgCpc }: { cpc: number; avgCpc: number }) {
 export default function CampaignRankingTable({ startDate, endDate, platformFilter }: Props) {
   const { selectedClinicId } = useClinic()
   const [rawData, setRawData] = useState<AdStatRecord[]>([])
+  const [campaignLeadCounts, setCampaignLeadCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('spend')
@@ -83,12 +88,21 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
       const res = await fetch(`/api/ads/stats?${qs}`)
       if (!res.ok) {
         setRawData([])
+        setCampaignLeadCounts({})
         return
       }
       const json = await res.json()
-      setRawData(Array.isArray(json) ? json : [])
+      // 새 응답 구조: { stats, campaignLeadCounts } 또는 기존 배열
+      if (json.stats) {
+        setRawData(Array.isArray(json.stats) ? json.stats : [])
+        setCampaignLeadCounts(json.campaignLeadCounts || {})
+      } else {
+        setRawData(Array.isArray(json) ? json : [])
+        setCampaignLeadCounts({})
+      }
     } catch {
       setRawData([])
+      setCampaignLeadCounts({})
     } finally {
       setLoading(false)
     }
@@ -107,28 +121,36 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
         existing.spend += Number(record.spend_amount) || 0
         existing.clicks += record.clicks || 0
         existing.impressions += record.impressions || 0
-        // Keep latest platform if not set
         if (!existing.platform && record.platform) existing.platform = record.platform
+        if (!existing.campaign_id && record.campaign_id) existing.campaign_id = record.campaign_id
       } else {
         map.set(key, {
           campaign_name: key,
+          campaign_id: record.campaign_id || null,
           platform: record.platform || null,
           spend: Number(record.spend_amount) || 0,
           clicks: record.clicks || 0,
           impressions: record.impressions || 0,
           cpc: 0,
           ctr: 0,
+          leads: 0,
+          cpl: 0,
         })
       }
     }
 
-    // Compute derived metrics
-    return Array.from(map.values()).map(row => ({
-      ...row,
-      cpc: row.clicks > 0 ? row.spend / row.clicks : 0,
-      ctr: row.impressions > 0 ? (row.clicks / row.impressions) * 100 : 0,
-    }))
-  }, [rawData])
+    // Compute derived metrics + CPL via campaignLeadCounts
+    return Array.from(map.values()).map(row => {
+      const leads = row.campaign_id ? (campaignLeadCounts[row.campaign_id] || 0) : 0
+      return {
+        ...row,
+        cpc: row.clicks > 0 ? row.spend / row.clicks : 0,
+        ctr: row.impressions > 0 ? (row.clicks / row.impressions) * 100 : 0,
+        leads,
+        cpl: leads > 0 ? Math.round(row.spend / leads) : 0,
+      }
+    })
+  }, [rawData, campaignLeadCounts])
 
   const avgCpc = useMemo(() => {
     const withClicks = aggregated.filter(r => r.clicks > 0)
@@ -228,13 +250,18 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                   <TableHead className={`${thClass} text-right`} onClick={() => handleSort('ctr')}>
                     CTR <SortIcon field="ctr" sortField={sortField} sortDir={sortDir} />
                   </TableHead>
-                  <TableHead className={`${thClass} text-right`}>CPL</TableHead>
+                  <TableHead className={`${thClass} text-right`} onClick={() => handleSort('leads')}>
+                    리드 <SortIcon field="leads" sortField={sortField} sortDir={sortDir} />
+                  </TableHead>
+                  <TableHead className={`${thClass} text-right`} onClick={() => handleSort('cpl')}>
+                    CPL <SortIcon field="cpl" sortField={sortField} sortDir={sortDir} />
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {displayed.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-sm text-muted-foreground">
                       검색 결과가 없습니다
                     </TableCell>
                   </TableRow>
@@ -284,8 +311,11 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                         {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : '-'}
                       </TableCell>
-                      <TableCell className="py-2.5 text-right text-sm text-muted-foreground">
-                        -
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                        {row.leads > 0 ? row.leads : '-'}
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                        {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
                       </TableCell>
                     </TableRow>
                   ))

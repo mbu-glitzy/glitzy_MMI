@@ -7,7 +7,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { decryptApiConfig } from '@/lib/crypto'
 import { createLogger } from '@/lib/logger'
-import { fetchMetaAds } from '@/lib/services/metaAds'
+import { fetchMetaAds, fetchMetaAdStats } from '@/lib/services/metaAds'
 import { fetchGoogleAds } from '@/lib/services/googleAds'
 import { fetchTikTokAds } from '@/lib/services/tiktokAds'
 
@@ -69,17 +69,21 @@ async function syncPlatform(
   try {
     switch (platform) {
       case 'meta_ads': {
-        const result = await fetchMetaAds(date, {
+        const metaOpts = {
           clinicId,
           accountId: decrypted.account_id as string,
           accessToken: decrypted.access_token as string,
-        })
+        }
+        const [campaignResult, adResult] = await Promise.all([
+          fetchMetaAds(date, metaOpts),
+          fetchMetaAdStats(date, metaOpts),
+        ])
         return {
           clinicId,
           clinicName,
-          platform: result.platform,
-          count: result.count,
-          error: result.error,
+          platform: campaignResult.platform,
+          count: campaignResult.count + adResult.count,
+          error: campaignResult.error || adResult.error || undefined,
         }
       }
       case 'google_ads': {
@@ -202,7 +206,11 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
     logger.info('clinic_api_configs 설정 없음, 환경변수 폴백으로 동기화')
 
     const fallbackResults = await Promise.allSettled([
-      fetchMetaAds(date),
+      Promise.all([fetchMetaAds(date), fetchMetaAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
       fetchGoogleAds(date),
       fetchTikTokAds(date),
     ])
@@ -298,7 +306,11 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
     logger.info('병원별 설정 없음, 환경변수 폴백', { clinicId })
 
     const fallbackResults = await Promise.allSettled([
-      fetchMetaAds(date),
+      Promise.all([fetchMetaAds(date), fetchMetaAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
       fetchGoogleAds(date),
       fetchTikTokAds(date),
     ])

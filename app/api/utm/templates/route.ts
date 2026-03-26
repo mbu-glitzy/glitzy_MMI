@@ -7,7 +7,7 @@
 import { withClinicFilter, applyClinicFilter, apiError, apiSuccess, ClinicContext } from '@/lib/api-middleware'
 import { serverSupabase } from '@/lib/supabase'
 import { sanitizeUtmParam } from '@/lib/utm'
-import { parseId, sanitizeString } from '@/lib/security'
+import { parseId, sanitizeString, sanitizeUrl } from '@/lib/security'
 
 export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
   const supabase = serverSupabase()
@@ -80,7 +80,7 @@ export const POST = withClinicFilter(async (req: Request, { user, clinicId }: Cl
   const insertData = {
     clinic_id: targetClinicId,
     name,
-    base_url: sanitizeString(body.base_url, 500) || null,
+    base_url: sanitizeUrl(body.base_url, 500) || null,
     utm_source: sanitizeUtmParam(body.utm_source, 50),
     utm_medium: sanitizeUtmParam(body.utm_medium, 50),
     utm_campaign: sanitizeUtmParam(body.utm_campaign, 100),

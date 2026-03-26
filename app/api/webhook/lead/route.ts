@@ -6,6 +6,7 @@ import {
   isValidUrl,
   normalizePhoneNumber,
   sanitizeString,
+  sanitizeUrl,
   parseId,
 } from '@/lib/security'
 import {
@@ -211,7 +212,7 @@ export async function POST(req: Request) {
         utm_content: finalUtm.utm_content,
         utm_term: finalUtm.utm_term,
         campaign_id: sanitizedCampaignId,
-        inflow_url: inflowUrl ? sanitizeString(inflowUrl, 500) : null,
+        inflow_url: inflowUrl ? sanitizeUrl(inflowUrl, 500) : null,
         chatbot_sent: false,
         landing_page_id: validLandingPageId,
         custom_data: { ...(custom_data || {}), name: sanitizedName || undefined },
@@ -294,7 +295,7 @@ export async function POST(req: Request) {
         phone: normalizedPhone,
         firstName: sanitizedName || undefined,
       },
-      eventSourceUrl: inflowUrl ? sanitizeString(inflowUrl, 500) : undefined,
+      eventSourceUrl: inflowUrl ? sanitizeUrl(inflowUrl, 500) : undefined,
     }).catch((e) => {
       logger.warn('CAPI 전송 실패 (non-blocking)', { error: e, leadId: lead.id })
     })

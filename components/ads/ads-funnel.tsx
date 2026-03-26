@@ -75,7 +75,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
       if (!res.ok) return
 
       const json = await res.json()
-      const records: AdStatsRecord[] = Array.isArray(json) ? json : []
+      const records: AdStatsRecord[] = Array.isArray(json) ? json : (Array.isArray(json?.stats) ? json.stats : [])
 
       const totalImpressions = records.reduce((sum, r) => sum + (r.impressions || 0), 0)
       const totalClicks = records.reduce((sum, r) => sum + (r.clicks || 0), 0)

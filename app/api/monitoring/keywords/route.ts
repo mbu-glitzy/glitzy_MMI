@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, withAuth, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
-import { sanitizeString, parseId } from '@/lib/security'
+import { sanitizeString, sanitizeUrl, parseId } from '@/lib/security'
 import { archiveBeforeDelete } from '@/lib/archive'
 
 export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds }) => {
@@ -60,7 +60,7 @@ export const POST = withAuth(async (req, { user }) => {
     category,
     created_by: parseInt(user.id, 10),
   }
-  if (url?.trim()) insertData.url = sanitizeString(url.trim(), 500)
+  if (url?.trim()) insertData.url = sanitizeUrl(url.trim(), 500)
 
   const { data, error } = await supabase
     .from('monitoring_keywords')
@@ -90,7 +90,7 @@ export const PATCH = withAuth(async (req, { user }) => {
   const updates: Record<string, any> = {}
   if (typeof is_active === 'boolean') updates.is_active = is_active
   if (keyword?.trim()) updates.keyword = sanitizeString(keyword.trim(), 100)
-  if (typeof url === 'string') updates.url = url.trim() ? sanitizeString(url.trim(), 500) : null
+  if (typeof url === 'string') updates.url = url.trim() ? sanitizeUrl(url.trim(), 500) : null
 
   if (Object.keys(updates).length === 0) return apiError('변경할 항목이 없습니다.', 400)
 
