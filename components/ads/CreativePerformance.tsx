@@ -18,7 +18,6 @@ import {
   DialogContent,
 } from '@/components/ui/dialog'
 import { ImageOff, Film, Image, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import { getKstDateString } from '@/lib/date'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 
@@ -52,7 +51,8 @@ interface CreativePerformanceResponse {
 type SortField = 'spend' | 'impressions' | 'clicks' | 'cpc' | 'ctr' | 'leads' | 'cpl' | 'customers' | 'conversionRate' | 'revenue'
 
 interface Props {
-  parentDays?: string
+  startDate: string
+  endDate: string
 }
 
 function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: 'asc' | 'desc' }) {
@@ -61,7 +61,12 @@ function SortIcon({ field, current, dir }: { field: SortField; current: SortFiel
   return <ChevronDown size={10} className="ml-0.5 text-primary inline" />
 }
 
-export default function CreativePerformance({ parentDays }: Props) {
+function fmtShort(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
+}
+
+export default function CreativePerformance({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
   const [data, setData] = useState<CreativePerformanceResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -71,13 +76,9 @@ export default function CreativePerformance({ parentDays }: Props) {
   const [sortField, setSortField] = useState<SortField>('spend')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  const days = parentDays || '30'
-
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const endDate = getKstDateString()
-      const startDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
       const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
 
@@ -93,7 +94,7 @@ export default function CreativePerformance({ parentDays }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [days, selectedClinicId])
+  }, [startDate, endDate, selectedClinicId])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -126,7 +127,7 @@ export default function CreativePerformance({ parentDays }: Props) {
     <Card variant="glass" className="p-5 md:p-6 mt-6">
       <div className="flex items-center justify-between mb-5 gap-4">
         <h2 className="font-semibold text-foreground shrink-0">소재별 성과</h2>
-        <span className="text-xs text-muted-foreground">최근 {days}일</span>
+        <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {loading ? (

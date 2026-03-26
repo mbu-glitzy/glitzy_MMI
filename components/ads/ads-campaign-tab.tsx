@@ -62,7 +62,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
         endDate={endDate}
         platformFilter={platformFilter === 'all' ? undefined : platformFilter}
       />
-      <CreativePerformance parentDays={days} />
+      <CreativePerformance startDate={startDate} endDate={endDate} />
     </>
   )
 }
