@@ -181,6 +181,14 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
       }
     }
 
+    // campaign_id별 전체 리드 수 사전 계산 (배분 비율용)
+    const campTotalLeadsMap = new Map<string, number>()
+    for (const [, cMap] of contentCampaignMap) {
+      for (const [campId, count] of cMap) {
+        campTotalLeadsMap.set(campId, (campTotalLeadsMap.get(campId) || 0) + count)
+      }
+    }
+
     // utm_content별 광고 지표 결정
     function getAdMetrics(utmContent: string): { spend: number; clicks: number; impressions: number } {
       // 1차: ad_stats utm_content 직접 매칭
@@ -197,12 +205,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
         const campStat = campaignStats.get(campId)
         if (!campStat) continue
 
-        // 이 campaign의 전체 리드 수 구하기 (모든 utm_content 합산)
-        let campTotalLeads = 0
-        for (const [, cMap] of contentCampaignMap) {
-          campTotalLeads += cMap.get(campId) || 0
-        }
-
+        const campTotalLeads = campTotalLeadsMap.get(campId) || 0
         if (campTotalLeads > 0) {
           const ratio = leadCount / campTotalLeads
           totalSpend += campStat.spend * ratio
