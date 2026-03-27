@@ -49,6 +49,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   place: '네이버 플레이스',
   website: '웹사이트',
   smartblock: '스마트블록',
+  related: '함께많이찾는',
 }
 
 export default function MonitoringKeywordsPage() {
@@ -217,6 +218,7 @@ export default function MonitoringKeywordsPage() {
                   <SelectItem value="place">네이버 플레이스</SelectItem>
                   <SelectItem value="website">웹사이트</SelectItem>
                   <SelectItem value="smartblock">스마트블록</SelectItem>
+                  <SelectItem value="related">함께많이찾는</SelectItem>
                 </SelectContent>
               </Select>
             </div>

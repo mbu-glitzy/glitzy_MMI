@@ -823,7 +823,7 @@ agency_staff 계정의 병원 배정 및 메뉴 권한을 수정합니다.
 
 **Query Parameters:**
 - `month` (필수): `YYYY-MM`
-- `category` (optional): `place` | `website` | `smartblock`
+- `category` (optional): `place` | `website` | `smartblock` | `related`
 - `clinic_id` (optional)
 
 **Response:**

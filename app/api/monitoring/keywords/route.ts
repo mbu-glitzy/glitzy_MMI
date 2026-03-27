@@ -36,7 +36,7 @@ export const POST = withAuth(async (req, { user }) => {
   if (!cid) return apiError('병원을 선택해주세요.', 400)
   if (!keyword?.trim()) return apiError('키워드를 입력해주세요.', 400)
 
-  const validCategories = ['place', 'website', 'smartblock']
+  const validCategories = ['place', 'website', 'smartblock', 'related']
   if (!validCategories.includes(category)) return apiError('유효하지 않은 카테고리입니다.', 400)
 
   const supabase = serverSupabase()

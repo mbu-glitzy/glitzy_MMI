@@ -40,9 +40,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   place: '네이버 플레이스',
   website: '웹사이트',
   smartblock: '스마트블록',
+  related: '함께많이찾는',
 }
 
-const CATEGORY_LIST = ['place', 'website', 'smartblock']
+const CATEGORY_LIST = ['place', 'website', 'smartblock', 'related']
 
 function getRankColor(rank: number | null | undefined): string {
   if (rank == null) return ''
