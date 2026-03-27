@@ -55,8 +55,6 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
     return apiSuccess({
       signedUrl: data.signedUrl,
-      path,
-      token: data.token,
       fileName: path,
       publicUrl: urlData.publicUrl,
     })
