@@ -79,7 +79,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
 
   // 광고비/클릭/노출 일별 집계
   for (const row of adRes.data || []) {
-    const key = row.stat_date.split('T')[0]
+    const key = row.stat_date.slice(0, 10)
     const entry = dayMap.get(key)
     if (entry) {
       entry.spend += Number(row.spend_amount)

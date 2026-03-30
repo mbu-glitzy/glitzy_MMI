@@ -53,11 +53,11 @@ export default function MonitoringInputPage() {
     }
   }, [user, router])
 
-  // 날짜 이동 (T00:00:00 붙여 UTC 파싱 방지)
+  // 날짜 이동 (KST 타임존 명시)
   const changeDate = (delta: number) => {
-    const d = new Date(date + 'T00:00:00')
+    const d = new Date(date + 'T00:00:00+09:00')
     d.setDate(d.getDate() + delta)
-    setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+    setDate(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }))
   }
 
   // 키워드 + 기존 순위 로드

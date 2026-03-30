@@ -87,7 +87,7 @@
 | `channel.ts` | `normalizeChannel` | utm_source → canonical 채널명 (Meta, Google 등) |
 | `channel-colors.ts` | `getChannelColor` | 채널별 Recharts 색상 코드 |
 | `chart-colors.ts` | `CHART_PALETTE`, `CHART_SEMANTIC`, `PIE_SHADES`, `BAR_COLORS`, `FUNNEL_COLORS`, `FUNNEL_GRADIENT` | Recharts 차트 컬러 중앙 상수 |
-| `date.ts` | `formatDate`, `getKstDateString`, `getKstDayStartISO` | KST 기준 날짜 포맷/생성 |
+| `date.ts` | `formatDate`, `toUtcDate`, `getKstDateString`, `getKstDayStartISO`, `getKstDayEndISO` | KST 기준 날짜 포맷/생성 (아래 타임존 규칙 참조) |
 | `services/metaAds.ts` | `fetchMetaAds`, `fetchMetaAdStats` | 캠페인 레벨 + ad 레벨 수집 (ad_stats: utm_content 자동 매핑) |
 | `services/metaCapi.ts` | Meta CAPI 전송 | 리드 유입 시 서버사이드 전환 이벤트 전송 |
 | `services/pressSync.ts` | `syncPressForClinic` | 언론보도 수집 (다중 키워드 → Google News RSS → upsert) |
@@ -101,3 +101,56 @@
 | `medichecker/embedding.ts` | `embeddingProvider` | OpenAI text-embedding-3-small |
 | `medichecker/highlight.ts` | `findViolationRanges` | 위반 텍스트 위치 4단계 매칭 |
 | `medichecker/risk-level.ts` | `getRiskLevel` | 위험도 점수 → 라벨/색상/배지 매핑 (공용) |
+
+## KST 타임존 규칙 (필수)
+
+서버(Vercel)는 UTC, 브라우저는 사용자 로컬 타임존으로 동작한다. **비즈니스 날짜는 항상 KST(Asia/Seoul, UTC+9) 기준**이어야 하므로, 명시적 변환 없이 `Date` 객체나 ISO 문자열의 날짜 부분을 직접 사용하면 하루 밀림 버그가 발생한다.
+
+### 핵심 원칙
+> **Date → 날짜 문자열 변환 시 반드시 KST 타임존을 명시적으로 지정한다.**
+
+### 상황별 올바른 패턴
+
+| 상황 | 올바른 패턴 | 금지 패턴 (UTC 기준이라 오류) |
+|------|------------|---------------------------|
+| Date → YYYY-MM-DD | `getKstDateString(date)` | `date.toISOString().split('T')[0]` |
+| Date → YYYY-MM (월) | `getKstDateString(date).slice(0, 7)` | `date.toISOString().slice(0, 7)` |
+| DB timestamp → YYYY-MM-DD | `getKstDateString(toUtcDate(str))` | `str.split('T')[0]` |
+| 쿼리 파라미터 → KST 날짜 | `getKstDateString(new Date(param))` | `param.split('T')[0]` |
+| YYYY-MM-DD → Date 생성 | `new Date(dateStr + 'T00:00:00+09:00')` | `new Date(dateStr + 'T00:00:00')` |
+| Date → 표시용 문자열 | `date.toLocaleDateString('ko', { timeZone: 'Asia/Seoul' })` | `date.toLocaleDateString('ko')` |
+| DB 쿼리용 KST 하루 범위 | `getKstDayStartISO(date)` ~ `getKstDayEndISO(date)` | 수동 ISO 문자열 조합 |
+| stat_date(DATE 컬럼) 키 추출 | `row.stat_date.slice(0, 10)` (이미 YYYY-MM-DD) | `row.stat_date.split('T')[0]` |
+
+### 왜 위험한가 — 실제 사례
+
+```
+KST 2026-03-30 00:00:00 = UTC 2026-03-29T15:00:00.000Z
+
+// 잘못된 코드: UTC 날짜 부분 추출
+new Date('2026-03-30T00:00:00+09:00').toISOString().split('T')[0]
+// → "2026-03-29" ← 하루 전!
+
+// 올바른 코드: KST 기준 추출
+getKstDateString(new Date('2026-03-30T00:00:00+09:00'))
+// → "2026-03-30" ✓
+```
+
+### `lib/date.ts` 함수 요약
+
+| 함수 | 반환 | 용도 |
+|------|------|------|
+| `toUtcDate(str)` | `Date` | 타임존 없는 DB 문자열 → UTC Date 변환 |
+| `formatDate(str\|Date)` | `"2026. 3. 30."` | 표시용 날짜 (KST) |
+| `formatDateTime(str\|Date)` | `"3월 30일 14:30"` | 표시용 날짜+시간 (KST) |
+| `formatTime(str\|Date)` | `"14:30"` | 표시용 시간 (KST) |
+| `getKstDateString(date?)` | `"2026-03-30"` | YYYY-MM-DD (KST). 쿼리·키·비교용 |
+| `getKstDayStartISO(date?)` | `"2026-03-29T15:00:00.000Z"` | KST 00:00:00의 UTC ISO. DB 범위 쿼리 시작 |
+| `getKstDayEndISO(date?)` | `"2026-03-30T14:59:59.999Z"` | KST 23:59:59의 UTC ISO. DB 범위 쿼리 끝 |
+
+### 코드 리뷰 체크리스트 (날짜 관련 변경 시)
+- [ ] `split('T')[0]`, `.toISOString()` 후 문자열 가공이 없는가?
+- [ ] `new Date(str)` 생성 시 타임존이 명시되어 있는가?
+- [ ] `toLocaleDateString()`에 `{ timeZone: 'Asia/Seoul' }` 가 포함되어 있는가?
+- [ ] API 쿼리 파라미터 날짜를 `getKstDateString(new Date(param))`으로 변환하는가?
+- [ ] `Date.now()` 산술 결과를 직접 날짜 문자열로 쓰지 않고 `getKstDateString()`을 거치는가?

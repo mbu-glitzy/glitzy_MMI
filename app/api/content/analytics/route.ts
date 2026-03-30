@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess } from '@/lib/api-middleware'
+import { getKstDateString, toUtcDate } from '@/lib/date'
 
 // GET /api/content/analytics?groupBy=campaign|month|post&startDate=...&endDate=...
 export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
@@ -113,7 +114,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const monthMap: Record<string, { posts: any[]; budget: number }> = {}
     for (const post of posts) {
       const month = post.published_at
-        ? new Date(post.published_at).toISOString().slice(0, 7)
+        ? getKstDateString(toUtcDate(post.published_at)).slice(0, 7)
         : '9999-99'
       if (!monthMap[month]) monthMap[month] = { posts: [], budget: 0 }
       monthMap[month].posts.push(post)

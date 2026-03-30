@@ -16,9 +16,9 @@ async function fetchMetrics(
 ) {
   const ctx = { clinicId, assignedClinicIds }
 
-  // stat_date(YYYY-MM-DD)용 날짜 추출
-  const statStart = start.split('T')[0]
-  const statEnd = end.split('T')[0]
+  // stat_date(YYYY-MM-DD)용 KST 날짜 추출 (UTC ISO 문자열도 정확히 변환)
+  const statStart = getKstDateString(new Date(start))
+  const statEnd = getKstDateString(new Date(end))
 
   const [adStatsRes, leadsRes, paymentsRes, bookingsRes, consultRes, contentBudgetRes] = await Promise.all([
     applyClinicFilter(supabase.from('ad_campaign_stats').select('spend_amount, clicks, impressions').gte('stat_date', statStart).lte('stat_date', statEnd), ctx)!,
@@ -131,9 +131,11 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const url = new URL(req.url)
     const startParam = url.searchParams.get('startDate') || getKstDateString(new Date(Date.now() - 30 * 86400000))
     const endParam = url.searchParams.get('endDate') || getKstDateString()
-    // YYYY-MM-DD → KST 기준 ISO 범위로 변환 (timestamptz 컬럼 비교용)
-    const start = `${startParam.split('T')[0]}T00:00:00+09:00`
-    const end = `${endParam.split('T')[0]}T23:59:59+09:00`
+    // ISO/YYYY-MM-DD → KST 기준 범위로 변환 (getKstDateString으로 UTC→KST 변환)
+    const startKst = getKstDateString(new Date(startParam))
+    const endKst = getKstDateString(new Date(endParam))
+    const start = `${startKst}T00:00:00+09:00`
+    const end = `${endKst}T23:59:59+09:00`
     const compare = url.searchParams.get('compare') === 'true'
 
     // 기간 KPI + 오늘 요약 병렬 조회

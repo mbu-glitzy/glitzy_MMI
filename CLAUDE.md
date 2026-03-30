@@ -83,7 +83,7 @@ npm run analyze      # 번들 크기 분석
 4. **활동 추적**: bookings/payments/consultations/leads 변경 시 `created_by`/`updated_by` + `logActivity()`
 5. **삭제 보관**: 데이터 삭제 시 `archiveBeforeDelete()` 호출하여 `deleted_records`에 스냅샷 보관
 6. **인증 타입**: `types/next-auth.d.ts` 수정 시 `password_version` 필드 반드시 유지
-7. **KST 타임존**: 날짜 표시는 `lib/date.ts` 포맷 함수 사용. `toISOString().split('T')[0]` 금지 (UTC 기준이라 KST 자정~09시 날짜 오류)
+7. **KST 타임존 일관성**: 모든 날짜/시간은 KST(Asia/Seoul) 기준으로 변환·저장·표시. 아래 규칙 필수 준수 (상세: `lib/CLAUDE.md` > KST 타임존 규칙)
 
 ### 네이밍 컨벤션
 - 파일명: `kebab-case` (예: `date-range-picker.tsx`, `api-middleware.ts`)
@@ -114,8 +114,13 @@ npm run analyze      # 번들 크기 분석
 - `any` 타입 남용 — 불가피 시 주석으로 사유 명시
 - `items-stretch`로 카드 높이 억지 정렬 (하단 빈 여백 발생)
 - `NextResponse.json()` 직접 사용 → `apiSuccess`/`apiError` 사용
-- `toISOString().split('T')[0]` → `getKstDateString()` 사용
 - URL 값에 `sanitizeString()` 사용 (`&` 제거됨) → `sanitizeUrl()` 사용
+- **타임존 금지 패턴** (위반 시 날짜가 하루 밀림):
+  - `toISOString().split('T')[0]` — UTC 날짜 추출 → `getKstDateString()` 사용
+  - `toISOString().slice(0, 7)` — UTC 월 추출 → `getKstDateString(toUtcDate()).slice(0, 7)` 사용
+  - `split('T')[0]` 으로 쿼리 파라미터에서 날짜 추출 — `getKstDateString(new Date(param))` 사용
+  - `new Date('YYYY-MM-DD' + 'T00:00:00')` — 타임존 없음 → `'T00:00:00+09:00'` 명시
+  - `toLocaleDateString()` 에서 `timeZone` 생략 — 반드시 `{ timeZone: 'Asia/Seoul' }` 지정
 
 ## 검증 규칙 (Self-Verification)
 
@@ -259,3 +264,4 @@ npm run analyze      # 번들 크기 분석
 | 2026-03-26 | fix: 캠페인 CPL + 소재별 광고 지표 — inflow_url utm_id 기반 매칭 (ads_read 권한 불필요), 날짜 표시 "최근 N일" → "M.D ~ M.D" 통일 |
 | 2026-03-26 | 전체 프로젝트 감수 및 수정: (1) GAQL 쿼리 파라미터 인젝션 방어 (googleAds.ts), (2) `session?.user as any` 제거 14개 페이지, (3) 대시보드 API 인라인 `applyFilter` → 중앙 `applyClinicFilter`/`applyDateRange` 교체 6개 파일, (4) Recharts 툴팁 `any` → `ChartTooltipProps` 타입 적용 9개 컴포넌트 (`types/recharts.d.ts` 신규), (5) API try-catch 래핑 6개 파일, (6) `NextResponse.json` → `apiSuccess` 7개 API, (7) 차트 컬러 중앙화 `lib/chart-colors.ts` 신규 + 9개 컴포넌트 교체, (8) 다크모드 `--overlay` CSS 변수 도입 + 5개 UI 컴포넌트 적용, (9) 정렬 테이블 aria-sort/키보드 접근성 2개 컴포넌트, (10) 터치 타겟 44px 확대 3개 컴포넌트, (11) console.log → createLogger 1건, toISOString → getKstDateString 2건 |
 | 2026-03-27 | 순위 모니터링 "함께많이찾는" 카테고리 추가: DB CHECK 제약조건 확장(`related`), API validCategories, UI 3개 페이지 CATEGORY_LABELS/LIST 업데이트 |
+| 2026-03-30 | fix: 전체 프로젝트 KST 타임존 일관성 감사 및 수정 — (1) KPI API `split('T')[0]` UTC→KST 오변환 (`getKstDateString` 교체), (2) 콘텐츠 분석 `toISOString().slice(0,7)` UTC 월 오류 (`getKstDateString(toUtcDate())` 교체), (3) 순위입력 날짜 이동 타임존 미지정 (`+09:00` 추가), (4) stat_date `split('T')[0]` → `slice(0,10)` 정리 (2곳), (5) E2E 헬퍼 `toISOString()` → KST 변환. `toISOString().split('T')[0]` 패턴 프로젝트에서 완전 제거 |
