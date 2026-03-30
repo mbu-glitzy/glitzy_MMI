@@ -74,6 +74,11 @@ const ENV_GROUPS: EnvGroup[] = [
     optional: ['ERP_API_URL', 'ERP_SERVICE_KEY'],
   },
   {
+    name: 'External API (inbound)',
+    required: [],
+    optional: ['EXTERNAL_SERVICE_KEY'],
+  },
+  {
     name: 'AI',
     required: [],
     optional: ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'],

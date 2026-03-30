@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { timingSafeEqual } from 'crypto'
 import { authOptions } from './auth'
 import { getClinicId } from './session'
 import { SessionUser } from './security'
@@ -179,6 +180,34 @@ export function applyDateRange<T extends { gte: Function; lte: Function }>(
   if (startDate) q = q.gte(dateField, startDate)
   if (endDate) q = q.lte(dateField, endDate)
   return q
+}
+
+/**
+ * 외부 서비스 API 래퍼 (SERVICE_KEY 기반 인증)
+ * - glitzy-web 등 외부 서비스에서 Samantha 데이터를 조회할 때 사용
+ * - Authorization: Bearer {EXTERNAL_SERVICE_KEY} 헤더 검증
+ */
+type ExternalHandler = (req: Request) => Promise<NextResponse>
+
+export function withExternalAuth(handler: ExternalHandler) {
+  return async (req: Request): Promise<NextResponse> => {
+    const key = process.env.EXTERNAL_SERVICE_KEY
+    if (!key) return NextResponse.json({ error: 'Service key not configured' }, { status: 500 })
+
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // timing-safe 비교 (timing attack 방지)
+    const tokenBuf = Buffer.from(token)
+    const keyBuf = Buffer.from(key)
+    if (tokenBuf.length !== keyBuf.length || !timingSafeEqual(tokenBuf, keyBuf)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    return handler(req)
+  }
 }
 
 /**

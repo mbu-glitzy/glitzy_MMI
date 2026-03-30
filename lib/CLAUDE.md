@@ -29,6 +29,7 @@
 - 메시징: `QSTASH_*`, `KAKAO_*`
 - 뉴스: `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` (네이버 뉴스 검색 API)
 - 에러 알림: `ADMIN_ALERT_PHONES` (프로덕션 에러 SMS 수신 번호)
+- 외부 API: `EXTERNAL_SERVICE_KEY` (glitzy-web → Samantha 인증)
 
 ## DB 핵심 테이블
 
@@ -64,6 +65,15 @@
 | `mc_chunks` | RAG 임베딩 청크 (공용) | pgvector 1536차원, pg_trgm 키워드 |
 | `mc_verification_logs` | 광고 검증 이력 (테넌트) | clinic_id + user_id 추적, violations JSONB |
 | `system_settings` | 시스템 전역 설정 (공용) | key(PK) + value(JSONB). 예: hidden_menus |
+
+## 외부 API (inbound)
+
+glitzy-web 등 외부 서비스가 Samantha 데이터를 조회하는 엔드포인트.
+`withExternalAuth` 미들웨어 사용 — `EXTERNAL_SERVICE_KEY` Bearer 토큰 검증.
+
+| 엔드포인트 | 용도 |
+|-----------|------|
+| `GET /api/external/ad-spend` | 병원별 월간 광고 실집행비 + SMS 건수 |
 
 ## SMS 발송 (lib/solapi.ts)
 

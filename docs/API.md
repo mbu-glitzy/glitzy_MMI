@@ -1130,6 +1130,52 @@ glitzy-web 외부 API 프록시. 읽기 전용.
 
 ---
 
+## 외부 API (서비스 간 통신)
+
+glitzy-web 등 외부 서비스에서 Samantha 데이터를 조회하는 API.
+인증: `Authorization: Bearer {EXTERNAL_SERVICE_KEY}` (NextAuth 세션 불필요)
+
+### GET /api/external/ad-spend
+
+병원별 월간 광고 실집행비 + SMS 발송 건수를 조회합니다.
+
+**파라미터:**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|:----:|------|
+| `month` | string | O | YYYY-MM (예: 2026-03) |
+| `clinic_id` | number | X | 병원 ID. 생략 시 전체 병원 리스트 |
+
+**응답 (특정 병원):**
+```json
+{
+  "month": "2026-03",
+  "clinic_id": 5,
+  "clinic_name": "A병원",
+  "total_spend": 2800000,
+  "platforms": [
+    { "platform": "meta", "spend": 1500000, "clicks": 3200, "impressions": 45000 },
+    { "platform": "google", "spend": 800000, "clicks": 1800, "impressions": 22000 }
+  ],
+  "sms_count": 47
+}
+```
+
+**응답 (전체 병원):**
+```json
+{
+  "month": "2026-03",
+  "clinics": [
+    { "clinic_id": 5, "clinic_name": "A병원", "total_spend": 2800000, "platforms": [...], "sms_count": 47 },
+    { "clinic_id": 8, "clinic_name": "B병원", "total_spend": 1200000, "platforms": [...], "sms_count": 23 }
+  ],
+  "grand_total": 4000000,
+  "total_sms": 70
+}
+```
+
+---
+
 ## 에러 응답
 
 ### 공통 에러 형식
