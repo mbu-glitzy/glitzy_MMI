@@ -28,7 +28,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   // 2. 광고 지출 데이터
   let adStatsQuery = supabase
     .from('ad_campaign_stats')
-    .select('platform, spend_amount, stat_date')
+    .select('platform, spend_amount, clicks, impressions, stat_date')
   adStatsQuery = applyClinicFilter(adStatsQuery, ctx)!
   adStatsQuery = applyDateRange(adStatsQuery, 'stat_date', startDate, endDate)
 
@@ -64,11 +64,15 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     }
   }
 
-  // 광고 지출 집계 (platform 기준)
+  // 광고 지출/클릭/노출 집계 (platform 기준)
   const spendByChannel: Record<string, number> = {}
+  const clicksByChannel: Record<string, number> = {}
+  const impressionsByChannel: Record<string, number> = {}
   for (const row of adStatsRes.data || []) {
     const channel = normalizeChannel(row.platform)
     spendByChannel[channel] = (spendByChannel[channel] || 0) + Number(row.spend_amount)
+    clicksByChannel[channel] = (clicksByChannel[channel] || 0) + Number(row.clicks || 0)
+    impressionsByChannel[channel] = (impressionsByChannel[channel] || 0) + Number(row.impressions || 0)
   }
 
   // 채널별 매출 집계
@@ -99,6 +103,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
       const spend = spendByChannel[channel] || 0
       const revenue = revenueByChannel[channel] || 0
       const payingCustomers = payingCustomersByChannel[channel]?.size || 0
+      const clicks = clicksByChannel[channel] || 0
+      const impressions = impressionsByChannel[channel] || 0
 
       return {
         channel,
@@ -106,8 +112,11 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
         spend,
         revenue,
         payingCustomers,
+        clicks,
+        impressions,
         cpl: leads > 0 ? Math.round(spend / leads) : 0,
         roas: spend > 0 ? Number((revenue / spend).toFixed(2)) : 0,
+        ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
         conversionRate: leads > 0 ? Number(((payingCustomers / leads) * 100).toFixed(1)) : 0,
       }
     })

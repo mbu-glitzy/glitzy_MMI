@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { normalizeChannel } from '@/lib/channel'
 
 interface FetchState<T> {
   data: T | null
@@ -37,10 +38,9 @@ export function useKpiData(clinicId: number | null, startDate: string, endDate: 
   return { ...state, refetch: fetch_ }
 }
 
-// ─── 추이 + 콘텐츠 ───
+// ─── 추이 ───
 export function useTrendData(clinicId: number | null, startDate: string, endDate: string) {
   const [trend, setTrend] = useState<any[]>([])
-  const [contentPlatform, setContentPlatform] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetch_ = useCallback(async () => {
@@ -53,24 +53,17 @@ export function useTrendData(clinicId: number | null, startDate: string, endDate
       const effectiveStart = selectedStartDate < minStartDate ? selectedStartDate : minStartDate
       const trendStart = effectiveStart.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
       const trendQs = buildQs({ startDate: trendStart, clinic_id: clinicId })
-      const contentQs = buildQs({ groupBy: 'platform', startDate, endDate, clinic_id: clinicId })
 
-      const [trendRes, contentRes] = await Promise.allSettled([
-        fetch(`/api/dashboard/trend${trendQs}`).then(r => r.json()),
-        fetch(`/api/content/analytics${contentQs}`).then(r => r.json()),
-      ])
-
-      if (trendRes.status === 'fulfilled') {
-        const raw = Array.isArray(trendRes.value) ? trendRes.value : []
-        setTrend(raw.map((r: any) => ({
-          date: r.date || '',
-          spend: r.spend || 0,
-          leads: r.leads || 0,
-        })))
-      }
-      if (contentRes.status === 'fulfilled') {
-        setContentPlatform(Array.isArray(contentRes.value) ? contentRes.value : [])
-      }
+      const res = await fetch(`/api/dashboard/trend${trendQs}`)
+      const json = await res.json()
+      const raw = Array.isArray(json) ? json : []
+      setTrend(raw.map((r: any) => ({
+        date: r.date || '',
+        spend: r.spend || 0,
+        leads: r.leads || 0,
+      })))
+    } catch {
+      setTrend([])
     } finally {
       setLoading(false)
     }
@@ -78,7 +71,55 @@ export function useTrendData(clinicId: number | null, startDate: string, endDate
 
   useEffect(() => { fetch_() }, [fetch_])
 
-  return { trend, contentPlatform, loading, refetch: fetch_ }
+  return { trend, loading, refetch: fetch_ }
+}
+
+// ─── 최근 리드 (DatePicker 무관, 항상 최신 8건) ───
+export interface RecentLead {
+  name: string
+  utmSource: string
+  createdAt: string
+  phoneNumber: string
+}
+
+export function useRecentLeads(clinicId: number | null) {
+  const [recentLeads, setRecentLeads] = useState<RecentLead[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true)
+    try {
+      const qs = buildQs({ clinic_id: clinicId, limit: '8' })
+      const res = await fetch(`/api/leads${qs}`)
+      const json = await res.json()
+      const customers = Array.isArray(json) ? json : []
+
+      // customer → lead 변환 (최신순 정렬)
+      const leads: RecentLead[] = []
+      for (const c of customers) {
+        const customerLeads = c.leads || []
+        for (const l of customerLeads) {
+          leads.push({
+            name: c.name || '이름 없음',
+            utmSource: normalizeChannel(l.utm_source),
+            createdAt: l.created_at || c.created_at,
+            phoneNumber: c.phone_number || '',
+          })
+        }
+      }
+      // 최신순 정렬, 최대 8건
+      leads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      setRecentLeads(leads.slice(0, 8))
+    } catch {
+      setRecentLeads([])
+    } finally {
+      setLoading(false)
+    }
+  }, [clinicId])
+
+  useEffect(() => { fetch_() }, [fetch_])
+
+  return { recentLeads, loading, refetch: fetch_ }
 }
 
 // ─── 퍼널 + 채널 + 시술별 매출 ───
@@ -105,10 +146,10 @@ export function useFunnelChannelData(clinicId: number | null, startDate: string,
 
       // 시술별 매출 집계 (매출액 기준)
       if (leadsRes.status === 'fulfilled') {
-        const leads = Array.isArray(leadsRes.value) ? leadsRes.value : []
+        const customers = Array.isArray(leadsRes.value) ? leadsRes.value : []
         const treatmentMap: Record<string, number> = {}
-        for (const lead of leads) {
-          const payments = lead.customer?.payments || []
+        for (const customer of customers) {
+          const payments = customer.payments || []
           for (const p of payments) {
             if (p.treatment_name && p.payment_amount) {
               treatmentMap[p.treatment_name] = (treatmentMap[p.treatment_name] || 0) + Number(p.payment_amount)

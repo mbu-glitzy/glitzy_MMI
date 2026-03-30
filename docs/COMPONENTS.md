@@ -40,9 +40,13 @@ components/
 │   └── index.tsx          # AreaChart, BarChart, PieChart, LineChart, ComposedChart 등
 │
 ├── dashboard/            # 대시보드 섹션 컴포넌트
-│   ├── today-summary.tsx  # 오늘 요약 (문의/예약/매출)
-│   ├── kpi-section.tsx    # KPI 카드 6개 (비즈니스 흐름순)
-│   └── spend-lead-trend.tsx # 광고비+리드 듀얼 축 차트
+│   ├── kpi-section.tsx    # KPI 카드 5개 (광고비/리드+오늘/CPL/매출/ROAS)
+│   ├── spend-lead-trend.tsx # 광고비+리드 듀얼 축 차트
+│   ├── treatment-pie.tsx  # 시술별 매출 비중 파이 차트
+│   ├── funnel-section.tsx # 전환 퍼널 3단계 (리드→예약→결제)
+│   ├── recent-leads.tsx   # 최근 리드 8건 피드 (실시간)
+│   ├── channel-table.tsx  # 채널 성과 테이블 (정렬, ROAS 바)
+│   └── date-range-picker.tsx # 날짜 범위 선택기
 │
 ├── ads/                 # 광고 성과 페이지 컴포넌트
 │   ├── ads-kpi-cards.tsx           # 8종 KPI 카드 (전기 대비 변화율)
@@ -447,31 +451,15 @@ const [dateRange, setDateRange] = useState<DateRange>({
 대시보드 page.tsx를 섹션별로 분리한 컴포넌트들입니다.
 각 컴포넌트는 `data`와 `loading` props로 독립 로딩이 가능합니다.
 
-### TodaySummary
-
-오늘 문의/예약/매출 3카드를 큰 사이즈로 표시합니다.
-
-```tsx
-import { TodaySummary } from '@/components/dashboard/today-summary'
-
-<TodaySummary
-  data={{
-    leads: 5, bookings: 3, revenue: 3000000,
-    leadsDiff: 2, bookingsDiff: -1, revenueDiff: 500000,
-  }}
-  loading={false}
-/>
-```
-
 ### KpiSection
 
-6개 KPI를 비즈니스 흐름순(총 문의 → 예약 전환율 → 총 방문 → 총 매출 → 광고비 → ROAS)으로 표시합니다.
+5개 KPI를 비즈니스 흐름순(광고비 → 리드+오늘 → CPL → 매출 → ROAS)으로 표시합니다. 리드 카드에 "오늘 +N" subtitle 포함.
 
 ```tsx
 import { KpiSection } from '@/components/dashboard/kpi-section'
 
 <KpiSection
-  data={kpiData}        // KPI API 응답 객체
+  data={kpiData}        // KPI API 응답 객체 (today.leads 포함)
   loading={false}
   onNavigate={(path) => router.push(path)}  // 카드 클릭 시 이동
 />
@@ -489,6 +477,32 @@ import { SpendLeadTrend } from '@/components/dashboard/spend-lead-trend'
     { date: '3/1', spend: 500000, leads: 12 },
     { date: '3/8', spend: 600000, leads: 15 },
   ]}
+  loading={false}
+/>
+```
+
+### RecentLeads
+
+최근 리드 8건을 실시간 피드로 표시합니다. DatePicker 영향 안 받음 (항상 최신).
+
+```tsx
+import { RecentLeads } from '@/components/dashboard/recent-leads'
+
+<RecentLeads
+  data={recentLeads}    // RecentLead[] (name, utmSource, createdAt, phoneNumber)
+  loading={false}
+/>
+```
+
+### ChannelTable
+
+채널별 성과를 정렬 가능한 테이블로 표시합니다. ROAS 인라인 바 포함.
+
+```tsx
+import { ChannelTable } from '@/components/dashboard/channel-table'
+
+<ChannelTable
+  data={channelData}    // channel API 응답 (clicks, impressions, ctr 포함)
   loading={false}
 />
 ```

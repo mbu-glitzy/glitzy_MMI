@@ -4,22 +4,21 @@ import { useState, useEffect } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { startOfDay } from 'date-fns'
+import { startOfMonth, startOfDay } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
 import { useClinic } from '@/components/ClinicContext'
-import { useKpiData, useTrendData, useFunnelChannelData } from '@/hooks/use-dashboard-data'
+import { useKpiData, useTrendData, useFunnelChannelData, useRecentLeads } from '@/hooks/use-dashboard-data'
 import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
 // 섹션 컴포넌트
-import { TodaySummary } from '@/components/dashboard/today-summary'
 import { KpiSection } from '@/components/dashboard/kpi-section'
 import { SpendLeadTrend } from '@/components/dashboard/spend-lead-trend'
 import { TreatmentPie } from '@/components/dashboard/treatment-pie'
 import { FunnelSection } from '@/components/dashboard/funnel-section'
-import { ChannelChart } from '@/components/dashboard/channel-chart'
-import { CplRoasChart } from '@/components/dashboard/cpl-roas-chart'
+import { RecentLeads } from '@/components/dashboard/recent-leads'
+import { ChannelTable } from '@/components/dashboard/channel-table'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 
 export default function DashboardPage() {
@@ -32,10 +31,10 @@ export default function DashboardPage() {
     if (sessionUser?.role === 'clinic_staff') router.replace('/patients')
   }, [sessionUser, router])
 
-  // 기본값: 당일
+  // 기본값: 이번 달
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const today = startOfDay(new Date())
-    return { from: today, to: today }
+    return { from: startOfMonth(today), to: today }
   })
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -46,6 +45,7 @@ export default function DashboardPage() {
   const kpi = useKpiData(selectedClinicId, startDate, endDate)
   const trendData = useTrendData(selectedClinicId, startDate, endDate)
   const funnelChannel = useFunnelChannelData(selectedClinicId, startDate, endDate)
+  const recentLeadsData = useRecentLeads(selectedClinicId)
 
   // 마지막 업데이트 시간 추적
   useEffect(() => {
@@ -56,6 +56,7 @@ export default function DashboardPage() {
     kpi.refetch()
     trendData.refetch()
     funnelChannel.refetch()
+    recentLeadsData.refetch()
   }
 
   const anyLoading = kpi.loading || trendData.loading || funnelChannel.loading
@@ -65,27 +66,15 @@ export default function DashboardPage() {
   const daysDiff = dateRange.from && dateRange.to
     ? Math.max(1, Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / (24 * 60 * 60 * 1000)) + 1)
     : 1
-  const daysLabel = daysDiff === 1 ? '당일' : `${daysDiff}일`
 
   // 추이 그래프 기간 라벨 (최소 4주 보장)
   const trendDays = Math.max(daysDiff, 28)
+  const daysLabel = daysDiff === 1 ? '당일' : `${daysDiff}일`
   const trendPeriodLabel = trendDays === daysDiff
     ? `최근 ${daysDiff}일`
     : daysDiff <= 1
       ? '최근 4주'
       : `최근 4주 (선택: ${daysLabel})`
-
-  // CPL / ROAS 비교 데이터
-  interface ChannelMetric { channel: string; cpl: number; roas: number }
-  interface PlatformMetric { label: string; cpl: number; roas: number }
-  const cplData = [
-    ...funnelChannel.channel.filter((c: ChannelMetric) => c.cpl > 0).map((c: ChannelMetric) => ({ name: c.channel, cpl: c.cpl })),
-    ...trendData.contentPlatform.filter((c: PlatformMetric) => c.cpl > 0).map((c: PlatformMetric) => ({ name: c.label, cpl: c.cpl })),
-  ]
-  const roasData = [
-    ...funnelChannel.channel.filter((c: ChannelMetric) => c.roas > 0).map((c: ChannelMetric) => ({ name: c.channel, roas: Math.round(c.roas * 100) })),
-    ...trendData.contentPlatform.filter((c: PlatformMetric) => c.roas > 0).map((c: PlatformMetric) => ({ name: c.label, roas: c.roas })),
-  ]
 
   return (
     <>
@@ -103,13 +92,10 @@ export default function DashboardPage() {
         }
       />
 
-      {/* 오늘의 요약 (최상단 강조) */}
-      <TodaySummary data={kpi.data?.today} loading={kpi.loading} />
-
-      {/* KPI 카드 (비즈니스 흐름 순) */}
+      {/* Row 1: KPI 카드 5개 */}
       <KpiSection data={kpi.data} loading={kpi.loading} onNavigate={handleNavigate} />
 
-      {/* 광고비 · 리드 추이 + 시술별 매출 비중 */}
+      {/* Row 2: 광고비·리드 추이 + 시술별 매출 비중 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6 md:mb-8">
         <div className="lg:col-span-2">
           <SpendLeadTrend data={trendData.trend} loading={trendData.loading} periodLabel={trendPeriodLabel} />
@@ -117,22 +103,16 @@ export default function DashboardPage() {
         <TreatmentPie data={funnelChannel.treatmentData} loading={funnelChannel.loading} />
       </div>
 
-      {/* 전환 퍼널 */}
-      <div className="mb-6 md:mb-8">
+      {/* Row 3: 전환 퍼널 + 최근 리드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-6 md:mb-8">
         <FunnelSection data={funnelChannel.funnel} loading={funnelChannel.loading} />
+        <RecentLeads data={recentLeadsData.recentLeads} loading={recentLeadsData.loading} />
       </div>
 
-      {/* 채널별 리드 & 매출 (바차트) */}
+      {/* Row 4: 채널 성과 테이블 */}
       <div className="mb-6 md:mb-8">
-        <ChannelChart data={funnelChannel.channel} loading={funnelChannel.loading} days={daysLabel} />
+        <ChannelTable data={funnelChannel.channel} loading={funnelChannel.loading} />
       </div>
-
-      {/* CPL / ROAS 비교 차트 */}
-      <CplRoasChart
-        cplData={cplData}
-        roasData={roasData}
-        loading={funnelChannel.loading || trendData.loading}
-      />
     </>
   )
 }

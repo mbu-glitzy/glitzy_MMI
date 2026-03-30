@@ -113,8 +113,11 @@ Samantha 대시보드의 REST API 엔드포인트 문서입니다.
     "spend": 3000000,
     "revenue": 30000000,
     "payingCustomers": 12,
+    "clicks": 5200,
+    "impressions": 120000,
     "cpl": 37500,
     "roas": 10.0,
+    "ctr": 4.33,
     "conversionRate": 15.0
   }
 ]

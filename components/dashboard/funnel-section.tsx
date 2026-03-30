@@ -28,12 +28,40 @@ interface FunnelSectionProps {
   loading?: boolean
 }
 
+/** 3단계만 필터하고 dropoff 재계산 */
+function filterThreeStages(stages: FunnelStage[]): FunnelStage[] {
+  const KEEP = ['Lead', 'Booking', 'Payment']
+  const filtered = stages.filter(s => KEEP.includes(s.stage))
+  if (filtered.length === 0) return []
+
+  // dropoff 재계산
+  return filtered.map((stage, i) => {
+    if (i === 0) return { ...stage, dropoff: 0 }
+    const prev = filtered[i - 1]
+    const dropoff = prev.count > 0 ? Number((((prev.count - stage.count) / prev.count) * 100).toFixed(1)) : 0
+    return { ...stage, dropoff }
+  })
+}
+
+/** 가장 큰 이탈 구간 감지 */
+function getMaxDropoffInsight(stages: FunnelStage[]): string | null {
+  if (stages.length < 2) return null
+  let maxIdx = 1
+  let maxDrop = 0
+  for (let i = 1; i < stages.length; i++) {
+    if (stages[i].dropoff > maxDrop) {
+      maxDrop = stages[i].dropoff
+      maxIdx = i
+    }
+  }
+  if (maxDrop === 0) return null
+  return `${stages[maxIdx - 1].label} → ${stages[maxIdx].label} 구간에서 ${maxDrop}% 이탈이 가장 큽니다`
+}
+
 /** 단계별 링크 매핑 */
 const STAGE_LINKS: Record<string, string> = {
   Lead: '/leads',
   Booking: '/bookings',
-  Visit: '/bookings',
-  Consultation: '/patients',
   Payment: '/patients',
 }
 
@@ -54,11 +82,12 @@ function getNodeOpacity(count: number): number {
 }
 
 export function FunnelSection({ data, loading }: FunnelSectionProps) {
-  const stages = data?.funnel?.stages
+  const rawStages = data?.funnel?.stages
+  const stages = rawStages ? filterThreeStages(rawStages) : undefined
   const totalRate = data?.funnel?.totalConversionRate
 
   return (
-    <Card variant="glass" className="p-5">
+    <Card variant="glass" className="p-5 h-full">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <Users size={16} className="text-brand-400" />
@@ -95,6 +124,7 @@ function FunnelProgress({
     y: number
   } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const insight = getMaxDropoffInsight(stages)
 
   return (
     <div ref={containerRef}>
@@ -276,6 +306,13 @@ function FunnelProgress({
             />
           </div>
         </div>
+      )}
+
+      {/* 인사이트 */}
+      {insight && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {insight}
+        </p>
       )}
     </div>
   )
