@@ -37,7 +37,7 @@ import { PageHeader, ChannelBadge, SortSelect } from '@/components/common'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { formatDate, formatDateTime, formatTime, toUtcDate } from '@/lib/date'
 import { DateRange } from 'react-day-picker'
-import { subDays, startOfDay, endOfDay } from 'date-fns'
+import { startOfDay, startOfMonth, endOfDay } from 'date-fns'
 
 // 상수
 const STATUS_CONFIG: Record<string, { label: string; variant: 'info' | 'success' | 'default' | 'secondary' | 'destructive' }> = {
@@ -1034,7 +1034,7 @@ export default function PatientsPage() {
   const [sourceFilter, setSourceFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name' | 'payment'>('newest')
-  const [dateRange, setDateRange] = useState<DateRange>({ from: subDays(startOfDay(new Date()), 30), to: startOfDay(new Date()) })
+  const [dateRange, setDateRange] = useState<DateRange>({ from: startOfMonth(startOfDay(new Date())), to: startOfDay(new Date()) })
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   // 예약 등록 다이얼로그
