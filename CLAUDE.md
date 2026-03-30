@@ -41,7 +41,7 @@ npm run analyze      # 번들 크기 분석
 | `lib/services/` | 외부 API 동기화 서비스 | |
 | `components/` | UI 컴포넌트 | `components/CLAUDE.md` |
 | `components/ads/` | 광고 성과 UI (KPI카드, 효율추이, 매체비교, 퍼널, 캠페인, 소재별 성과, 요일, LP) | |
-| `components/attribution/` | 매출 기여 분석 UI (퍼널, CPL/ROAS, 고객 여정) | |
+| `components/attribution/` | 매출 기여 분석 UI (전환 퍼널, 채널 매출 도넛, ROAS 추이, LP 전환 테이블, 고객 여정) | |
 | `components/medichecker/` | 원고 검수 UI (텍스트 입력, 위반 하이라이트, 진행 표시, 이력) | |
 | `components/erp-documents/` | ERP 문서 UI (견적서/계산서 목록, Sheet 상세) |
 | `app/api/admin/backfill-ads/` | 광고 데이터 backfill (CRON_SECRET 인증, 최대 90일) | |
@@ -268,3 +268,4 @@ npm run analyze      # 번들 크기 분석
 | 2026-03-30 | TikTok Ads API 연동: (1) `data_level` 필수 파라미터 추가, (2) `fetchTikTokAdStats` ad 레벨 수집 신규 (ad_stats 저장), (3) 캠페인+ad 레벨 페이지네이션 공통 헬퍼 `fetchTikTokReport`, (4) adSyncManager Meta 동일 병렬 수집 구조, (5) 소재별 성과 API에 utm_content 없는 ad_stats(TikTok) ad_id 기준 표시, (6) 90일 backfill 완료 (clinic_id=20) |
 | 2026-03-30 | 대시보드 재설계: (1) 기본 날짜 "오늘"→"이번 달", (2) KPI 6카드→5카드(광고비/리드+오늘/CPL/매출/ROAS), (3) 퍼널 5단계→3단계(리드→예약→결제)+인사이트, (4) TodaySummary/ChannelChart/CplRoasChart 제거, (5) RecentLeads 최근 8건 피드 신규, (6) ChannelTable 정렬 가능 테이블 신규(clicks/impressions/ctr 추가), (7) 채널 API에 clicks/impressions/ctr 필드 추가 |
 | 2026-03-30 | 시스템 메뉴 토글: `system_settings` 테이블, 슈퍼어드민 설정 페이지(`/admin/settings`), 사이드바 동적 숨김 메뉴 로드. 하드코딩 `hidden` 플래그 → DB 기반 동적 제어로 전환 |
+| 2026-03-30 | 광고 성과 3탭 지표 재배치: (1) 성과 개요: KPI 8→5카드(ROAS/전환율/CAC→매출귀속), 매체비교에 노출/클릭 추가+ROAS/전환율 제거, 퍼널 5→3단계(2-Zone+미니카드), LP분석→캠페인탭 이동, 💡emoji→Lightbulb SVG (2) 캠페인분석: LP분석 추가(mode prop delivery/full), 소재별 13→10컬럼(결제/전환율/매출 제거), StatusDot emoji→CSS도트, LP 1개 조건부 레이아웃 (3) 매출귀속: KPI 3→6카드(ROAS/전환율/CAC 추가), 전환퍼널(리드→예약→결제) 신규, 채널별 매출비중 도넛 신규, ROAS 추이 라인차트 신규(`/api/attribution/roas-trend`), LP 전환 테이블 신규 |

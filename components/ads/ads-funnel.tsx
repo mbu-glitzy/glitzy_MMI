@@ -5,7 +5,7 @@ import { useClinic } from '@/components/ClinicContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
-import { TrendingDown } from 'lucide-react'
+import { TrendingDown, Lightbulb } from 'lucide-react'
 import { FUNNEL_GRADIENT } from '@/lib/chart-colors'
 
 function fmtShort(iso: string) {
@@ -21,15 +21,11 @@ interface AdStatsRecord {
 
 interface FunnelStage {
   stage: string
-  label: string
   count: number
-  rate: number
-  dropoff: number
 }
 
 interface FunnelData {
   stages: FunnelStage[]
-  totalConversionRate: number
 }
 
 interface FunnelResponse {
@@ -37,18 +33,58 @@ interface FunnelResponse {
   funnel: FunnelData
 }
 
-interface FunnelStageDisplay {
-  label: string
-  count: number
-  conversionRateFromPrev: number | null
-  conversionLabel: string | null
-}
-
 interface Props {
   startDate: string
   endDate: string
 }
 
+/** 2-Zone 퍼널 바 렌더 */
+function FunnelBar({
+  label,
+  count,
+  maxCount,
+  opacityStep,
+}: {
+  label: string
+  count: number
+  maxCount: number
+  opacityStep: number
+}) {
+  const widthPct = maxCount > 0 ? (count / maxCount) * 100 : 0
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="tabular-nums text-foreground/80 font-medium">
+          {count.toLocaleString()}
+        </span>
+      </div>
+      <div className="h-8 bg-muted/40 dark:bg-white/[0.04] rounded-lg overflow-hidden">
+        <div
+          className="h-full rounded-lg transition-all duration-500"
+          style={{
+            width: `${Math.max(widthPct, count > 0 ? 2 : 0)}%`,
+            background: FUNNEL_GRADIENT,
+            opacity: 1 - opacityStep * 0.15,
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+/** 전환 지표 미니카드 */
+function MetricCard({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  return (
+    <div className="flex-1 rounded-lg bg-muted/40 dark:bg-white/[0.04] p-3 text-center">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className={`text-sm font-semibold tabular-nums ${warn ? 'text-rose-500 dark:text-rose-400' : 'text-foreground'}`}>
+        {value}
+      </p>
+    </div>
+  )
+}
 
 export default function AdsFunnel({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
@@ -58,8 +94,6 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
   const [impressions, setImpressions] = useState(0)
   const [clicks, setClicks] = useState(0)
   const [leadCount, setLeadCount] = useState(0)
-  const [bookingCount, setBookingCount] = useState(0)
-  const [paymentCount, setPaymentCount] = useState(0)
   const [hasData, setHasData] = useState(false)
 
   const loading = adsLoading || funnelLoading
@@ -77,13 +111,10 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
       const json = await res.json()
       const records: AdStatsRecord[] = Array.isArray(json) ? json : (Array.isArray(json?.stats) ? json.stats : [])
 
-      const totalImpressions = records.reduce((sum, r) => sum + (r.impressions || 0), 0)
-      const totalClicks = records.reduce((sum, r) => sum + (r.clicks || 0), 0)
-
-      setImpressions(totalImpressions)
-      setClicks(totalClicks)
+      setImpressions(records.reduce((sum, r) => sum + (r.impressions || 0), 0))
+      setClicks(records.reduce((sum, r) => sum + (r.clicks || 0), 0))
     } catch {
-      // silently fail — empty state handles zero data
+      // silently fail
     } finally {
       setAdsLoading(false)
     }
@@ -100,14 +131,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
 
       const json: FunnelResponse = await res.json()
       const stages = json?.funnel?.stages ?? []
-
-      const leadStage = stages.find(s => s.stage === 'Lead')
-      const bookingStage = stages.find(s => s.stage === 'Booking')
-      const paymentStage = stages.find(s => s.stage === 'Payment')
-
-      setLeadCount(leadStage?.count ?? 0)
-      setBookingCount(bookingStage?.count ?? 0)
-      setPaymentCount(paymentStage?.count ?? 0)
+      setLeadCount(stages.find(s => s.stage === 'Lead')?.count ?? 0)
     } catch {
       // silently fail
     } finally {
@@ -120,60 +144,30 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
     fetchFunnelData()
   }, [fetchAdsStats, fetchFunnelData])
 
-  // Determine if there's any real data once loading completes
   useEffect(() => {
     if (!loading) {
-      setHasData(impressions > 0 || clicks > 0 || leadCount > 0 || bookingCount > 0 || paymentCount > 0)
+      setHasData(impressions > 0 || clicks > 0 || leadCount > 0)
     }
-  }, [loading, impressions, clicks, leadCount, bookingCount, paymentCount])
+  }, [loading, impressions, clicks, leadCount])
 
-  const stages = useMemo<FunnelStageDisplay[]>(() => {
-    const raw = [
-      { label: '노출', count: impressions },
-      { label: '클릭', count: clicks },
-      { label: '리드', count: leadCount },
-      { label: '예약', count: bookingCount },
-      { label: '결제', count: paymentCount },
+  // 전환 지표 계산
+  const metrics = useMemo(() => {
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0
+    const clickToLead = clicks > 0 ? (leadCount / clicks) * 100 : 0
+    const overallRate = impressions > 0 ? (leadCount / impressions) * 100 : 0
+    return { ctr, clickToLead, overallRate }
+  }, [impressions, clicks, leadCount])
+
+  const adReachMax = useMemo(() => Math.max(impressions, clicks, 1), [impressions, clicks])
+
+  // 최대 이탈 구간
+  const worstDropoff = useMemo(() => {
+    const stages = [
+      { from: '노출', to: '클릭', rate: impressions > 0 ? 100 - (clicks / impressions) * 100 : 0 },
+      { from: '클릭', to: '리드', rate: clicks > 0 ? 100 - (leadCount / clicks) * 100 : 0 },
     ]
-
-    return raw.map((stage, idx) => {
-      if (idx === 0) {
-        return { ...stage, conversionRateFromPrev: null, conversionLabel: null }
-      }
-      const prev = raw[idx - 1]
-      const labels = ['클릭률', '리드 전환율', '예약 전환율', '결제 전환율']
-      const rate = prev.count > 0 ? (stage.count / prev.count) * 100 : 0
-      return {
-        ...stage,
-        conversionRateFromPrev: rate,
-        conversionLabel: labels[idx - 1],
-      }
-    })
-  }, [impressions, clicks, leadCount, bookingCount, paymentCount])
-
-  const maxCount = useMemo(() => Math.max(...stages.map(s => s.count), 1), [stages])
-
-  // Find biggest dropoff (highest dropoff rate from previous stage)
-  const biggestDropoff = useMemo(() => {
-    let worstIdx = -1
-    let worstRate = -1
-
-    stages.forEach((stage, idx) => {
-      if (idx === 0) return
-      const dropoffRate = stage.conversionRateFromPrev !== null ? 100 - stage.conversionRateFromPrev : 0
-      if (dropoffRate > worstRate) {
-        worstRate = dropoffRate
-        worstIdx = idx
-      }
-    })
-
-    if (worstIdx < 1) return null
-    return {
-      from: stages[worstIdx - 1].label,
-      to: stages[worstIdx].label,
-      rate: worstRate,
-    }
-  }, [stages])
+    return stages.reduce((worst, s) => (s.rate > worst.rate ? s : worst), stages[0])
+  }, [impressions, clicks, leadCount])
 
   return (
     <Card variant="glass" className="p-5 md:p-6">
@@ -184,10 +178,10 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
 
       {loading ? (
         <div className="space-y-4">
-          {Array(5).fill(0).map((_, i) => (
+          {Array(3).fill(0).map((_, i) => (
             <div key={i} className="space-y-1.5">
               <Skeleton className="h-4 w-24 rounded" />
-              <Skeleton className="h-8 rounded-lg" style={{ width: `${90 - i * 12}%` }} />
+              <Skeleton className="h-8 rounded-lg" style={{ width: `${90 - i * 20}%` }} />
             </div>
           ))}
         </div>
@@ -198,51 +192,47 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
           description="광고 통계 및 리드 데이터가 유입되면 퍼널 분석을 확인할 수 있습니다."
         />
       ) : (
-        <div className="space-y-3">
-          {stages.map((stage, idx) => {
-            const barWidthPct = maxCount > 0 ? (stage.count / maxCount) * 100 : 0
-
-            return (
-              <div key={stage.label} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{stage.label}</span>
-                    {stage.conversionLabel && stage.conversionRateFromPrev !== null && (
-                      <span className="text-muted-foreground">
-                        {stage.conversionLabel}{' '}
-                        <span className={stage.conversionRateFromPrev < 10 ? 'text-rose-500 dark:text-rose-400 font-semibold' : 'text-foreground/70 font-medium'}>
-                          {stage.conversionRateFromPrev.toFixed(1)}%
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                  <span className="tabular-nums text-foreground/80 font-medium">
-                    {stage.count.toLocaleString()}
-                  </span>
-                </div>
-                <div className="h-8 bg-muted/40 dark:bg-white/[0.04] rounded-lg overflow-hidden">
-                  <div
-                    className="h-full rounded-lg transition-all duration-500"
-                    style={{
-                      width: `${barWidthPct}%`,
-                      background: FUNNEL_GRADIENT,
-                      opacity: 1 - idx * 0.12,
-                    }}
-                  />
-                </div>
-                {idx < stages.length - 1 && (
-                  <div className="flex justify-start pl-1 pt-0.5">
-                    <span className="text-[10px] text-muted-foreground/50">▼</span>
-                  </div>
-                )}
+        <div className="space-y-4">
+          {/* Zone 1: 광고 도달 */}
+          <div>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-2">광고 도달</p>
+            <div className="space-y-2">
+              <FunnelBar label="노출" count={impressions} maxCount={adReachMax} opacityStep={0} />
+              <div className="flex justify-start pl-1">
+                <span className="text-[10px] text-muted-foreground/50">▼ CTR {metrics.ctr.toFixed(1)}%</span>
               </div>
-            )
-          })}
+              <FunnelBar label="클릭" count={clicks} maxCount={adReachMax} opacityStep={1} />
+            </div>
+          </div>
 
-          {biggestDropoff && (
-            <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300">
-              💡 <span className="font-medium">{biggestDropoff.from}→{biggestDropoff.to}</span> 구간 이탈률이{' '}
-              <span className="font-semibold">{biggestDropoff.rate.toFixed(1)}%</span>로 가장 높습니다
+          {/* Zone 구분선 */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-border/50 dark:border-white/[0.06]" />
+            <span className="text-[10px] text-muted-foreground/60">클릭→리드 {metrics.clickToLead.toFixed(1)}%</span>
+            <div className="flex-1 border-t border-border/50 dark:border-white/[0.06]" />
+          </div>
+
+          {/* Zone 2: 리드 전환 */}
+          <div>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-2">리드 전환</p>
+            <FunnelBar label="리드" count={leadCount} maxCount={leadCount} opacityStep={0} />
+          </div>
+
+          {/* 전환 지표 미니카드 */}
+          <div className="flex gap-2 pt-1">
+            <MetricCard label="CTR" value={`${metrics.ctr.toFixed(2)}%`} warn={metrics.ctr < 1} />
+            <MetricCard label="클릭→리드" value={`${metrics.clickToLead.toFixed(1)}%`} warn={metrics.clickToLead < 1} />
+            <MetricCard label="노출→리드" value={`${metrics.overallRate.toFixed(3)}%`} />
+          </div>
+
+          {/* 인사이트 */}
+          {worstDropoff.rate > 0 && (
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
+              <Lightbulb size={14} className="text-amber-500 shrink-0 mt-0.5" />
+              <span>
+                <span className="font-medium">{worstDropoff.from}→{worstDropoff.to}</span> 구간 이탈률이{' '}
+                <span className="font-semibold">{worstDropoff.rate.toFixed(1)}%</span>로 가장 높습니다
+              </span>
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ import { useClinic } from '@/components/ClinicContext'
 import { Button } from '@/components/ui/button'
 import CampaignRankingTable from '@/components/ads/campaign-ranking-table'
 import CreativePerformance from '@/components/ads/CreativePerformance'
+import LandingPageAnalysis from '@/components/ads/landing-page-analysis'
 
 interface Props {
   startDate: string
@@ -36,7 +37,6 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
     fetchPlatforms()
   }, [fetchPlatforms])
 
-  // Reset filter if the current filter is no longer in the platform list
   useEffect(() => {
     if (platformFilter !== 'all' && !platforms.includes(platformFilter)) {
       setPlatformFilter('all')
@@ -63,6 +63,8 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
         platformFilter={platformFilter === 'all' ? undefined : platformFilter}
       />
       <CreativePerformance startDate={startDate} endDate={endDate} />
+      <div className="mt-6" />
+      <LandingPageAnalysis startDate={startDate} endDate={endDate} mode="delivery" />
     </>
   )
 }

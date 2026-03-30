@@ -602,7 +602,36 @@ import LandingPagePerformance from '@/components/ads/landing-page-performance'
 <LandingPagePerformance days="30" />
 ```
 
-LP별 리드·결제 고객·전환율·매출. 활성/비활성 상태 표시.
+LP별 리드 성과. `mode` prop으로 delivery(광고 지표만)/full(전환 포함) 전환.
+LP 1개일 때 퍼포먼스 카드로 자동 전환.
+
+```tsx
+import LandingPageAnalysis from '@/components/ads/landing-page-analysis'
+
+<LandingPageAnalysis startDate="2026-03-01" endDate="2026-03-30" mode="delivery" />
+```
+
+---
+
+## 매출 귀속 컴포넌트
+
+`/ads` 매출 귀속 탭의 전환·매출 분석 UI입니다.
+
+### ConversionFunnel
+
+리드→예약→결제 3단계 전환 퍼널. `/api/dashboard/funnel` API 사용.
+
+### ChannelRevenueChart
+
+채널별 매출 비중 도넛 차트. `byChannel` prop으로 데이터 전달 (AttributionView에서 fetch한 데이터 재사용).
+
+### RoasTrendChart
+
+채널별 ROAS 일별 추이 라인차트. `/api/attribution/roas-trend` API 사용.
+
+### LpConversionTable
+
+랜딩페이지별 전환 성과 테이블 (예약고객/예약전환율/결제고객/전환율/매출). `/api/ads/landing-page-analysis` API 사용.
 
 ---
 

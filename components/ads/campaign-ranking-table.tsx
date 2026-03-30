@@ -62,9 +62,9 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
 
 function StatusDot({ cpc, avgCpc }: { cpc: number; avgCpc: number }) {
   if (avgCpc === 0) return null
-  if (cpc < avgCpc * 0.8) return <span className="text-emerald-500" title="평균 대비 우수">🟢</span>
-  if (cpc > avgCpc * 1.2) return <span className="text-rose-500" title="평균 대비 부진">🔴</span>
-  return <span className="text-amber-400" title="평균 수준">🟡</span>
+  if (cpc < avgCpc * 0.8) return <span className="w-2 h-2 rounded-full inline-block bg-emerald-500" title="평균 대비 우수" />
+  if (cpc > avgCpc * 1.2) return <span className="w-2 h-2 rounded-full inline-block bg-rose-500" title="평균 대비 부진" />
+  return <span className="w-2 h-2 rounded-full inline-block bg-amber-400" title="평균 수준" />
 }
 
 export default function CampaignRankingTable({ startDate, endDate, platformFilter }: Props) {

@@ -65,15 +65,9 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
   const totalSpend = data?.totalSpend ?? 0
   const totalLeads = data?.totalLeads ?? 0
   const cpl = data?.cpl ?? 0
-  const roas = data?.roas ?? 0
   const cpc = data?.cpc ?? 0
   const ctr = data?.ctr ?? 0
-  const cac = data?.cac ?? 0
-  const payingCustomerCount = data?.payingCustomerCount ?? 0
   const comparison = data?.comparison
-
-  // 리드→결제 전환율: client-side 계산
-  const conversionRate = totalLeads > 0 ? (payingCustomerCount / totalLeads) * 100 : 0
 
   // 일반 지표: 양수 변화 = isPositive true
   const normalTrend = (val: number | undefined): { value: number; isPositive: boolean } | undefined => {
@@ -81,14 +75,14 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
     return { value: Math.abs(val), isPositive: val >= 0 }
   }
 
-  // 역전 지표 (CPL, CPC, CAC): 음수 변화(감소) = 좋은 것 → isPositive true
+  // 역전 지표 (CPL, CPC): 음수 변화(감소) = 좋은 것 → isPositive true
   const invertedTrend = (val: number | undefined): { value: number; isPositive: boolean } | undefined => {
     if (val === undefined || val === null) return undefined
     return { value: Math.abs(val), isPositive: val <= 0 }
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
       <StatsCard
         label="총 광고비"
         value={loading ? '' : `₩${totalSpend.toLocaleString()}`}
@@ -108,12 +102,6 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
         trend={invertedTrend(comparison?.cpl)}
       />
       <StatsCard
-        label="ROAS"
-        value={loading ? '' : `${(roas * 100).toFixed(0)}%`}
-        loading={loading}
-        trend={normalTrend(comparison?.roas)}
-      />
-      <StatsCard
         label="CPC"
         value={loading ? '' : `₩${cpc.toLocaleString()}`}
         loading={loading}
@@ -124,17 +112,6 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
         value={loading ? '' : `${ctr.toFixed(2)}%`}
         loading={loading}
         trend={normalTrend(comparison?.ctr)}
-      />
-      <StatsCard
-        label="리드→결제 전환율"
-        value={loading ? '' : `${conversionRate.toFixed(1)}%`}
-        loading={loading}
-      />
-      <StatsCard
-        label="CAC"
-        value={loading ? '' : `₩${cac.toLocaleString()}`}
-        loading={loading}
-        trend={invertedTrend(comparison?.cac)}
       />
     </div>
   )

@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { BarChart2 } from 'lucide-react'
+import { BarChart2, Lightbulb } from 'lucide-react'
 
 /** ISO 날짜 → "M/D" 형식 (KST) */
 function fmtShort(iso: string) {
@@ -109,18 +109,17 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                 <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                   <TableHead className={thClass}>매체</TableHead>
                   <TableHead className={`${thClass} text-right`}>광고비</TableHead>
+                  <TableHead className={`${thClass} text-right`}>노출</TableHead>
+                  <TableHead className={`${thClass} text-right`}>클릭</TableHead>
                   <TableHead className={`${thClass} text-right`}>리드</TableHead>
                   <TableHead className={`${thClass} text-right`}>CPC</TableHead>
                   <TableHead className={`${thClass} text-right`}>CTR</TableHead>
                   <TableHead className={`${thClass} text-right`}>CPL</TableHead>
-                  <TableHead className={`${thClass} text-right`}>ROAS</TableHead>
-                  <TableHead className={`${thClass} text-right`}>전환율</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((row, idx) => {
                   const isLowestCpl = minCpl !== null && row.cpl === minCpl && row.leads > 0
-                  const roasGood = row.roas >= 1
 
                   return (
                     <TableRow
@@ -136,6 +135,12 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                         ₩{row.spend.toLocaleString()}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                        {row.impressions > 0 ? row.impressions.toLocaleString() : '-'}
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                        {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                         {row.leads.toLocaleString()}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
@@ -149,14 +154,6 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                           {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
-                        <span className={roasGood ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                          {row.roas > 0 ? `${(row.roas * 100).toFixed(0)}%` : '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.conversionRate > 0 ? `${row.conversionRate.toFixed(1)}%` : '-'}
-                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -165,13 +162,15 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
           </div>
 
           {bestCplChannel && (
-            <p className="mt-4 text-xs text-muted-foreground">
-              💡 <span className="font-medium text-foreground/80">{bestCplChannel.channel}</span>이(가) CPL{' '}
-              <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                ₩{bestCplChannel.cpl.toLocaleString()}
+            <p className="mt-4 text-xs text-muted-foreground flex items-center gap-1.5">
+              <Lightbulb size={14} className="text-amber-500 shrink-0" />
+              <span>
+                <span className="font-medium text-foreground/80">{bestCplChannel.channel}</span>이(가) CPL{' '}
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                  ₩{bestCplChannel.cpl.toLocaleString()}
+                </span>
+                로 가장 효율적입니다.
               </span>
-              로 가장 효율적입니다. ROAS는{' '}
-              <span className="font-medium">{(bestCplChannel.roas * 100).toFixed(0)}%</span>입니다.
             </p>
           )}
         </>

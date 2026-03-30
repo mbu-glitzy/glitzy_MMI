@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useClinic } from '@/components/ClinicContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { EmptyState } from '@/components/common'
+import { EmptyState, StatsCard } from '@/components/common'
 import {
   Table,
   TableBody,
@@ -62,6 +62,8 @@ interface AnalysisData {
 interface Props {
   startDate: string
   endDate: string
+  /** delivery: 광고 지표만 (캠페인 분석 탭), full: 전환 포함 (매출 귀속 탭) */
+  mode?: 'delivery' | 'full'
 }
 
 function fmtShort(iso: string) {
@@ -83,7 +85,7 @@ function BarTooltip({ active, payload }: ChartTooltipProps) {
   )
 }
 
-export default function LandingPageAnalysis({ startDate, endDate }: Props) {
+export default function LandingPageAnalysis({ startDate, endDate, mode = 'delivery' }: Props) {
   const { selectedClinicId } = useClinic()
   const [data, setData] = useState<AnalysisData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -115,10 +117,8 @@ export default function LandingPageAnalysis({ startDate, endDate }: Props) {
   const pages = useMemo(() => data?.pages || [], [data])
   const trend = useMemo(() => data?.trend || [], [data])
   const channelBreakdown = useMemo(() => data?.channelBreakdown || [], [data])
-
   const trendLabels = useMemo(() => data?.trendLabels || [], [data])
 
-  // 바차트 데이터: 상위 5개 + 기타 (DayOfWeekAnalysis와 높이 맞춤)
   const barData = useMemo(() => {
     if (pages.length === 0) return []
     const top5 = pages.slice(0, 5)
@@ -138,8 +138,8 @@ export default function LandingPageAnalysis({ startDate, endDate }: Props) {
     [barData]
   )
 
-  // UTM 데이터 존재 여부
   const hasChannelData = channelBreakdown.length > 0
+  const showFull = mode === 'full'
 
   const thClass = 'text-[11px] text-muted-foreground font-medium whitespace-nowrap'
 
@@ -164,9 +164,54 @@ export default function LandingPageAnalysis({ startDate, endDate }: Props) {
     )
   }
 
+  // LP 1개일 때 퍼포먼스 카드
+  if (pages.length === 1 && mode === 'delivery') {
+    const lp = pages[0]
+    const channelCount = channelBreakdown[0]?.channels?.length ?? 0
+
+    return (
+      <>
+        <Card variant="glass" className="p-5">
+          <div className="flex items-center justify-between mb-4 gap-4">
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold text-foreground shrink-0">랜딩페이지 성과</h2>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                lp.isActive
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  : 'bg-muted text-muted-foreground'
+              }`}>
+                {lp.isActive ? '활성' : '비활성'}
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
+          </div>
+          <p className="text-sm text-foreground/80 mb-4 truncate" title={lp.name}>{lp.name}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <StatsCard label="리드" value={`${lp.leads}건`} />
+            <StatsCard label="유입 채널" value={channelCount > 0 ? `${channelCount}개` : '-'} />
+          </div>
+        </Card>
+
+        {/* 추이 차트 */}
+        {trend.length > 0 && trendLabels.length > 0 && (
+          <div className="lg:col-span-2">
+            <LandingPageTrendChart trend={trend} pageNames={trendLabels} />
+          </div>
+        )}
+
+        {/* 채널 분석 */}
+        {hasChannelData && (
+          <div className="lg:col-span-2">
+            <LandingPageChannelBreakdown channelBreakdown={channelBreakdown} />
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <>
-      {/* 바차트: 리드 비교 (DayOfWeekAnalysis 옆 grid에 배치됨) */}
+      {/* 바차트: 리드 비교 */}
       <Card variant="glass" className="p-5">
         <div className="flex items-center justify-between mb-4 gap-4">
           <h2 className="font-semibold text-foreground shrink-0">랜딩페이지별 리드</h2>
@@ -227,7 +272,7 @@ export default function LandingPageAnalysis({ startDate, endDate }: Props) {
         </div>
       )}
 
-      {/* 강화된 테이블 (전체 폭) */}
+      {/* 상세 테이블 (전체 폭) */}
       <Card variant="glass" className="p-5 lg:col-span-2">
         <div className="flex items-center justify-between mb-4 gap-4">
           <h2 className="font-semibold text-foreground shrink-0">랜딩페이지 성과 상세</h2>
@@ -235,17 +280,21 @@ export default function LandingPageAnalysis({ startDate, endDate }: Props) {
         </div>
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[640px]">
+          <Table className={showFull ? 'min-w-[640px]' : 'min-w-[400px]'}>
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                 <TableHead className={thClass}>페이지명</TableHead>
                 <TableHead className={`${thClass} text-center`}>상태</TableHead>
                 <TableHead className={`${thClass} text-right`}>리드</TableHead>
-                <TableHead className={`${thClass} text-right`}>예약고객</TableHead>
-                <TableHead className={`${thClass} text-right`}>예약전환율</TableHead>
-                <TableHead className={`${thClass} text-right`}>결제고객</TableHead>
-                <TableHead className={`${thClass} text-right`}>전환율</TableHead>
-                <TableHead className={`${thClass} text-right`}>매출</TableHead>
+                {showFull && (
+                  <>
+                    <TableHead className={`${thClass} text-right`}>예약고객</TableHead>
+                    <TableHead className={`${thClass} text-right`}>예약전환율</TableHead>
+                    <TableHead className={`${thClass} text-right`}>결제고객</TableHead>
+                    <TableHead className={`${thClass} text-right`}>전환율</TableHead>
+                    <TableHead className={`${thClass} text-right`}>매출</TableHead>
+                  </>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -262,7 +311,7 @@ export default function LandingPageAnalysis({ startDate, endDate }: Props) {
                     </span>
                   </TableCell>
                   <TableCell className="py-2.5 text-center">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                       row.isActive
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         : 'bg-muted text-muted-foreground'
@@ -273,25 +322,29 @@ export default function LandingPageAnalysis({ startDate, endDate }: Props) {
                   <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                     {row.leads.toLocaleString()}
                   </TableCell>
-                  <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                    {row.bookings > 0 ? row.bookings.toLocaleString() : '-'}
-                  </TableCell>
-                  <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
-                    <span className={row.leadToBookingRate >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>
-                      {row.leadToBookingRate > 0 ? `${row.leadToBookingRate.toFixed(1)}%` : '-'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                    {row.customers.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
-                    <span className={row.conversionRate >= 5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>
-                      {row.conversionRate > 0 ? `${row.conversionRate.toFixed(1)}%` : '-'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                    {row.revenue > 0 ? `₩${row.revenue.toLocaleString()}` : '-'}
-                  </TableCell>
+                  {showFull && (
+                    <>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                        {row.bookings > 0 ? row.bookings.toLocaleString() : '-'}
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
+                        <span className={row.leadToBookingRate >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>
+                          {row.leadToBookingRate > 0 ? `${row.leadToBookingRate.toFixed(1)}%` : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                        {row.customers.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
+                        <span className={row.conversionRate >= 5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>
+                          {row.conversionRate > 0 ? `${row.conversionRate.toFixed(1)}%` : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                        {row.revenue > 0 ? `₩${row.revenue.toLocaleString()}` : '-'}
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

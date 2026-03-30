@@ -48,7 +48,7 @@ interface CreativePerformanceResponse {
   creatives: CreativeData[]
 }
 
-type SortField = 'spend' | 'impressions' | 'clicks' | 'cpc' | 'ctr' | 'leads' | 'cpl' | 'customers' | 'conversionRate' | 'revenue'
+type SortField = 'spend' | 'impressions' | 'clicks' | 'cpc' | 'ctr' | 'leads' | 'cpl'
 
 interface Props {
   startDate: string
@@ -142,7 +142,7 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
         />
       ) : (
         <div className="overflow-x-auto">
-          <Table className="min-w-[1100px]">
+          <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                 <TableHead className={`${thBase} w-14 px-2`}>소재</TableHead>
@@ -168,15 +168,6 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
                 </TableHead>
                 <TableHead className={`${thSort} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'cpl' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('cpl')} onKeyDown={(e) => e.key === 'Enter' && handleSort('cpl')}>
                   CPL <SortIcon field="cpl" current={sortField} dir={sortDir} />
-                </TableHead>
-                <TableHead className={`${thSort} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'customers' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('customers')} onKeyDown={(e) => e.key === 'Enter' && handleSort('customers')}>
-                  결제 <SortIcon field="customers" current={sortField} dir={sortDir} />
-                </TableHead>
-                <TableHead className={`${thSort} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'conversionRate' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('conversionRate')} onKeyDown={(e) => e.key === 'Enter' && handleSort('conversionRate')}>
-                  전환율 <SortIcon field="conversionRate" current={sortField} dir={sortDir} />
-                </TableHead>
-                <TableHead className={`${thSort} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'revenue' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('revenue')} onKeyDown={(e) => e.key === 'Enter' && handleSort('revenue')}>
-                  매출 <SortIcon field="revenue" current={sortField} dir={sortDir} />
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -246,17 +237,6 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
                   </TableCell>
                   <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
                     {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
-                    {row.customers > 0 ? row.customers : '-'}
-                  </TableCell>
-                  <TableCell className="text-right py-3">
-                    <span className={`font-semibold tabular-nums text-sm ${row.conversionRate >= 10 ? 'text-emerald-600 dark:text-emerald-400' : row.conversionRate > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      {row.conversionRate > 0 ? `${row.conversionRate.toFixed(1)}%` : '-'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-foreground tabular-nums py-3 text-sm">
-                    {row.revenue > 0 ? `₩${row.revenue.toLocaleString()}` : '-'}
                   </TableCell>
                 </TableRow>
               ))}

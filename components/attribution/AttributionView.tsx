@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { DollarSign, TrendingUp, Users, ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useClinic } from '@/components/ClinicContext'
 import { Card } from '@/components/ui/card'
@@ -23,7 +23,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import CustomerJourneySheet from './CustomerJourneySheet'
-import { getKstDayStartISO } from '@/lib/date'
+import ConversionFunnel from './conversion-funnel'
+import ChannelRevenueChart from './channel-revenue-chart'
+import RoasTrendChart from './roas-trend-chart'
+import LpConversionTable from './lp-conversion-table'
+import { getKstDayStartISO, getKstDateString } from '@/lib/date'
 
 const fmtKrw = (v: number) => v >= 10000 ? `₩${(v / 10000).toFixed(0)}만` : `₩${v.toLocaleString()}`
 
@@ -64,6 +68,10 @@ export default function AttributionView() {
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null)
 
   const [customersLoading, setCustomersLoading] = useState(true)
+
+  // 서브 컴포넌트에 전달할 날짜 범위
+  const attrStartDate = getKstDateString(new Date(Date.now() - Number(days) * 86400000))
+  const attrEndDate = getKstDateString()
 
   // summary는 기간/병원 변경 시에만 재요청
   const fetchSummary = useCallback(async () => {
@@ -165,27 +173,44 @@ export default function AttributionView() {
         <p className="text-xs text-muted-foreground">{MODEL_DESCRIPTIONS[model]}</p>
       </div>
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card variant="glass" className="p-4">
-          <p className="text-[11px] text-muted-foreground font-medium mb-2">총 귀속 매출</p>
-          {loading ? <Skeleton className="h-7" /> : (
-            <p className="text-xl font-bold text-foreground tabular-nums">{fmtKrw(totals.totalRevenue)}</p>
-          )}
-        </Card>
-        <Card variant="glass" className="p-4">
-          <p className="text-[11px] text-muted-foreground font-medium mb-2">총 광고비</p>
-          {loading ? <Skeleton className="h-7" /> : (
-            <p className="text-xl font-bold text-foreground tabular-nums">{fmtKrw(totals.totalSpend)}</p>
-          )}
-        </Card>
-        <Card variant="glass" className="p-4">
-          <p className="text-[11px] text-muted-foreground font-medium mb-2">결제 고객</p>
-          {loading ? <Skeleton className="h-7" /> : (
-            <p className="text-xl font-bold text-foreground tabular-nums">{totals.totalCustomers}명</p>
-          )}
-        </Card>
-      </div>
+      {/* 요약 KPI 카드 6개 */}
+      {(() => {
+        const totalLeads = byChannel.reduce((sum, c) => sum + c.leads, 0)
+        const roas = totals.totalSpend > 0 ? ((totals.totalRevenue / totals.totalSpend) * 100).toFixed(0) : '0'
+        const convRate = totalLeads > 0 ? ((totals.totalCustomers / totalLeads) * 100).toFixed(1) : '0'
+        const cac = totals.totalCustomers > 0 ? Math.round(totals.totalSpend / totals.totalCustomers) : 0
+        const kpiItems = [
+          { label: '총 귀속 매출', value: fmtKrw(totals.totalRevenue) },
+          { label: '총 광고비', value: fmtKrw(totals.totalSpend) },
+          { label: 'ROAS', value: `${roas}%` },
+          { label: '결제 고객', value: `${totals.totalCustomers}명` },
+          { label: '리드→결제 전환율', value: `${convRate}%` },
+          { label: 'CAC', value: fmtKrw(cac) },
+        ]
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {kpiItems.map(item => (
+              <Card key={item.label} variant="glass" className="p-4">
+                <p className="text-xs text-muted-foreground font-medium mb-2">{item.label}</p>
+                {loading ? <Skeleton className="h-7" /> : (
+                  <p className="text-lg font-bold text-foreground tabular-nums">{item.value}</p>
+                )}
+              </Card>
+            ))}
+          </div>
+        )
+      })()}
+
+      {/* 전환 퍼널 + 채널별 매출 비중 */}
+      {!loading && (
+        <div className="grid lg:grid-cols-2 gap-3">
+          <ConversionFunnel startDate={attrStartDate} endDate={attrEndDate} />
+          <ChannelRevenueChart byChannel={byChannel} />
+        </div>
+      )}
+
+      {/* ROAS 추이 */}
+      <RoasTrendChart startDate={attrStartDate} endDate={attrEndDate} />
 
       {/* 채널별 귀속표 */}
       <Card variant="glass" className="p-5">
@@ -288,6 +313,9 @@ export default function AttributionView() {
           <p className="text-center text-muted-foreground py-6 text-sm">캠페인 귀속 데이터가 없습니다.</p>
         )}
       </Card>
+
+      {/* LP 전환 성과 */}
+      <LpConversionTable startDate={attrStartDate} endDate={attrEndDate} />
 
       {/* 결제 고객 여정 */}
       <Card variant="glass" className="p-5">

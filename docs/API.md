@@ -1140,6 +1140,38 @@ glitzy-web 외부 API 프록시. 읽기 전용.
 }
 ```
 
+---
+
+## 매출 귀속 — ROAS 추이
+
+### `GET /api/attribution/roas-trend`
+
+채널별 일별 ROAS 추이를 조회합니다. 퍼스트터치 기준으로 매출을 채널에 귀속합니다.
+
+**파라미터:**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|:----:|------|
+| `startDate` | string | X | YYYY-MM-DD (기본: 30일 전) |
+| `endDate` | string | X | YYYY-MM-DD (기본: 오늘) |
+| `clinic_id` | number | X | 병원 필터 |
+
+**응답:**
+
+```json
+[
+  {
+    "date": "2026-03-15",
+    "channels": {
+      "Meta": { "spend": 50000, "revenue": 150000, "roas": 3.0 },
+      "Google": { "spend": 30000, "revenue": 60000, "roas": 2.0 }
+    }
+  }
+]
+```
+
+---
+
 ### HTTP 상태 코드
 | 코드 | 설명 |
 |------|------|
