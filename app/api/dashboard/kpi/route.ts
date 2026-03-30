@@ -7,6 +7,7 @@ import { createLogger } from '@/lib/logger'
 const logger = createLogger('DashboardKpi')
 
 // 메트릭 계산 함수 추출
+// start: KST 시작일 00:00:00 (ISO 또는 +09:00), end: KST 종료일 다음날 00:00:00 (exclusive)
 async function fetchMetrics(
   supabase: SupabaseClient,
   clinicId: number | null,
@@ -16,19 +17,21 @@ async function fetchMetrics(
 ) {
   const ctx = { clinicId, assignedClinicIds }
 
-  // stat_date(YYYY-MM-DD)용 KST 날짜 추출 (UTC ISO 문자열도 정확히 변환)
+  // stat_date(YYYY-MM-DD, DATE 컬럼)용 KST 날짜 추출
   const statStart = getKstDateString(new Date(start))
-  const statEnd = getKstDateString(new Date(end))
+  // end는 다음날 자정이므로 하루 빼서 종료일 추출
+  const statEnd = getKstDateString(new Date(new Date(end).getTime() - 86400000))
 
+  // 범위 패턴: [start, end) — fetchTodaySummary와 동일한 gte/lt 패턴
   const [adStatsRes, leadsRes, paymentsRes, bookingsRes, consultRes, contentBudgetRes] = await Promise.all([
     applyClinicFilter(supabase.from('ad_campaign_stats').select('spend_amount, clicks, impressions').gte('stat_date', statStart).lte('stat_date', statEnd), ctx)!,
-    applyClinicFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end), ctx)!,
+    applyClinicFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end), ctx)!,
     applyClinicFilter(supabase.from('payments').select('customer_id, payment_amount').gte('payment_date', statStart).lte('payment_date', statEnd), ctx)!,
     applyClinicFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })
-      .neq('status', 'cancelled').gte('created_at', start).lte('created_at', end), ctx)!,
+      .neq('status', 'cancelled').gte('created_at', start).lt('created_at', end), ctx)!,
     applyClinicFilter(supabase.from('consultations').select('*', { count: 'exact', head: true })
-      .in('status', ['예약완료', '방문완료']).gte('created_at', start).lte('created_at', end), ctx)!,
-    applyClinicFilter(supabase.from('content_posts').select('budget').gte('created_at', start).lte('created_at', end), ctx)!,
+      .in('status', ['예약완료', '방문완료']).gte('created_at', start).lt('created_at', end), ctx)!,
+    applyClinicFilter(supabase.from('content_posts').select('budget').gte('created_at', start).lt('created_at', end), ctx)!,
   ])
 
   const totalSpend = adStatsRes.data?.reduce((s, r) => s + Number(r.spend_amount), 0) || 0
@@ -131,11 +134,14 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const url = new URL(req.url)
     const startParam = url.searchParams.get('startDate') || getKstDateString(new Date(Date.now() - 30 * 86400000))
     const endParam = url.searchParams.get('endDate') || getKstDateString()
-    // ISO/YYYY-MM-DD → KST 기준 범위로 변환 (getKstDateString으로 UTC→KST 변환)
+    // ISO/YYYY-MM-DD → KST 기준 [start, end) 범위로 변환
+    // end는 종료일 다음날 자정 (exclusive) — fetchTodaySummary와 동일 패턴
     const startKst = getKstDateString(new Date(startParam))
     const endKst = getKstDateString(new Date(endParam))
     const start = `${startKst}T00:00:00+09:00`
-    const end = `${endKst}T23:59:59+09:00`
+    const endDate = new Date(endKst + 'T00:00:00+09:00')
+    endDate.setDate(endDate.getDate() + 1)
+    const end = endDate.toISOString()
     const compare = url.searchParams.get('compare') === 'true'
 
     // 기간 KPI + 오늘 요약 병렬 조회
