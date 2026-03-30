@@ -50,6 +50,8 @@ interface Props {
   startDate: string
   endDate: string
   platformFilter?: string
+  selectedCampaignId?: string | null
+  onCampaignSelect?: (campaignId: string | null) => void
 }
 
 const PAGE_SIZE = 10
@@ -67,7 +69,7 @@ function StatusDot({ cpc, avgCpc }: { cpc: number; avgCpc: number }) {
   return <span className="w-2 h-2 rounded-full inline-block bg-amber-400" title="평균 수준" />
 }
 
-export default function CampaignRankingTable({ startDate, endDate, platformFilter }: Props) {
+export default function CampaignRankingTable({ startDate, endDate, platformFilter, selectedCampaignId, onCampaignSelect }: Props) {
   const { selectedClinicId } = useClinic()
   const [rawData, setRawData] = useState<AdStatRecord[]>([])
   const [campaignLeadCounts, setCampaignLeadCounts] = useState<Record<string, number>>({})
@@ -269,7 +271,12 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                   displayed.map((row, idx) => (
                     <TableRow
                       key={row.campaign_name}
-                      className={`border-b border-border/50 dark:border-white/[0.03] ${idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : ''}`}
+                      className={`border-b border-border/50 dark:border-white/[0.03] cursor-pointer transition-colors ${
+                        selectedCampaignId && selectedCampaignId === row.campaign_id
+                          ? 'bg-brand-600/10'
+                          : idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : 'hover:bg-muted/50 dark:hover:bg-white/[0.02]'
+                      }`}
+                      onClick={() => onCampaignSelect?.(selectedCampaignId === row.campaign_id ? null : (row.campaign_id || null))}
                     >
                       <TableCell className="py-2.5 max-w-[200px]">
                         <div className="flex items-center gap-1.5">

@@ -241,6 +241,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
       cpc: number; ctr: number; cpl: number
       leads: number; customers: number; revenue: number; conversionRate: number
       registered: boolean; file_name: string | null; file_type: string | null
+      campaign_ids: string[]
     }[] = []
 
     for (const utmContent of allUtmContents) {
@@ -255,6 +256,22 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
       const conversionRate = leadCount > 0 ? Math.round((customerCount / leadCount) * 1000) / 10 : 0
 
       const { spend, clicks, impressions } = adMetrics
+
+      // campaign_name 역매핑: contentCampaignMap의 campaign_id → ad_campaign_stats의 campaign_name
+      const campIds = contentCampaignMap.get(utmContent)
+      const campaignNames: string[] = []
+      if (campIds) {
+        for (const campId of campIds.keys()) {
+          // adStatsData에서 해당 campaign_id의 campaign_name 찾기 (ad_campaign_stats와 동일)
+          const matchedAd = adStatsData.find(a => a.campaign_id === campId)
+          if (matchedAd) {
+            // ad_stats에는 campaign_name이 없으므로, campaign_id만 사용
+            campaignNames.push(campId)
+          } else {
+            campaignNames.push(campId)
+          }
+        }
+      }
 
       allCreatives.push({
         utm_content: utmContent,
@@ -273,11 +290,12 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
         registered: !!creative,
         file_name: creative?.file_name || null,
         file_type: creative?.file_type || null,
+        campaign_ids: campaignNames,
       })
     }
 
     // utm_content 없는 ad_stats (TikTok/Google 등) → ad_id 기준으로 별도 표시
-    const adIdStats = new Map<string, { adName: string; platform: string; spend: number; clicks: number; impressions: number }>()
+    const adIdStats = new Map<string, { adName: string; platform: string; spend: number; clicks: number; impressions: number; campaignId: string | null }>()
     for (const row of adStatsData) {
       if (row.utm_content) continue // utm_content 있는 건 위에서 이미 처리
       if (!row.ad_id) continue
@@ -293,6 +311,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
           spend: Number(row.spend_amount) || 0,
           clicks: row.clicks || 0,
           impressions: row.impressions || 0,
+          campaignId: row.campaign_id || null,
         })
       }
     }
@@ -316,6 +335,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
         registered: false,
         file_name: null,
         file_type: null,
+        campaign_ids: stats.campaignId ? [stats.campaignId] : [],
       })
     }
 

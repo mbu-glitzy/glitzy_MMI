@@ -17,6 +17,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
   const { selectedClinicId } = useClinic()
   const [platformFilter, setPlatformFilter] = useState('all')
   const [platforms, setPlatforms] = useState<string[]>(['all'])
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
 
   const fetchPlatforms = useCallback(async () => {
     try {
@@ -43,6 +44,11 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
     }
   }, [platforms, platformFilter])
 
+  // 매체 필터 변경 시 캠페인 선택 초기화
+  useEffect(() => {
+    setSelectedCampaignId(null)
+  }, [platformFilter])
+
   return (
     <>
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -61,8 +67,14 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
         startDate={startDate}
         endDate={endDate}
         platformFilter={platformFilter === 'all' ? undefined : platformFilter}
+        selectedCampaignId={selectedCampaignId}
+        onCampaignSelect={setSelectedCampaignId}
       />
-      <CreativePerformance startDate={startDate} endDate={endDate} />
+      <CreativePerformance
+        startDate={startDate}
+        endDate={endDate}
+        campaignFilter={selectedCampaignId}
+      />
       <div className="mt-6" />
       <LandingPageAnalysis startDate={startDate} endDate={endDate} mode="delivery" />
     </>

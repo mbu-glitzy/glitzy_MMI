@@ -42,6 +42,7 @@ interface CreativeData {
   registered: boolean
   file_name: string | null
   file_type: string | null
+  campaign_ids?: string[]
 }
 
 interface CreativePerformanceResponse {
@@ -50,9 +51,12 @@ interface CreativePerformanceResponse {
 
 type SortField = 'spend' | 'impressions' | 'clicks' | 'cpc' | 'ctr' | 'leads' | 'cpl'
 
+const PAGE_SIZE = 10
+
 interface Props {
   startDate: string
   endDate: string
+  campaignFilter?: string | null
 }
 
 function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: 'asc' | 'desc' }) {
@@ -66,7 +70,7 @@ function fmtShort(iso: string) {
   return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
 }
 
-export default function CreativePerformance({ startDate, endDate }: Props) {
+export default function CreativePerformance({ startDate, endDate, campaignFilter }: Props) {
   const { selectedClinicId } = useClinic()
   const [data, setData] = useState<CreativePerformanceResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -75,6 +79,7 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
   const [viewerType, setViewerType] = useState<string | null>(null)
   const [sortField, setSortField] = useState<SortField>('leads')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [expanded, setExpanded] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -100,15 +105,27 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
 
   const creatives = useMemo(() => data?.creatives || [], [data])
 
+  // 캠페인 필터 적용
+  const filtered = useMemo(() => {
+    if (!campaignFilter) return creatives
+    return creatives.filter(c => c.campaign_ids?.includes(campaignFilter))
+  }, [creatives, campaignFilter])
+
+  // 캠페인 필터 변경 시 페이지네이션 리셋
+  useEffect(() => { setExpanded(false) }, [campaignFilter])
+
   const sorted = useMemo(() => {
-    const copy = [...creatives]
+    const copy = [...filtered]
     copy.sort((a, b) => {
       const aVal = a[sortField] as number
       const bVal = b[sortField] as number
       return sortDir === 'asc' ? aVal - bVal : bVal - aVal
     })
     return copy
-  }, [creatives, sortField, sortDir])
+  }, [filtered, sortField, sortDir])
+
+  const displayed = expanded ? sorted : sorted.slice(0, PAGE_SIZE)
+  const hasMore = sorted.length > PAGE_SIZE
 
   const handleSort = (field: SortField) => {
     if (field === sortField) {
@@ -128,8 +145,10 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
       <div className="flex items-center justify-between mb-5 gap-4">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-foreground shrink-0">소재별 성과</h2>
-          {creatives.length > 0 && (
-            <span className="text-xs text-muted-foreground">{creatives.length}건</span>
+          {filtered.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {campaignFilter ? `${filtered.length}건 (필터)` : `${filtered.length}건`}
+            </span>
           )}
         </div>
         <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
@@ -139,16 +158,17 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
         <div className="space-y-3">
           {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
         </div>
-      ) : creatives.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={ImageOff}
-          title="소재별 성과 데이터가 없습니다"
-          description="광고 소재 관리에서 소재를 등록하고 utm_content가 포함된 리드가 유입되면 성과를 확인할 수 있습니다."
+          title={campaignFilter ? '해당 캠페인의 소재가 없습니다' : '소재별 성과 데이터가 없습니다'}
+          description={campaignFilter ? '다른 캠페인을 선택하거나 필터를 해제해주세요.' : '광고 소재 관리에서 소재를 등록하고 utm_content가 포함된 리드가 유입되면 성과를 확인할 수 있습니다.'}
         />
       ) : (
-        <div className="overflow-auto max-h-[520px]">
+        <>
+        <div className="overflow-x-auto">
           <Table className="min-w-[900px]">
-            <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                 <TableHead className={`${thBase} w-14 px-2`}>소재</TableHead>
                 <TableHead className={thBase}>소재명</TableHead>
@@ -177,7 +197,7 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map((row, idx) => (
+              {displayed.map((row, idx) => (
                 <TableRow
                   key={row.utm_content}
                   className={`border-b border-border/50 dark:border-white/[0.03] ${idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : ''}`}
@@ -248,6 +268,18 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
             </TableBody>
           </Table>
         </div>
+
+          {hasMore && (
+            <div className="mt-3 text-center">
+              <button
+                onClick={() => setExpanded(prev => !prev)}
+                className="text-xs text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
+              >
+                {expanded ? '접기' : `전체 ${sorted.length}건 보기`}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </Card>
 
