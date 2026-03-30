@@ -20,9 +20,10 @@ export default function AdsOverviewTab({ startDate, endDate }: Props) {
       <div className="mb-6" />
       <PlatformComparisonTable startDate={startDate} endDate={endDate} />
       <div className="mb-6" />
-      <AdsFunnel startDate={startDate} endDate={endDate} />
-      <div className="mb-6" />
-      <DayOfWeekAnalysis startDate={startDate} endDate={endDate} />
+      <div className="grid lg:grid-cols-2 gap-3">
+        <AdsFunnel startDate={startDate} endDate={endDate} />
+        <DayOfWeekAnalysis startDate={startDate} endDate={endDate} />
+      </div>
     </>
   )
 }
