@@ -216,7 +216,7 @@ export default function CreativePerformance({ startDate, endDate }: Props) {
                       {row.name}
                     </span>
                     {!row.registered && (
-                      <span className="text-[10px] text-muted-foreground/60">미등록</span>
+                      <span className="text-xs text-muted-foreground/60">미등록</span>
                     )}
                   </TableCell>
                   <TableCell className="py-3">
