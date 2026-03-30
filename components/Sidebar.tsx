@@ -31,6 +31,7 @@ interface MenuItem {
   icon: LucideIcon
   minRole?: number
   menuKey?: string // agency_staff 메뉴 권한 필터용
+  hidden?: boolean // 미사용 메뉴 숨김
 }
 
 interface MenuGroup {
@@ -66,8 +67,8 @@ const menuGroups: MenuGroup[] = [
     minRole: 2,
     items: [
       { href: '/ads', label: '광고 성과', icon: BarChart2, menuKey: 'ads' },
-      { href: '/content', label: '콘텐츠 분석', icon: Film, menuKey: 'content' },
-      { href: '/monitor', label: '콘텐츠 모니터링', icon: Scan, menuKey: 'monitor' },
+      { href: '/content', label: '콘텐츠 분석', icon: Film, menuKey: 'content', hidden: true },
+      { href: '/monitor', label: '콘텐츠 모니터링', icon: Scan, menuKey: 'monitor', hidden: true },
     ]
   },
   {
@@ -193,6 +194,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         {menuGroups.filter(g => userLevel >= (g.minRole || 1)).map((group, groupIndex) => {
           const visibleItems = group.items
+            .filter(item => !item.hidden)
             .filter(item => userLevel >= (item.minRole || 1))
             .filter(filterMenuItem)
           if (visibleItems.length === 0) return null
