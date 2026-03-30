@@ -194,14 +194,14 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
 
         {/* 추이 차트 */}
         {trend.length > 0 && trendLabels.length > 0 && (
-          <div className="lg:col-span-2">
+          <div className="mt-6 lg:col-span-2">
             <LandingPageTrendChart trend={trend} pageNames={trendLabels} />
           </div>
         )}
 
         {/* 채널 분석 */}
         {hasChannelData && (
-          <div className="lg:col-span-2">
+          <div className="mt-6 lg:col-span-2">
             <LandingPageChannelBreakdown channelBreakdown={channelBreakdown} />
           </div>
         )}
@@ -260,20 +260,20 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
 
       {/* 추이 차트 (전체 폭) */}
       {trend.length > 0 && trendLabels.length > 0 && (
-        <div className="lg:col-span-2">
+        <div className="mt-6 lg:col-span-2">
           <LandingPageTrendChart trend={trend} pageNames={trendLabels} />
         </div>
       )}
 
       {/* 채널 분석 (전체 폭, UTM 데이터 있을 때만) */}
       {hasChannelData && (
-        <div className="lg:col-span-2">
+        <div className="mt-6 lg:col-span-2">
           <LandingPageChannelBreakdown channelBreakdown={channelBreakdown} />
         </div>
       )}
 
       {/* 상세 테이블 (전체 폭) */}
-      <Card variant="glass" className="p-5 lg:col-span-2">
+      <Card variant="glass" className="mt-6 p-5 lg:col-span-2">
         <div className="flex items-center justify-between mb-4 gap-4">
           <h2 className="font-semibold text-foreground shrink-0">랜딩페이지 성과 상세</h2>
           <span className="text-xs text-muted-foreground">{pages.length}개 페이지</span>
