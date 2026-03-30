@@ -122,14 +122,14 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
   ], [impressions, clicks, leadCount, metrics])
 
   return (
-    <Card variant="glass" className="p-5">
+    <Card variant="glass" className="p-5 flex flex-col">
       <div className="flex items-center justify-between mb-4 gap-4">
         <h2 className="font-semibold text-foreground shrink-0">광고 퍼널</h2>
         <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {loading ? (
-        <div className="space-y-6 py-2">
+        <div className="space-y-6 py-2 flex-1">
           {Array(3).fill(0).map((_, i) => (
             <Skeleton key={i} className="h-10 rounded-lg" />
           ))}
@@ -141,7 +141,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
           description="광고 통계 및 리드 데이터가 유입되면 표시됩니다."
         />
       ) : (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center flex-1 justify-center">
           {steps.map((step, idx) => (
             <div key={step.label} className="w-full">
               {/* 전환율 화살표 (첫 단계 제외) */}

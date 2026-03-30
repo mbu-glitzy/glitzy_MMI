@@ -129,14 +129,14 @@ export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
   )
 
   return (
-    <Card variant="glass" className="p-5">
+    <Card variant="glass" className="p-5 flex flex-col">
       <div className="flex items-center justify-between mb-4 gap-4">
         <h2 className="font-semibold text-foreground shrink-0">요일별 리드 분석</h2>
         <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
       {loading ? (
-        <Skeleton className="h-[200px] rounded-lg" />
+        <Skeleton className="h-[200px] rounded-lg flex-1" />
       ) : byDay.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
@@ -144,36 +144,38 @@ export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
           description="광고 데이터가 동기화되면 요일별 리드 패턴을 확인할 수 있습니다."
         />
       ) : (
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} margin={{ top: 18, right: 4, left: -16, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis
-              dataKey="dayLabel"
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip content={<DayTooltip />} cursor={{ fill: 'hsl(var(--muted-foreground) / 0.08)' }} />
-            <Bar
-              dataKey="leads"
-              name="리드 수"
-              radius={[4, 4, 0, 0]}
-              fill={BAR_COLORS.default}
-              isAnimationActive={false}
-              label={<CplLabel />}
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="flex-1 min-h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 18, right: 4, left: -16, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis
+                dataKey="dayLabel"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip content={<DayTooltip />} cursor={{ fill: 'hsl(var(--muted-foreground) / 0.08)' }} />
+              <Bar
+                dataKey="leads"
+                name="리드 수"
+                radius={[4, 4, 0, 0]}
+                fill={BAR_COLORS.default}
+                isAnimationActive={false}
+                label={<CplLabel />}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </Card>
   )
