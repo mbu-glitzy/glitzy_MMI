@@ -46,7 +46,7 @@ const ENV_GROUPS: EnvGroup[] = [
   {
     name: 'TikTok Ads',
     required: [],
-    optional: ['TIKTOK_APP_ID', 'TIKTOK_APP_SECRET'],
+    optional: ['TIKTOK_APP_ID', 'TIKTOK_APP_SECRET', 'TIKTOK_ADVERTISER_ID', 'TIKTOK_ACCESS_TOKEN'],
   },
   {
     name: 'QStash',

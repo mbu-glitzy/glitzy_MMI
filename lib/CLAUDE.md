@@ -22,7 +22,7 @@
 - `CRON_SECRET` (Cron Job 인증)
 
 ### 선택 (서비스별)
-- 광고: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*`
+- 광고: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_ADVERTISER_ID`, `TIKTOK_ACCESS_TOKEN` (+ 병원별 `clinic_api_configs`)
 - 콘텐츠: `YOUTUBE_API_KEY`, `KAKAO_REST_API_KEY`
 - AI: `ANTHROPIC_API_KEY`
 - SMS: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`
@@ -42,7 +42,7 @@
 | `consultations` | 상담 | `created_by`, `updated_by` |
 | `payments` | 결제 | `created_by` |
 | `ad_campaign_stats` | 캠페인 레벨 광고 통계 | 일별 집계 |
-| `ad_stats` | 광고(ad) 레벨 성과 | utm_content 매핑, campaign_id 역추적 |
+| `ad_stats` | 광고(ad) 레벨 성과 | Meta: utm_content 매핑, TikTok: ad_id 기준 (utm_content=null) |
 | `clinic_api_configs` | 병원별 광고 API 키 | |
 | `landing_pages` | 랜딩 페이지 | 8자리 랜덤 ID |
 | `lead_raw_logs` | 리드 원본 로그 | 멱등성 키로 유실 방지 |
@@ -88,7 +88,8 @@
 | `channel-colors.ts` | `getChannelColor` | 채널별 Recharts 색상 코드 |
 | `chart-colors.ts` | `CHART_PALETTE`, `CHART_SEMANTIC`, `PIE_SHADES`, `BAR_COLORS`, `FUNNEL_COLORS`, `FUNNEL_GRADIENT` | Recharts 차트 컬러 중앙 상수 |
 | `date.ts` | `formatDate`, `toUtcDate`, `getKstDateString`, `getKstDayStartISO`, `getKstDayEndISO` | KST 기준 날짜 포맷/생성 (아래 타임존 규칙 참조) |
-| `services/metaAds.ts` | `fetchMetaAds`, `fetchMetaAdStats` | 캠페인 레벨 + ad 레벨 수집 (ad_stats: utm_content 자동 매핑) |
+| `services/metaAds.ts` | `fetchMetaAds`, `fetchMetaAdStats` | Meta 캠페인 + ad 레벨 수집 (ad_stats: utm_content 자동 매핑) |
+| `services/tiktokAds.ts` | `fetchTikTokAds`, `fetchTikTokAdStats` | TikTok 캠페인 + ad 레벨 수집 (페이지네이션, 공통 헬퍼 `fetchTikTokReport`) |
 | `services/metaCapi.ts` | Meta CAPI 전송 | 리드 유입 시 서버사이드 전환 이벤트 전송 |
 | `services/pressSync.ts` | `syncPressForClinic` | 언론보도 수집 (다중 키워드 → Google News RSS → upsert) |
 | `services/erpClient.ts` | `fetchQuotes`, `fetchInvoices`, `respondToQuote` 등 | glitzy-web ERP 외부 API 프록시 (fetchJSON 기반, GET/PATCH 지원) |
