@@ -9,7 +9,7 @@ import { decryptApiConfig } from '@/lib/crypto'
 import { createLogger } from '@/lib/logger'
 import { fetchMetaAds, fetchMetaAdStats } from '@/lib/services/metaAds'
 import { fetchGoogleAds } from '@/lib/services/googleAds'
-import { fetchTikTokAds } from '@/lib/services/tiktokAds'
+import { fetchTikTokAds, fetchTikTokAdStats } from '@/lib/services/tiktokAds'
 
 const logger = createLogger('AdSyncManager')
 
@@ -104,17 +104,21 @@ async function syncPlatform(
         }
       }
       case 'tiktok_ads': {
-        const result = await fetchTikTokAds(date, {
+        const tiktokOpts = {
           clinicId,
           advertiserId: decrypted.advertiser_id as string,
           accessToken: decrypted.access_token as string,
-        })
+        }
+        const [campaignResult, adResult] = await Promise.all([
+          fetchTikTokAds(date, tiktokOpts),
+          fetchTikTokAdStats(date, tiktokOpts),
+        ])
         return {
           clinicId,
           clinicName,
-          platform: result.platform,
-          count: result.count,
-          error: result.error,
+          platform: campaignResult.platform,
+          count: campaignResult.count + adResult.count,
+          error: campaignResult.error || adResult.error || undefined,
         }
       }
       default:
@@ -212,7 +216,11 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
         error: c.error || a.error || undefined,
       })),
       fetchGoogleAds(date),
-      fetchTikTokAds(date),
+      Promise.all([fetchTikTokAds(date), fetchTikTokAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
     ])
 
     const platformNames = ['Meta', 'Google', 'TikTok']
@@ -312,7 +320,11 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
         error: c.error || a.error || undefined,
       })),
       fetchGoogleAds(date),
-      fetchTikTokAds(date),
+      Promise.all([fetchTikTokAds(date), fetchTikTokAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
     ])
 
     const platformNames = ['Meta', 'Google', 'TikTok']
