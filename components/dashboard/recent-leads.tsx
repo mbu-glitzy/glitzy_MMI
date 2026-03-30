@@ -7,18 +7,12 @@ import { MessageSquare, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import { toUtcDate } from '@/lib/date'
 import type { RecentLead } from '@/hooks/use-dashboard-data'
 
 interface RecentLeadsProps {
   data: RecentLead[]
   loading?: boolean
-}
-
-/** 이름 마스킹: 김OO */
-function maskName(name: string): string {
-  if (!name || name === '이름 없음') return name
-  if (name.length <= 1) return name
-  return name[0] + 'O'.repeat(name.length - 1)
 }
 
 export function RecentLeads({ data, loading }: RecentLeadsProps) {
@@ -47,14 +41,14 @@ export function RecentLeads({ data, loading }: RecentLeadsProps) {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className="text-sm font-medium text-foreground truncate">
-                  {maskName(lead.name)}
+                  {lead.name}
                 </span>
                 {lead.utmSource && lead.utmSource !== 'Unknown' && (
                   <ChannelBadge channel={lead.utmSource} className="text-[10px] shrink-0" />
                 )}
               </div>
               <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true, locale: ko })}
+                {formatDistanceToNow(toUtcDate(lead.createdAt), { addSuffix: true, locale: ko })}
               </span>
             </div>
           ))}
