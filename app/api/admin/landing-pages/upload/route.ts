@@ -13,6 +13,7 @@ function sanitizeFileName(raw: string): string {
 export const POST = withSuperAdmin(async (req: Request) => {
   const formData = await req.formData()
   const file = formData.get('file') as File | null
+  const overwrite = formData.get('overwrite') as string | null
 
   if (!file) {
     return apiError('파일이 첨부되지 않았습니다.', 400)
@@ -28,8 +29,24 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
   const supabase = serverSupabase()
   let fileName = sanitizeFileName(file.name)
+  const content = await file.arrayBuffer()
 
-  // 중복 파일명 처리
+  // 덮어쓰기 모드: 기존 파일명 그대로 upsert
+  if (overwrite) {
+    const targetName = sanitizeFileName(overwrite)
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(targetName, Buffer.from(content), {
+        contentType: 'text/html',
+        upsert: true,
+      })
+    if (error) {
+      return apiError(`파일 업로드 실패: ${error.message}`, 500)
+    }
+    return apiSuccess({ fileName: targetName })
+  }
+
+  // 신규 업로드: 중복 파일명 처리
   const { data: existingFiles } = await supabase.storage.from(BUCKET).list()
   const existingNames = new Set(existingFiles?.map(f => f.name) || [])
   if (existingNames.has(fileName)) {
@@ -40,8 +57,6 @@ export const POST = withSuperAdmin(async (req: Request) => {
     fileName = `${base}_${counter}${ext}`
   }
 
-  // Supabase Storage에 업로드
-  const content = await file.arrayBuffer()
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(fileName, Buffer.from(content), {

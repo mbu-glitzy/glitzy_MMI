@@ -117,6 +117,9 @@ export default function LandingPagesPage() {
         setUploading(true)
         const formData = new FormData()
         formData.append('file', uploadFile)
+        if (editing) {
+          formData.append('overwrite', editing.file_name)
+        }
         const uploadRes = await fetch('/api/admin/landing-pages/upload', {
           method: 'POST',
           body: formData,
