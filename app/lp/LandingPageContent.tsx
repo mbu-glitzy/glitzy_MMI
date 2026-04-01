@@ -11,7 +11,17 @@ function LandingPageIframe() {
   useEffect(() => {
     if (!lpId) {
       setError('랜딩 페이지 ID가 필요합니다.')
+      return
     }
+
+    fetch(`/api/lp/meta?id=${encodeURIComponent(lpId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.name) {
+          document.title = data.name
+        }
+      })
+      .catch(() => {})
   }, [lpId])
 
   if (error) {
