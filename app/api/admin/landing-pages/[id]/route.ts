@@ -54,10 +54,14 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
     return apiError('랜딩 페이지를 찾을 수 없습니다.', 404)
   }
 
-  // 파일명 변경 시 파일 존재 여부 확인
+  // 파일명 변경 시 파일 존재 여부 확인 (Storage 우선, 로컬 fallback)
   if (file_name) {
-    const filePath = path.join(process.cwd(), 'public', 'landing', file_name)
-    if (!fs.existsSync(filePath)) {
+    const { data: storageFiles } = await supabase.storage
+      .from('landing-pages')
+      .list()
+    const inStorage = storageFiles?.some(f => f.name === file_name)
+    const localPath = path.join(process.cwd(), 'public', 'landing', file_name)
+    if (!inStorage && !fs.existsSync(localPath)) {
       return apiError(`파일을 찾을 수 없습니다: ${file_name}`, 400)
     }
   }
