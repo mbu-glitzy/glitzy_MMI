@@ -739,6 +739,55 @@ agency_staff 계정의 병원 배정 및 메뉴 권한을 수정합니다.
 
 ---
 
+### GET /api/auth/tiktok
+
+TikTok OAuth2 인증을 시작합니다. TikTok 인증 페이지로 리다이렉트됩니다.
+
+**권한:** `superadmin`
+
+**Query Parameters:**
+| 파라미터 | 필수 | 설명 |
+|----------|------|------|
+| `clinic_id` | ✓ | 연동할 병원 ID |
+
+**흐름:**
+1. CSRF state 토큰 생성 → `oauth_states` 테이블에 저장 (10분 만료)
+2. TikTok 인증 페이지로 리다이렉트 (`business-api.tiktok.com/portal/auth`)
+3. 광고주가 승인하면 `/api/auth/tiktok/callback`으로 리다이렉트
+
+**환경변수 필요:** `TIKTOK_APP_ID`
+
+### GET /api/auth/tiktok/callback
+
+TikTok OAuth2 콜백. auth_code를 수신하여 access_token으로 교환 후 `clinic_api_configs`에 저장합니다.
+
+**인증:** 불필요 (TikTok 리다이렉트 — CSRF state 토큰으로 검증)
+
+**Query Parameters (TikTok 제공):**
+| 파라미터 | 설명 |
+|----------|------|
+| `auth_code` | TikTok 인증 코드 |
+| `state` | base64url 인코딩된 `{ clinicId, csrfToken }` |
+
+**처리:**
+1. state 디코딩 → `oauth_states` DB 검증 (CSRF 방지 + 만료 확인)
+2. auth_code → TikTok API로 access_token + refresh_token 교환
+3. `clinic_api_configs`에 암호화 저장 (advertiser_id, access_token, refresh_token, 만료일시)
+4. `/admin/settings?success=tiktok_connected`로 리다이렉트
+
+**환경변수 필요:** `TIKTOK_APP_ID`, `TIKTOK_APP_SECRET`
+
+**에러 리다이렉트:**
+| Query Parameter | 원인 |
+|-----------------|------|
+| `error=tiktok_denied` | 사용자가 인증 거부 |
+| `error=tiktok_invalid_state` | CSRF state 불일치/파싱 실패 |
+| `error=tiktok_state_expired` | state 만료 (10분 초과) |
+| `error=tiktok_token_error` | 토큰 교환 실패 |
+| `error=tiktok_no_advertiser` | 인증 성공했으나 연결된 광고주 계정 없음 |
+
+---
+
 ## 내 정보 API
 
 ### GET /api/my/clinics

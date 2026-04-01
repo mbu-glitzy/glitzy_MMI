@@ -139,7 +139,7 @@ export default function PrivacyPolicyPage() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-border text-center text-xs text-muted-foreground/60">
-          &copy; 2024 Glitzy. All rights reserved.
+          &copy; 2026 Glitzy. All rights reserved.
         </div>
       </div>
     </div>

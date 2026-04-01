@@ -130,16 +130,16 @@ export default function LoginPage() {
         {/* 푸터 */}
         <div className="text-center mt-6 space-y-2">
           <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60">
-            <Link href="/privacy" className="hover:text-muted-foreground transition-colors">
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted-foreground transition-colors">
               개인정보처리방침
-            </Link>
+            </a>
             <span>·</span>
-            <Link href="/terms" className="hover:text-muted-foreground transition-colors">
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted-foreground transition-colors">
               서비스 이용약관
-            </Link>
+            </a>
           </div>
           <p className="text-xs text-muted-foreground/60">
-            &copy; 2024 Glitzy. All rights reserved.
+            &copy; 2026 Glitzy. All rights reserved.
           </p>
         </div>
       </div>

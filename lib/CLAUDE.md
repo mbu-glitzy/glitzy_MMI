@@ -56,6 +56,7 @@
 | `login_logs` | 로그인 시도 이력 | IP, success, failure_reason |
 | `deleted_records` | 삭제 데이터 스냅샷 보관 | 감사/복구용 |
 | `capi_events` | Meta CAPI 전송 로그 | status: pending/success/fail, event_id로 중복 제거 |
+| `oauth_states` | OAuth CSRF state 임시 저장 | 10분 만료, 일회용 (TikTok 등) |
 | `clinic_treatments` | 병원별 시술 메뉴 카탈로그 | POS형 결제 입력용, UNIQUE(clinic_id, name) |
 | `press_coverage` | 언론보도 기사 | Google News RSS 수집, UNIQUE(clinic_id, url) |
 | `press_keywords` | 언론보도 검색 키워드 | 병원당 최대 5개, UNIQUE(clinic_id, keyword) |
