@@ -1393,7 +1393,7 @@ export default function PatientsPage() {
                 </button>
               )}
             </Card>
-            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} allowFuture />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-auto min-w-[120px] h-9 bg-card border-border dark:border-white/10 text-xs">
                 <SelectValue>
