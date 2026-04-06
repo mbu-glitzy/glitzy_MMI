@@ -46,22 +46,12 @@ export const POST = withSuperAdmin(async (req: Request) => {
     let fileName = sanitizeFileName(file.name)
     const content = await file.arrayBuffer()
 
-    // 중복 파일명 처리
-    const { data: existingFiles } = await supabase.storage.from(BUCKET).list()
-    const existingNames = new Set(existingFiles?.map(f => f.name) || [])
-    if (existingNames.has(fileName)) {
-      const ext = '.html'
-      const base = fileName.replace(ext, '')
-      let counter = 1
-      while (existingNames.has(`${base}_${counter}${ext}`)) counter++
-      fileName = `${base}_${counter}${ext}`
-    }
-
+    // 동일 파일명이 있으면 내용 덮어쓰기 (upsert)
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(fileName, Buffer.from(content), {
         contentType: 'text/html',
-        upsert: false,
+        upsert: true,
       })
 
     if (error) {
