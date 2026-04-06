@@ -172,9 +172,9 @@ export async function GET(req: NextRequest) {
     return _origFetch.call(this, url, opts).then(function(res) {
       if (isLeadWebhook && res.ok) {
         var lpData = window.__LP_DATA__ || {};
+        // 이벤트 없이 데이터만 push — GTM form_submit 트리거에서 변수로 참조
         window.dataLayer.push({
-          event: 'form_submit',
-          event_id: eventId,
+          lead_event_id: eventId,
           landing_page_id: lpData.landingPageId || null,
           clinic_id: lpData.clinicId || null,
           clinic_name: lpData.clinicName || ''
