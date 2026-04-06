@@ -29,20 +29,23 @@ export async function GET(req: NextRequest) {
   // HTML 파일 읽기 (Supabase Storage 우선, public/landing/ fallback)
   let htmlContent: string | null = null
 
-  // 1. Supabase Storage에서 시도 — signedUrl + no-store로 캐시 완전 우회
+  // 1. Supabase Storage REST API 직접 호출 — Next.js fetch 캐시 완전 우회
   try {
-    const { data: signedUrlData } = await supabase.storage
-      .from('landing-pages')
-      .createSignedUrl(landingPage.file_name, 60)
-
-    if (signedUrlData?.signedUrl) {
-      const res = await fetch(signedUrlData.signedUrl, { cache: 'no-store' })
-      if (res.ok) {
-        htmlContent = await res.text()
-      }
+    const storageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/landing-pages/${encodeURIComponent(landingPage.file_name)}`
+    const res = await fetch(storageUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      },
+      cache: 'no-store',
+    })
+    if (res.ok) {
+      htmlContent = await res.text()
+    } else {
+      logger.warn('Storage 다운로드 실패', { fileName: landingPage.file_name, status: res.status })
     }
   } catch (err) {
-    logger.error('Storage signedUrl/fetch 실패', err, { fileName: landingPage.file_name })
+    logger.error('Storage fetch 실패', err, { fileName: landingPage.file_name })
   }
 
   // 2. fallback: public/landing/ 로컬 파일
@@ -50,7 +53,7 @@ export async function GET(req: NextRequest) {
     const htmlPath = path.join(process.cwd(), 'public', 'landing', landingPage.file_name)
     if (fs.existsSync(htmlPath)) {
       htmlContent = fs.readFileSync(htmlPath, 'utf-8')
-      logger.warn('Storage 파일 없음, 로컬 fallback 사용', { fileName: landingPage.file_name })
+      logger.warn('로컬 fallback 사용', { fileName: landingPage.file_name })
     }
   }
 
