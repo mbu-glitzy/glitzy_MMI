@@ -76,7 +76,7 @@ async function generateUniqueLpId(supabase: ReturnType<typeof serverSupabase>): 
 export const POST = withSuperAdmin(async (req: Request) => {
   try {
     const body = await req.json()
-    const { name, file_name, clinic_id, description, is_active, gtm_id } = body
+    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id } = body
 
     if (!name || !file_name) {
       return apiError('이름과 파일명은 필수입니다.', 400)
@@ -121,6 +121,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
         id: newId,
         name: sanitizeString(name, 100),
         file_name: sanitizeString(safeFileName, 100),
+        original_file_name: original_file_name ? sanitizeString(original_file_name, 200) : null,
         clinic_id: validClinicId,
         description: description ? sanitizeString(description, 500) : null,
         gtm_id: gtm_id ? sanitizeString(gtm_id, 20) : null,

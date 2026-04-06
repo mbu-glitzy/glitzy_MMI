@@ -41,6 +41,7 @@ interface LandingPage {
   id: number
   name: string
   file_name: string
+  original_file_name: string | null
   clinic_id: number | null
   description: string | null
   is_active: boolean
@@ -111,10 +112,12 @@ export default function LandingPagesPage() {
     setSaving(true)
     try {
       let fileName = form.file_name
+      let originalFileName: string | null = null
 
       // 파일 업로드 처리
       if (needsUpload && uploadFile) {
         setUploading(true)
+        originalFileName = uploadFile.name
         const formData = new FormData()
         formData.append('file', uploadFile)
         if (editing) {
@@ -131,6 +134,7 @@ export default function LandingPagesPage() {
         }
         const uploadData = await uploadRes.json()
         fileName = uploadData.fileName
+        originalFileName = uploadData.originalFileName || originalFileName
         setUploading(false)
       }
 
@@ -143,6 +147,7 @@ export default function LandingPagesPage() {
         body: JSON.stringify({
           ...form,
           file_name: fileName,
+          ...(originalFileName && { original_file_name: originalFileName }),
           clinic_id: form.clinic_id && form.clinic_id !== 'none' ? Number(form.clinic_id) : null,
         }),
       })
@@ -417,7 +422,7 @@ export default function LandingPagesPage() {
                 <TableRow key={lp.id} className="border-b border-border dark:border-white/5">
                   <TableCell className="text-muted-foreground text-xs">#{lp.id}</TableCell>
                   <TableCell className="text-foreground font-medium">{lp.name}</TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-xs">{lp.file_name}</TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-xs">{lp.original_file_name || lp.file_name}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{lp.clinic?.name || '미배정'}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">

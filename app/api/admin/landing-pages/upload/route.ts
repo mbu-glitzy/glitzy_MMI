@@ -55,7 +55,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
         logger.error('파일 덮어쓰기 실패', error, { targetName })
         return apiError(`파일 업로드 실패: ${error.message}`, 500)
       }
-      return apiSuccess({ fileName: targetName })
+      return apiSuccess({ fileName: targetName, originalFileName: file.name })
     }
 
     // 신규 업로드: 중복 파일명 처리
@@ -81,7 +81,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
       return apiError(`파일 업로드 실패: ${error.message}`, 500)
     }
 
-    return apiSuccess({ fileName })
+    return apiSuccess({ fileName, originalFileName: file.name })
   } catch (error) {
     logger.error('랜딩페이지 업로드 처리 오류', error)
     return apiError('서버 오류가 발생했습니다.', 500)

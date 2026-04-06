@@ -43,7 +43,7 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
     }
 
     const body = await req.json()
-    const { name, file_name, clinic_id, description, is_active, gtm_id } = body
+    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id } = body
 
     const supabase = serverSupabase()
 
@@ -99,6 +99,7 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
 
     if (name !== undefined) updateData.name = sanitizeString(name, 100)
     if (file_name !== undefined) updateData.file_name = sanitizeString(file_name, 100)
+    if (original_file_name !== undefined) updateData.original_file_name = original_file_name ? sanitizeString(original_file_name, 200) : null
     if (validClinicId !== undefined) updateData.clinic_id = validClinicId
     if (description !== undefined) updateData.description = description ? sanitizeString(description, 500) : null
     if (gtm_id !== undefined) updateData.gtm_id = gtm_id ? sanitizeString(gtm_id, 20) : null
