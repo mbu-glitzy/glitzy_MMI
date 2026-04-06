@@ -46,20 +46,19 @@ export const POST = withSuperAdmin(async (req: Request) => {
     let fileName = sanitizeFileName(file.name)
     const content = await file.arrayBuffer()
 
-    // 덮어쓰기 모드: 기존 파일명 그대로 upsert
-    if (overwrite) {
-      const targetName = sanitizeFileName(overwrite)
+    // 덮어쓰기 모드: 기존 파일이 Storage에 있으면 덮어쓰기, 없으면 신규 업로드로 진행
+    if (overwrite && /^[a-zA-Z0-9_.-]+$/.test(overwrite)) {
       const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(targetName, Buffer.from(content), {
+        .upload(overwrite, Buffer.from(content), {
           contentType: 'text/html',
           upsert: true,
         })
       if (error) {
-        logger.error('파일 덮어쓰기 실패', error, { targetName })
+        logger.error('파일 덮어쓰기 실패', error, { targetName: overwrite })
         return apiError(`파일 업로드 실패: ${error.message}`, 500)
       }
-      return apiSuccess({ fileName: targetName, originalFileName: file.name })
+      return apiSuccess({ fileName: overwrite, originalFileName: file.name })
     }
 
     // 신규 업로드: 중복 파일명 처리
