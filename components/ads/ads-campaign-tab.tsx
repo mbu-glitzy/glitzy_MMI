@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useClinic } from '@/components/ClinicContext'
 import { Button } from '@/components/ui/button'
+import { API_PLATFORM_LABELS } from '@/lib/platform'
 import CampaignRankingTable from '@/components/ads/campaign-ranking-table'
 import CreativePerformance from '@/components/ads/CreativePerformance'
 import LandingPageAnalysis from '@/components/ads/landing-page-analysis'
@@ -59,7 +60,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
             onClick={() => setPlatformFilter(p)}
             className={platformFilter === p ? 'bg-brand-600 border-brand-600' : ''}
           >
-            {p === 'all' ? '전체 매체' : p}
+            {p === 'all' ? '전체 매체' : (API_PLATFORM_LABELS[p as keyof typeof API_PLATFORM_LABELS] || p)}
           </Button>
         ))}
       </div>
