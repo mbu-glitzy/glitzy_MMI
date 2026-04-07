@@ -177,7 +177,7 @@ export async function fetchTikTokAds(date = new Date(), options?: TikTokAdsOptio
   let accessToken = options?.accessToken || process.env.TIKTOK_ACCESS_TOKEN
   if (!advertiserId || !accessToken) {
     logger.warn('Missing TIKTOK_ADVERTISER_ID or TIKTOK_ACCESS_TOKEN', { clinicId: options?.clinicId })
-    return { platform: 'TikTok', count: 0, error: 'Missing credentials' }
+    return { platform: 'tiktok_ads', count: 0, error: 'Missing credentials' }
   }
 
   // OAuth2 모드: clinicId가 있으면 토큰 자동 갱신 시도
@@ -199,7 +199,7 @@ export async function fetchTikTokAds(date = new Date(), options?: TikTokAdsOptio
 
     if (rows.length > 0) {
       const dbRows = rows.map((r) => ({
-        platform: 'TikTok',
+        platform: 'tiktok_ads',
         campaign_id: r.dimensions.campaign_id,
         campaign_name: r.metrics.campaign_name,
         spend_amount: parseFloat(r.metrics.spend || '0'),
@@ -224,11 +224,11 @@ export async function fetchTikTokAds(date = new Date(), options?: TikTokAdsOptio
     const duration = Date.now() - startTime
     logger.info('Sync completed', { action: 'sync', count: rows.length, duration, clinicId: options?.clinicId })
 
-    return { platform: 'TikTok', count: rows.length }
+    return { platform: 'tiktok_ads', count: rows.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     logger.error('Sync failed', error, { action: 'sync', duration: Date.now() - startTime, clinicId: options?.clinicId })
-    return { platform: 'TikTok', count: 0, error: message }
+    return { platform: 'tiktok_ads', count: 0, error: message }
   }
 }
 
@@ -243,7 +243,7 @@ export async function fetchTikTokAdStats(date = new Date(), options?: TikTokAdsO
   const accessToken = options?.accessToken || process.env.TIKTOK_ACCESS_TOKEN
   if (!advertiserId || !accessToken) {
     logger.warn('Missing TikTok credentials for ad stats', { clinicId: options?.clinicId })
-    return { platform: 'TikTok', count: 0, error: 'Missing credentials' }
+    return { platform: 'tiktok_ads', count: 0, error: 'Missing credentials' }
   }
 
   const supabase = serverSupabase()
@@ -259,11 +259,11 @@ export async function fetchTikTokAdStats(date = new Date(), options?: TikTokAdsO
     })
 
     if (rows.length === 0) {
-      return { platform: 'TikTok', count: 0 }
+      return { platform: 'tiktok_ads', count: 0 }
     }
 
     const dbRows = rows.map((r) => ({
-      platform: 'TikTok',
+      platform: 'tiktok_ads',
       ad_id: r.dimensions.ad_id,
       ad_name: r.metrics.ad_name,
       campaign_id: r.metrics.campaign_id,
@@ -289,10 +289,10 @@ export async function fetchTikTokAdStats(date = new Date(), options?: TikTokAdsO
     const duration = Date.now() - startTime
     logger.info('Ad stats sync completed', { action: 'ad_sync', count: rows.length, duration, clinicId: options?.clinicId })
 
-    return { platform: 'TikTok', count: rows.length }
+    return { platform: 'tiktok_ads', count: rows.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     logger.error('Ad stats sync failed', error, { action: 'ad_sync', duration: Date.now() - startTime, clinicId: options?.clinicId })
-    return { platform: 'TikTok', count: 0, error: message }
+    return { platform: 'tiktok_ads', count: 0, error: message }
   }
 }

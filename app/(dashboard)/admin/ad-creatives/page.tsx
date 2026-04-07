@@ -65,15 +65,9 @@ interface AdCreative {
   landing_page?: { id: number; name: string; file_name: string } | null
 }
 
-const PLATFORM_OPTIONS = [
-  { value: 'meta', label: 'Meta (Facebook/Instagram)' },
-  { value: 'google', label: 'Google Ads' },
-  { value: 'naver', label: '네이버' },
-  { value: 'kakao', label: '카카오' },
-  { value: 'tiktok', label: '틱톡' },
-  { value: 'youtube', label: '유튜브' },
-  { value: 'other', label: '기타' },
-]
+import { CREATIVE_PLATFORMS } from '@/lib/platform'
+
+const PLATFORM_OPTIONS = CREATIVE_PLATFORMS.map(p => ({ value: p.value, label: p.label }))
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm']

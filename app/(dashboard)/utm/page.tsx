@@ -59,6 +59,7 @@ const PLATFORM_PRESETS: Record<string, PlatformPreset> = {
   naver_sa:          { source: 'naver',     medium: 'cpc',     label: '네이버 SA',         group: '광고 매체' },
   naver_da:          { source: 'naver',     medium: 'display', label: '네이버 DA',         group: '광고 매체' },
   kakao:             { source: 'kakao',     medium: 'cpc',     label: '카카오 모먼트',       group: '광고 매체' },
+  dable:             { source: 'dable',     medium: 'native',  label: 'Dable',             group: '광고 매체' },
   youtube:           { source: 'youtube',   medium: 'video',   label: '유튜브',            group: '콘텐츠 매체' },
   youtube_shorts:    { source: 'youtube',   medium: 'short',   label: '유튜브 쇼츠',        group: '콘텐츠 매체' },
   instagram_feed:    { source: 'instagram', medium: 'social',  label: '인스타그램 피드',     group: '콘텐츠 매체' },

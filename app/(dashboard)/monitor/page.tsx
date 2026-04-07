@@ -25,11 +25,12 @@ const RISK_CONFIG = {
   danger:  { label: '위험',  variant: 'destructive' as const, bar: 'bg-red-500'     },
 }
 
-const PLATFORM_VARIANTS: Record<string, "meta" | "google" | "tiktok" | "naver" | "secondary"> = {
+const PLATFORM_VARIANTS: Record<string, "meta" | "google" | "tiktok" | "naver" | "dable" | "secondary"> = {
   Instagram: 'meta',
   YouTube:   'google',
   TikTok:    'tiktok',
   Naver:     'naver',
+  Dable:     'dable',
 }
 
 function AuditRow({ post, onAnalyze }: { post: any; onAnalyze: (id: number) => Promise<void> }) {

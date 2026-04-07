@@ -10,11 +10,9 @@ import { parseId } from '@/lib/security'
 import { decryptApiConfig } from '@/lib/crypto'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
+import { API_CONFIG_PLATFORMS, isApiPlatform, type ApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('ApiConfigTest')
-
-const ALLOWED_PLATFORMS = ['meta_ads', 'google_ads', 'tiktok_ads'] as const
-type Platform = (typeof ALLOWED_PLATFORMS)[number]
 
 const TEST_TIMEOUT = 15000
 
@@ -154,11 +152,8 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
   const { platform } = body
 
-  if (
-    typeof platform !== 'string' ||
-    !ALLOWED_PLATFORMS.includes(platform as Platform)
-  ) {
-    return apiError(`허용되지 않는 플랫폼입니다. (${ALLOWED_PLATFORMS.join(', ')})`)
+  if (!isApiPlatform(platform)) {
+    return apiError(`허용되지 않는 플랫폼입니다. (${API_CONFIG_PLATFORMS.join(', ')})`)
   }
 
   const supabase = serverSupabase()
@@ -193,7 +188,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
   let result: TestResult
 
   try {
-    switch (platform as Platform) {
+    switch (platform as ApiPlatform) {
       case 'meta_ads':
         result = await testMetaAds(config)
         break
@@ -202,6 +197,11 @@ export const POST = withSuperAdmin(async (req: Request) => {
         break
       case 'tiktok_ads':
         result = await testTikTokAds(config)
+        break
+      case 'naver_ads':
+      case 'kakao_ads':
+      case 'dable_ads':
+        result = { success: false, error: '연결 테스트가 아직 지원되지 않습니다. API 키만 저장됩니다.', platform }
         break
       default:
         return apiError('지원하지 않는 플랫폼입니다.')

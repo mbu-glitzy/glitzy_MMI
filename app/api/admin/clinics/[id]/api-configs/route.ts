@@ -11,11 +11,9 @@ import { parseId } from '@/lib/security'
 import { encryptApiConfig, decryptApiConfig } from '@/lib/crypto'
 import { archiveBeforeDelete } from '@/lib/archive'
 import { createLogger } from '@/lib/logger'
+import { API_CONFIG_PLATFORMS, API_REQUIRED_FIELDS, isApiPlatform, type ApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('ApiConfigs')
-
-const ALLOWED_PLATFORMS = ['meta_ads', 'google_ads', 'tiktok_ads'] as const
-type Platform = (typeof ALLOWED_PLATFORMS)[number]
 
 /** 민감 필드 목록 — 마지막 4자 외에는 **** 로 마스킹 */
 const SENSITIVE_FIELDS = ['access_token', 'client_secret', 'refresh_token']
@@ -32,15 +30,8 @@ function maskSensitiveFields(config: Record<string, unknown>): Record<string, un
   return masked
 }
 
-function isAllowedPlatform(platform: unknown): platform is Platform {
-  return typeof platform === 'string' && ALLOWED_PLATFORMS.includes(platform as Platform)
-}
-
-/** platform별 필수 필드 정의 */
-const REQUIRED_FIELDS: Record<Platform, string[]> = {
-  meta_ads: ['account_id', 'access_token'],
-  google_ads: ['client_id', 'client_secret', 'developer_token', 'customer_id', 'refresh_token'],
-  tiktok_ads: ['advertiser_id', 'access_token'],
+function isAllowedPlatform(platform: unknown): platform is ApiPlatform {
+  return isApiPlatform(platform)
 }
 
 /** config 필드값 길이 제한 (API 토큰은 특수문자 포함 가능하므로 XSS sanitize 하지 않음) */
@@ -73,7 +64,7 @@ export const GET = withSuperAdmin(async (req: Request) => {
       .from('clinic_api_configs')
       .select('platform, config, is_active, last_tested_at, last_test_result')
       .eq('clinic_id', clinicId)
-      .in('platform', ALLOWED_PLATFORMS as unknown as string[])
+      .in('platform', API_CONFIG_PLATFORMS as unknown as string[])
 
     if (error) {
       logger.error('clinic_api_configs 조회 실패', error, { clinicId })
@@ -123,7 +114,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
   const isActive = typeof body.is_active === 'boolean' ? body.is_active : true
 
   if (!isAllowedPlatform(platform)) {
-    return apiError(`허용되지 않는 플랫폼입니다. (${ALLOWED_PLATFORMS.join(', ')})`)
+    return apiError(`허용되지 않는 플랫폼입니다. (${API_CONFIG_PLATFORMS.join(', ')})`)
   }
 
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
@@ -131,7 +122,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
   }
 
   // platform별 필수 필드 검증
-  const requiredFields = REQUIRED_FIELDS[platform]
+  const requiredFields = API_REQUIRED_FIELDS[platform]
   const configObj = config as Record<string, unknown>
   const missingFields = requiredFields.filter(f => !configObj[f] || (typeof configObj[f] === 'string' && configObj[f].toString().trim() === ''))
   if (missingFields.length > 0) {
@@ -194,7 +185,7 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
   const { platform } = body
 
   if (!isAllowedPlatform(platform)) {
-    return apiError(`허용되지 않는 플랫폼입니다. (${ALLOWED_PLATFORMS.join(', ')})`)
+    return apiError(`허용되지 않는 플랫폼입니다. (${API_CONFIG_PLATFORMS.join(', ')})`)
   }
 
   const supabase = serverSupabase()

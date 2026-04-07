@@ -15,6 +15,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { formatDateTime } from '@/lib/date'
+import {
+  API_CONFIG_PLATFORMS, API_PLATFORM_LABELS, API_PLATFORM_FIELDS,
+  SYNC_ENABLED_PLATFORMS, type ApiPlatform,
+} from '@/lib/platform'
 
 interface Props {
   clinicId: number
@@ -24,7 +28,7 @@ interface Props {
   onUpdated?: () => void
 }
 
-type Platform = 'meta_ads' | 'google_ads' | 'tiktok_ads'
+type Platform = ApiPlatform
 
 interface PlatformConfig {
   config: Record<string, string> | null
@@ -39,29 +43,8 @@ interface TestResultState {
   message: string
 }
 
-const PLATFORM_LABELS: Record<Platform, string> = {
-  meta_ads: 'Meta',
-  google_ads: 'Google',
-  tiktok_ads: 'TikTok',
-}
-
-const PLATFORM_FIELDS: Record<Platform, { key: string; label: string; placeholder: string }[]> = {
-  meta_ads: [
-    { key: 'account_id', label: '광고 계정 ID', placeholder: 'act_xxxxxxxxxx' },
-    { key: 'access_token', label: '액세스 토큰', placeholder: '액세스 토큰을 입력하세요' },
-  ],
-  google_ads: [
-    { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxx.apps.googleusercontent.com' },
-    { key: 'client_secret', label: 'Client Secret', placeholder: 'Client Secret을 입력하세요' },
-    { key: 'developer_token', label: 'Developer Token', placeholder: 'Developer Token을 입력하세요' },
-    { key: 'customer_id', label: 'Customer ID', placeholder: '123-456-7890' },
-    { key: 'refresh_token', label: 'Refresh Token', placeholder: 'Refresh Token을 입력하세요' },
-  ],
-  tiktok_ads: [
-    { key: 'advertiser_id', label: 'Advertiser ID', placeholder: 'Advertiser ID를 입력하세요' },
-    { key: 'access_token', label: 'Access Token', placeholder: 'Access Token을 입력하세요' },
-  ],
-}
+const PLATFORM_LABELS = API_PLATFORM_LABELS
+const PLATFORM_FIELDS = API_PLATFORM_FIELDS
 
 const EMPTY_CONFIG: PlatformConfig = {
   config: null,
@@ -75,25 +58,17 @@ function isMaskedValue(value: string): boolean {
 }
 
 export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onClose, onUpdated }: Props) {
-  const [configs, setConfigs] = useState<Record<Platform, PlatformConfig>>({
-    meta_ads: { ...EMPTY_CONFIG },
-    google_ads: { ...EMPTY_CONFIG },
-    tiktok_ads: { ...EMPTY_CONFIG },
-  })
-  const [formValues, setFormValues] = useState<Record<Platform, Record<string, string>>>({
-    meta_ads: {},
-    google_ads: {},
-    tiktok_ads: {},
-  })
+  const initConfigs = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, { ...EMPTY_CONFIG }])) as Record<Platform, PlatformConfig>
+  const initFormValues = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, {}])) as Record<Platform, Record<string, string>>
+  const initTestResults = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, { loading: false, success: null, message: '' }])) as Record<Platform, TestResultState>
+
+  const [configs, setConfigs] = useState<Record<Platform, PlatformConfig>>(initConfigs)
+  const [formValues, setFormValues] = useState<Record<Platform, Record<string, string>>>(initFormValues)
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState<Platform | null>(null)
   const [deleting, setDeleting] = useState<Platform | null>(null)
-  const [testResults, setTestResults] = useState<Record<Platform, TestResultState>>({
-    meta_ads: { loading: false, success: null, message: '' },
-    google_ads: { loading: false, success: null, message: '' },
-    tiktok_ads: { loading: false, success: null, message: '' },
-  })
+  const [testResults, setTestResults] = useState<Record<Platform, TestResultState>>(initTestResults)
   const [activeTab, setActiveTab] = useState<Platform>('meta_ads')
 
   const fetchConfigs = useCallback(async () => {
@@ -110,16 +85,8 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
         last_test_result: string | null
       }> = Array.isArray(data) ? data : (data.data || [])
 
-      const newConfigs: Record<Platform, PlatformConfig> = {
-        meta_ads: { ...EMPTY_CONFIG },
-        google_ads: { ...EMPTY_CONFIG },
-        tiktok_ads: { ...EMPTY_CONFIG },
-      }
-      const newFormValues: Record<Platform, Record<string, string>> = {
-        meta_ads: {},
-        google_ads: {},
-        tiktok_ads: {},
-      }
+      const newConfigs = initConfigs()
+      const newFormValues = initFormValues()
 
       for (const item of items) {
         if (item.platform in newConfigs) {
@@ -141,11 +108,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
 
       setConfigs(newConfigs)
       setFormValues(newFormValues)
-      setTestResults({
-        meta_ads: { loading: false, success: null, message: '' },
-        google_ads: { loading: false, success: null, message: '' },
-        tiktok_ads: { loading: false, success: null, message: '' },
-      })
+      setTestResults(initTestResults())
     } catch {
       toast.error('API 설정 조회에 실패했습니다.')
     } finally {
@@ -290,6 +253,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
     const values = formValues[platform]
     const testResult = testResults[platform]
     const hasExistingConfig = !!config.config
+    const canTest = SYNC_ENABLED_PLATFORMS.includes(platform)
 
     return (
       <div className="space-y-4 p-4 md:p-5">
@@ -379,7 +343,8 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
             onClick={() => handleTest(platform)}
             variant="outline"
             size="sm"
-            disabled={!hasExistingConfig || testResult.loading}
+            disabled={!canTest || !hasExistingConfig || testResult.loading}
+            title={!canTest ? '연결 테스트 준비 중' : undefined}
           >
             {testResult.loading ? (
               <><Loader2 size={14} className="animate-spin" /> 테스트 중</>
@@ -424,13 +389,13 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={v => setActiveTab(v as Platform)}>
-            <TabsList className="w-full">
-              {(Object.keys(PLATFORM_LABELS) as Platform[]).map(p => (
-                <TabsTrigger key={p} value={p} className="flex-1 text-xs">
+            <TabsList className="w-full overflow-x-auto">
+              {API_CONFIG_PLATFORMS.map(p => (
+                <TabsTrigger key={p} value={p} className="flex-1 text-xs min-w-0 px-2">
                   {PLATFORM_LABELS[p]}
-                  {configs[p].config && (
+                  {configs[p]?.config && (
                     <span
-                      className={`ml-1.5 inline-block w-2 h-2 rounded-full ${
+                      className={`ml-1 inline-block w-2 h-2 rounded-full ${
                         configs[p].last_test_result === 'success'
                           ? 'bg-emerald-500'
                           : configs[p].last_test_result === 'failed'
@@ -443,7 +408,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
               ))}
             </TabsList>
 
-            {(Object.keys(PLATFORM_LABELS) as Platform[]).map(p => (
+            {API_CONFIG_PLATFORMS.map(p => (
               <TabsContent key={p} value={p}>
                 {renderPlatformTab(p)}
               </TabsContent>

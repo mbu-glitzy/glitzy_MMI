@@ -28,21 +28,17 @@ import {
 import { formatDate } from '@/lib/date'
 import { EmptyState, PageHeader } from '@/components/common'
 import ClinicApiConfigDialog from '@/components/admin/ClinicApiConfigDialog'
+import { API_CONFIG_PLATFORMS, API_PLATFORM_SHORT, type ApiPlatform } from '@/lib/platform'
 
-type Platform = 'meta_ads' | 'google_ads' | 'tiktok_ads'
+type Platform = ApiPlatform
 
 interface ApiConfigSummary {
   platform: Platform
   last_test_result: string | null
 }
 
-const PLATFORM_SHORT: Record<Platform, string> = {
-  meta_ads: 'M',
-  google_ads: 'G',
-  tiktok_ads: 'T',
-}
-
-const PLATFORMS: Platform[] = ['meta_ads', 'google_ads', 'tiktok_ads']
+const PLATFORM_SHORT = API_PLATFORM_SHORT
+const PLATFORMS = API_CONFIG_PLATFORMS
 
 export default function ClinicsPage() {
   const { data: session } = useSession()

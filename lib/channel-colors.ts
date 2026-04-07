@@ -14,6 +14,7 @@ export const CHANNEL_COLORS: Record<string, string> = {
   Phone: '#8b5cf6',      // violet-500
   Direct: '#3b82f6',     // blue-500
   Organic: '#14b8a6',    // teal-500
+  Dable: '#6366f1',      // indigo-500 (Badge: dable)
 }
 
 const DEFAULT_COLOR = '#64748b' // slate-500
@@ -36,6 +37,7 @@ export function getChannelColor(channel: string): string {
   if (lower.includes('tiktok') || lower.includes('틱톡')) return CHANNEL_COLORS.TikTok
   if (lower.includes('naver') || lower.includes('네이버')) return CHANNEL_COLORS.Naver
   if (lower.includes('kakao') || lower.includes('카카오')) return CHANNEL_COLORS.Kakao
+  if (lower.includes('dable') || lower.includes('데이블')) return CHANNEL_COLORS.Dable
 
   return DEFAULT_COLOR
 }

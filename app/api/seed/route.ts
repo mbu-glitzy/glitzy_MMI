@@ -234,7 +234,7 @@ export async function POST(req: Request) {
   await supabase.from('payments').insert([...adPayments, ...contentPayments])
 
   // 11. 광고 통계 생성
-  const platforms = ['Meta', 'Google', 'TikTok']
+  const platforms = ['meta_ads', 'google_ads', 'tiktok_ads']
   const adStats: any[] = []
   for (const clinic of clinicsList) {
     for (const platform of platforms) {

@@ -21,7 +21,7 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
   const accessToken = options?.accessToken || process.env.META_ACCESS_TOKEN
   if (!accountId || !accessToken) {
     logger.warn('Missing META_AD_ACCOUNT_ID or META_ACCESS_TOKEN', { clinicId: options?.clinicId })
-    return { platform: 'Meta', count: 0, error: 'Missing credentials' }
+    return { platform: 'meta_ads', count: 0, error: 'Missing credentials' }
   }
 
   const supabase = serverSupabase()
@@ -56,7 +56,7 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
     // 배치 처리
     if (campaigns.length > 0) {
       const rows = campaigns.map((c: Record<string, string>) => ({
-        platform: 'Meta',
+        platform: 'meta_ads',
         campaign_id: c.campaign_id,
         campaign_name: c.campaign_name,
         spend_amount: parseFloat(c.spend || '0'),
@@ -82,11 +82,11 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
     const duration = Date.now() - startTime
     logger.info('Sync completed', { action: 'sync', count: campaigns.length, duration, clinicId: options?.clinicId })
 
-    return { platform: 'Meta', count: campaigns.length }
+    return { platform: 'meta_ads', count: campaigns.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     logger.error('Sync failed', error, { action: 'sync', duration: Date.now() - startTime, clinicId: options?.clinicId })
-    return { platform: 'Meta', count: 0, error: message }
+    return { platform: 'meta_ads', count: 0, error: message }
   }
 }
 
@@ -134,7 +134,7 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
   const accountId = options?.accountId || process.env.META_AD_ACCOUNT_ID
   const accessToken = options?.accessToken || process.env.META_ACCESS_TOKEN
   if (!accountId || !accessToken) {
-    return { platform: 'Meta', count: 0, error: 'Missing credentials' }
+    return { platform: 'meta_ads', count: 0, error: 'Missing credentials' }
   }
 
   const supabase = serverSupabase()
@@ -170,7 +170,7 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
     }
 
     if (allAds.length === 0) {
-      return { platform: 'Meta', count: 0 }
+      return { platform: 'meta_ads', count: 0 }
     }
 
     // 2. utm_content 매핑 — 기존 캐시 로드 후 새 ad_id만 Meta API 조회
@@ -220,7 +220,7 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
 
     // 3. ad_stats upsert
     const rows = allAds.map(a => ({
-      platform: 'Meta',
+      platform: 'meta_ads',
       ad_id: a.ad_id,
       ad_name: a.ad_name,
       campaign_id: a.campaign_id,
@@ -253,10 +253,10 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
       clinicId: options?.clinicId,
     })
 
-    return { platform: 'Meta', count: allAds.length }
+    return { platform: 'meta_ads', count: allAds.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     logger.error('Ad-level sync failed', error, { action: 'sync_ad_level', duration: Date.now() - startTime, clinicId: options?.clinicId })
-    return { platform: 'Meta', count: 0, error: message }
+    return { platform: 'meta_ads', count: 0, error: message }
   }
 }

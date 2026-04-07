@@ -10,6 +10,7 @@ import { createLogger } from '@/lib/logger'
 import { fetchMetaAds, fetchMetaAdStats } from '@/lib/services/metaAds'
 import { fetchGoogleAds } from '@/lib/services/googleAds'
 import { fetchTikTokAds, fetchTikTokAdStats } from '@/lib/services/tiktokAds'
+import { type ApiPlatform, SYNC_ENABLED_PLATFORMS, API_PLATFORM_LABELS } from '@/lib/platform'
 
 const logger = createLogger('AdSyncManager')
 
@@ -30,21 +31,13 @@ interface ClinicApiConfig {
   clinics?: { name: string } | null
 }
 
-type PlatformType = 'meta_ads' | 'google_ads' | 'tiktok_ads'
-
-const PLATFORM_LABELS: Record<PlatformType, string> = {
-  meta_ads: 'Meta',
-  google_ads: 'Google',
-  tiktok_ads: 'TikTok',
-}
-
 /**
  * 단일 병원의 단일 매체 동기화
  */
 async function syncPlatform(
   clinicId: number,
   clinicName: string,
-  platform: PlatformType,
+  platform: ApiPlatform,
   configData: string | Record<string, unknown>,
   date: Date,
 ): Promise<SyncResult> {
@@ -60,7 +53,7 @@ async function syncPlatform(
     return {
       clinicId,
       clinicName,
-      platform: PLATFORM_LABELS[platform],
+      platform: API_PLATFORM_LABELS[platform],
       count: 0,
       error: 'Config decryption failed',
     }
@@ -136,7 +129,7 @@ async function syncPlatform(
     return {
       clinicId,
       clinicName,
-      platform: PLATFORM_LABELS[platform],
+      platform: API_PLATFORM_LABELS[platform],
       count: 0,
       error: message,
     }
@@ -157,7 +150,7 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
   const { data: configs, error } = await supabase
     .from('clinic_api_configs')
     .select('id, clinic_id, platform, config, is_active, clinics(name)')
-    .in('platform', ['meta_ads', 'google_ads', 'tiktok_ads'])
+    .in('platform', SYNC_ENABLED_PLATFORMS as unknown as string[])
     .eq('is_active', true)
 
   if (error) {
@@ -167,7 +160,7 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
   const validConfigs = (configs || []) as unknown as ClinicApiConfig[]
 
   // 2. clinic_id별 그룹핑
-  const clinicMap = new Map<number, { clinicName: string; platforms: Map<PlatformType, string | Record<string, unknown>> }>()
+  const clinicMap = new Map<number, { clinicName: string; platforms: Map<ApiPlatform, string | Record<string, unknown>> }>()
 
   for (const cfg of validConfigs) {
     if (!clinicMap.has(cfg.clinic_id)) {
@@ -177,7 +170,7 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
         platforms: new Map(),
       })
     }
-    clinicMap.get(cfg.clinic_id)!.platforms.set(cfg.platform as PlatformType, cfg.config)
+    clinicMap.get(cfg.clinic_id)!.platforms.set(cfg.platform as ApiPlatform, cfg.config)
   }
 
   // 3. 병원별 순차 실행, 매체별 병렬 실행
@@ -223,7 +216,7 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
       })),
     ])
 
-    const platformNames = ['Meta', 'Google', 'TikTok']
+    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads']
     for (let i = 0; i < fallbackResults.length; i++) {
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {
@@ -279,7 +272,7 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
     .from('clinic_api_configs')
     .select('id, clinic_id, platform, config, is_active')
     .eq('clinic_id', clinicId)
-    .in('platform', ['meta_ads', 'google_ads', 'tiktok_ads'])
+    .in('platform', SYNC_ENABLED_PLATFORMS as unknown as string[])
     .eq('is_active', true)
 
   if (error) {
@@ -291,7 +284,7 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
   if (validConfigs.length > 0) {
     // 설정된 매체 병렬 동기화
     const promises = validConfigs.map(cfg =>
-      syncPlatform(clinicId, clinicName, cfg.platform as PlatformType, cfg.config, date)
+      syncPlatform(clinicId, clinicName, cfg.platform as ApiPlatform, cfg.config, date)
     )
 
     const settled = await Promise.allSettled(promises)
@@ -327,7 +320,7 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
       })),
     ])
 
-    const platformNames = ['Meta', 'Google', 'TikTok']
+    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads']
     for (let i = 0; i < fallbackResults.length; i++) {
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {

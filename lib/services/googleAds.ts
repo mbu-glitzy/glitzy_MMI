@@ -31,7 +31,7 @@ export async function fetchGoogleAds(date = new Date(), options?: GoogleAdsOptio
 
   if (!clientId || !clientSecret || !developerToken || !customerId || !refreshToken) {
     logger.warn('Missing Google Ads credentials', { clinicId: options?.clinicId })
-    return { platform: 'Google', count: 0, error: 'Missing credentials' }
+    return { platform: 'google_ads', count: 0, error: 'Missing credentials' }
   }
 
   const supabase = serverSupabase()
@@ -57,7 +57,7 @@ export async function fetchGoogleAds(date = new Date(), options?: GoogleAdsOptio
     // 배치 처리
     if (campaigns.length > 0) {
       const rows = campaigns.map((row) => ({
-        platform: 'Google',
+        platform: 'google_ads',
         campaign_id: String(row.campaign?.id || ''),
         campaign_name: row.campaign?.name || '',
         spend_amount: (row.metrics?.cost_micros || 0) / 1_000_000,
@@ -82,10 +82,10 @@ export async function fetchGoogleAds(date = new Date(), options?: GoogleAdsOptio
     const duration = Date.now() - startTime
     logger.info('Sync completed', { action: 'sync', count: campaigns.length, duration, clinicId: options?.clinicId })
 
-    return { platform: 'Google', count: campaigns.length }
+    return { platform: 'google_ads', count: campaigns.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     logger.error('Sync failed', error, { action: 'sync', duration: Date.now() - startTime, clinicId: options?.clinicId })
-    return { platform: 'Google', count: 0, error: message }
+    return { platform: 'google_ads', count: 0, error: message }
   }
 }
