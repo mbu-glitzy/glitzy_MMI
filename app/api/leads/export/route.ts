@@ -83,6 +83,18 @@ export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClin
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
   const endDate = url.searchParams.get('endDate')
+
+  // Timestamp columns: KST midnight [start, end) pattern
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
+
   const channelParam = url.searchParams.get('channel')
   const stageParam = url.searchParams.get('stage')
   const landingPageId = url.searchParams.get('landing_page_id')
@@ -111,8 +123,8 @@ export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClin
   }
   query = filtered
 
-  if (startDate) query = query.gte('created_at', startDate)
-  if (endDate) query = query.lte('created_at', endDate)
+  if (tsStart) query = query.gte('created_at', tsStart)
+  if (tsEnd) query = query.lt('created_at', tsEnd)
 
   const { data: customers, error } = await query
 

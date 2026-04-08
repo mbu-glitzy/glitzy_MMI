@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
-import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
+import { getKstDateString, getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
 /**
  * 캠페인별 리드 목록 API
@@ -14,6 +14,17 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const campaign = url.searchParams.get('campaign')
   const startDate = url.searchParams.get('startDate')
   const endDate = url.searchParams.get('endDate')
+
+  // Timestamp columns: KST midnight [start, end) pattern
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
 
   // 특정 캠페인의 리드 상세 목록
   if (campaign) {
@@ -32,8 +43,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
     if (filtered === null) return apiSuccess([])
     query = filtered
-    if (startDate) query = query.gte('created_at', startDate)
-    if (endDate) query = query.lte('created_at', endDate)
+    if (tsStart) query = query.gte('created_at', tsStart)
+    if (tsEnd) query = query.lt('created_at', tsEnd)
 
     const { data, error } = await query
     if (error) return apiError(error.message, 500)
@@ -50,8 +61,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     .limit(2000)
 
   if (clinicId) leadsQuery = leadsQuery.eq('clinic_id', clinicId)
-  if (startDate) leadsQuery = leadsQuery.gte('created_at', startDate)
-  if (endDate) leadsQuery = leadsQuery.lte('created_at', endDate)
+  if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
+  if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
   // 랜딩 페이지 이름 매핑용
   let lpQuery = supabase.from('landing_pages').select('id, name')

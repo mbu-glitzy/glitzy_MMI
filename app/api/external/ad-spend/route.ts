@@ -39,6 +39,11 @@ export const GET = withExternalAuth(async (req: Request) => {
     const lastDay = new Date(year, mon, 0).getDate()
     const endDate = `${month}-${String(lastDay).padStart(2, '0')}`
 
+    // Timestamp: next day midnight exclusive
+    const tsEndDate = new Date(endDate + 'T00:00:00+09:00')
+    tsEndDate.setDate(tsEndDate.getDate() + 1)
+    const tsEnd = tsEndDate.toISOString()
+
     const clinicId = clinicIdParam ? parseId(clinicIdParam) : null
     if (clinicIdParam && !clinicId) {
       return apiError('유효한 clinic_id가 필요합니다', 400)
@@ -64,14 +69,14 @@ export const GET = withExternalAuth(async (req: Request) => {
           .eq('clinic_id', clinicId)
           .eq('status', 'sent')
           .gte('created_at', `${startDate}T00:00:00+09:00`)
-          .lte('created_at', `${endDate}T23:59:59+09:00`)
+          .lt('created_at', tsEnd)
       : // 전체 병원: clinic_id별 건수 필요 → 행 조회 후 집계
         supabase
           .from('sms_send_logs')
           .select('clinic_id')
           .eq('status', 'sent')
           .gte('created_at', `${startDate}T00:00:00+09:00`)
-          .lte('created_at', `${endDate}T23:59:59+09:00`)
+          .lt('created_at', tsEnd)
           .limit(AD_QUERY_LIMIT)
 
     // 3. 병원 정보

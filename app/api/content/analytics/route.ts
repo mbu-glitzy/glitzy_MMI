@@ -10,6 +10,17 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const startDate = url.searchParams.get('startDate')
   const endDate = url.searchParams.get('endDate')
 
+  // Timestamp columns: KST midnight [start, end) pattern
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
+
   // agency_staff 배정 병원 0개 → 빈 결과
   if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
     return apiSuccess([])
@@ -20,16 +31,16 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   // 콘텐츠 포스트
   let postsQuery = supabase.from('content_posts').select('id, title, platform, utm_campaign, budget, published_at')
   postsQuery = applyClinicFilter(postsQuery, ctx)!
-  if (startDate) postsQuery = postsQuery.gte('published_at', startDate)
-  if (endDate) postsQuery = postsQuery.lte('published_at', endDate)
+  if (tsStart) postsQuery = postsQuery.gte('published_at', tsStart)
+  if (tsEnd) postsQuery = postsQuery.lt('published_at', tsEnd)
   const { data: posts } = await postsQuery
   if (!posts?.length) return apiSuccess([])
 
   // 리드 조회 (기간 필터 적용)
   let leadsQuery = supabase.from('leads').select('id, customer_id, campaign_id, created_at')
   leadsQuery = applyClinicFilter(leadsQuery, ctx)!
-  if (startDate) leadsQuery = leadsQuery.gte('created_at', startDate)
-  if (endDate) leadsQuery = leadsQuery.lte('created_at', endDate)
+  if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
+  if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
   const { data: leads } = await leadsQuery
 
   // 결제 조회 (리드 고객 기준)

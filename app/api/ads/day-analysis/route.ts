@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess, apiError } from '@/lib/api-middleware'
-import { toUtcDate } from '@/lib/date'
+import { getKstDateString, toUtcDate } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('AdsDayAnalysis')
@@ -20,6 +20,19 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const startDate = url.searchParams.get('startDate')
   const endDate = url.searchParams.get('endDate')
 
+  // DATE columns: KST date string
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+
+  // Timestamp columns: KST midnight [start, end) pattern
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
+
   // agency_staff 배정 병원 0개 → 빈 결과
   const emptyCheck = applyClinicFilter(supabase.from('leads').select('id', { count: 'exact', head: true }), { clinicId, assignedClinicIds })
   if (emptyCheck === null) {
@@ -34,8 +47,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
     if (filteredLeads === null) return apiSuccess({ byDay: buildEmptyResult() })
     leadsQuery = filteredLeads
-    if (startDate) leadsQuery = leadsQuery.gte('created_at', `${startDate}T00:00:00+09:00`)
-    if (endDate) leadsQuery = leadsQuery.lte('created_at', `${endDate}T23:59:59+09:00`)
+    if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
+    if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
     // 2. 광고 지출 stat_date + spend_amount 조회
     let adStatsQuery = supabase
@@ -44,8 +57,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filteredAdStats = applyClinicFilter(adStatsQuery, { clinicId, assignedClinicIds })
     if (filteredAdStats === null) return apiSuccess({ byDay: buildEmptyResult() })
     adStatsQuery = filteredAdStats
-    if (startDate) adStatsQuery = adStatsQuery.gte('stat_date', startDate)
-    if (endDate) adStatsQuery = adStatsQuery.lte('stat_date', endDate)
+    if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
+    if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
 
     const [leadsRes, adStatsRes] = await Promise.all([leadsQuery, adStatsQuery])
 

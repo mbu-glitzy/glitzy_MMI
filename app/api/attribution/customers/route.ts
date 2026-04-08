@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
+import { getKstDateString } from '@/lib/date'
 
 /**
  * 매출 귀속 — 결제 고객 여정 목록
@@ -14,6 +15,10 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const channelFilter = url.searchParams.get('channel')
   const campaignFilter = url.searchParams.get('campaign')
 
+  // DATE columns: KST date string
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+
   if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
     return apiSuccess([])
   }
@@ -26,8 +31,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     .select('id, payment_amount, payment_date, treatment_name, customer_id, customers(id, name, phone_number, first_source, first_campaign_id, created_at)')
     .order('payment_date', { ascending: false })
   paymentsQuery = applyClinicFilter(paymentsQuery, ctx)!
-  if (startDate) paymentsQuery = paymentsQuery.gte('payment_date', startDate)
-  if (endDate) paymentsQuery = paymentsQuery.lte('payment_date', endDate)
+  if (dateStart) paymentsQuery = paymentsQuery.gte('payment_date', dateStart)
+  if (dateEnd) paymentsQuery = paymentsQuery.lte('payment_date', dateEnd)
 
   const { data: payments } = await paymentsQuery
 

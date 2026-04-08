@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { normalizeChannel } from '@/lib/channel'
 
@@ -37,6 +38,19 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const startDate = url.searchParams.get('startDate')
   const endDate = url.searchParams.get('endDate')
 
+  // DATE columns: KST date string
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+
+  // Timestamp columns: KST midnight [start, end) pattern
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
+
   if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
     return apiSuccess({ creatives: [] })
   }
@@ -52,8 +66,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     if (!filteredLeads) return apiSuccess({ creatives: [] })
     leadsQuery = filteredLeads
 
-    if (startDate) leadsQuery = leadsQuery.gte('created_at', startDate)
-    if (endDate) leadsQuery = leadsQuery.lte('created_at', endDate)
+    if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
+    if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
     // 2) ad_creatives — 소재 메타데이터
     let creativesQuery = supabase
@@ -78,8 +92,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
 
     const filteredAdStats = applyClinicFilter(adStatsQuery, { clinicId, assignedClinicIds })
     if (filteredAdStats) adStatsQuery = filteredAdStats
-    if (startDate) adStatsQuery = adStatsQuery.gte('stat_date', startDate)
-    if (endDate) adStatsQuery = adStatsQuery.lte('stat_date', endDate)
+    if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
+    if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
 
     // 병렬 쿼리 실행
     const [leadsRes, creativesRes, paymentsRes, adStatsRes] = await Promise.all([

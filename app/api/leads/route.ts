@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { getKstDateString } from '@/lib/date'
 
 /**
  * 고객 기준 리드 조회 API (하이브리드 방식)
@@ -12,6 +13,18 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
   const endDate = url.searchParams.get('endDate')
+
+  // Timestamp columns: KST midnight [start, end) pattern
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
+
   const landingPageId = url.searchParams.get('landing_page_id')
   const utmCampaign = url.searchParams.get('utm_campaign')
   const limitParam = url.searchParams.get('limit')
@@ -34,8 +47,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
   if (filtered === null) return apiSuccess([])
   query = filtered
-  if (startDate) query = query.gte('created_at', startDate)
-  if (endDate) query = query.lte('created_at', endDate)
+  if (tsStart) query = query.gte('created_at', tsStart)
+  if (tsEnd) query = query.lt('created_at', tsEnd)
 
   const { data: customers, error } = await query
 

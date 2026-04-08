@@ -34,6 +34,11 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     dayMap.set(key, { date: key, spend: 0, clicks: 0, impressions: 0, leads: 0, cpl: 0, cpc: 0, ctr: 0 })
   }
 
+  // Timestamp end: next day midnight exclusive
+  const tsEndDate = new Date(endDate + 'T00:00:00+09:00')
+  tsEndDate.setDate(tsEndDate.getDate() + 1)
+  const tsEnd = tsEndDate.toISOString()
+
   // 광고 집계 쿼리
   let adQuery = supabase
     .from('ad_campaign_stats')
@@ -47,7 +52,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     .from('leads')
     .select('created_at')
     .gte('created_at', `${startDate}T00:00:00+09:00`)
-    .lte('created_at', `${endDate}T23:59:59+09:00`)
+    .lt('created_at', tsEnd)
     .order('created_at')
 
   const adFiltered = applyClinicFilter(adQuery, { clinicId, assignedClinicIds })

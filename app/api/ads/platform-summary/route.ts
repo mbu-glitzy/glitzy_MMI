@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess, apiError } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
+import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('AdsPlatformSummary')
@@ -17,6 +18,19 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   const startDate = url.searchParams.get('startDate')
   const endDate = url.searchParams.get('endDate')
 
+  // DATE columns: KST date string
+  const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
+  const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+
+  // Timestamp columns: KST midnight [start, end) pattern
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
+
   // agency_staff 배정 병원 0개 → 빈 결과
   const emptyCheck = applyClinicFilter(supabase.from('leads').select('id', { count: 'exact', head: true }), { clinicId, assignedClinicIds })
   if (emptyCheck === null) return apiSuccess([])
@@ -29,8 +43,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filteredAdStats = applyClinicFilter(adStatsQuery, { clinicId, assignedClinicIds })
     if (filteredAdStats === null) return apiSuccess([])
     adStatsQuery = filteredAdStats
-    if (startDate) adStatsQuery = adStatsQuery.gte('stat_date', startDate)
-    if (endDate) adStatsQuery = adStatsQuery.lte('stat_date', endDate)
+    if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
+    if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
 
     // 2. 리드 조회 (utm_source, customer_id)
     let leadsQuery = supabase
@@ -39,8 +53,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
     if (filteredLeads === null) return apiSuccess([])
     leadsQuery = filteredLeads
-    if (startDate) leadsQuery = leadsQuery.gte('created_at', `${startDate}T00:00:00+09:00`)
-    if (endDate) leadsQuery = leadsQuery.lte('created_at', `${endDate}T23:59:59+09:00`)
+    if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
+    if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
     // 3. 결제 조회 (customer_id, payment_amount)
     let paymentsQuery = supabase
@@ -49,8 +63,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     const filteredPayments = applyClinicFilter(paymentsQuery, { clinicId, assignedClinicIds })
     if (filteredPayments === null) return apiSuccess([])
     paymentsQuery = filteredPayments
-    if (startDate) paymentsQuery = paymentsQuery.gte('payment_date', startDate)
-    if (endDate) paymentsQuery = paymentsQuery.lte('payment_date', endDate)
+    if (dateStart) paymentsQuery = paymentsQuery.gte('payment_date', dateStart)
+    if (dateEnd) paymentsQuery = paymentsQuery.lte('payment_date', dateEnd)
 
     const [adStatsRes, leadsRes, paymentsRes] = await Promise.all([
       adStatsQuery,

@@ -42,8 +42,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   let paymentQuery = supabase
     .from('payments')
     .select('payment_amount, payment_date, customers(first_source)')
-    .gte('payment_date', `${startDate}T00:00:00+09:00`)
-    .lte('payment_date', `${endDate}T23:59:59+09:00`)
+    .gte('payment_date', startDate)
+    .lte('payment_date', endDate)
 
   const adFiltered = applyClinicFilter(adQuery, { clinicId, assignedClinicIds })
   const payFiltered = applyClinicFilter(paymentQuery, { clinicId, assignedClinicIds })

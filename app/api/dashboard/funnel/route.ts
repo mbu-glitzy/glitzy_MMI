@@ -11,8 +11,8 @@ import { getKstDateString } from '@/lib/date'
 export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
-  const startDate = url.searchParams.get('startDate')
-  const endDate = url.searchParams.get('endDate')
+  const startParam = url.searchParams.get('startDate')
+  const endParam = url.searchParams.get('endDate')
   const groupBy = url.searchParams.get('groupBy') || 'total' // total | channel | campaign
 
   // agency_staff 배정 병원 0개 → 빈 결과
@@ -22,31 +22,41 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
 
   const ctx = { clinicId, assignedClinicIds }
 
-  // DATE 컬럼(payment_date)용 KST 날짜 문자열 변환
-  const statStart = startDate ? getKstDateString(new Date(startDate)) : null
-  const statEnd = endDate ? getKstDateString(new Date(endDate)) : null
+  // KPI와 동일한 날짜 범위 변환: ISO → KST 기준 [start, end) 패턴
+  const startKst = startParam ? getKstDateString(new Date(startParam)) : null
+  const endKst = endParam ? getKstDateString(new Date(endParam)) : null
+  const tsStart = startKst ? `${startKst}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (endKst) {
+    const endDate = new Date(endKst + 'T00:00:00+09:00')
+    endDate.setDate(endDate.getDate() + 1)
+    tsEnd = endDate.toISOString()
+  }
 
-  // 데이터 조회
+  // 데이터 조회 — 모든 timestamp 컬럼에 KPI와 동일한 gte/lt 패턴 적용
   let leadsQuery = supabase
     .from('leads')
     .select('id, customer_id, utm_source, utm_campaign, created_at')
     .limit(5000)
   leadsQuery = applyClinicFilter(leadsQuery, ctx)!
-  leadsQuery = applyDateRange(leadsQuery, 'created_at', startDate, endDate)
+  if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
+  if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
   let bookingsQuery = supabase
     .from('bookings')
     .select('id, customer_id, status, created_at')
     .limit(5000)
   bookingsQuery = applyClinicFilter(bookingsQuery, ctx)!
-  bookingsQuery = applyDateRange(bookingsQuery, 'created_at', startDate, endDate)
+  if (tsStart) bookingsQuery = bookingsQuery.gte('created_at', tsStart)
+  if (tsEnd) bookingsQuery = bookingsQuery.lt('created_at', tsEnd)
 
   let consultationsQuery = supabase
     .from('consultations')
     .select('id, customer_id, status, created_at')
     .limit(5000)
   consultationsQuery = applyClinicFilter(consultationsQuery, ctx)!
-  consultationsQuery = applyDateRange(consultationsQuery, 'created_at', startDate, endDate)
+  if (tsStart) consultationsQuery = consultationsQuery.gte('created_at', tsStart)
+  if (tsEnd) consultationsQuery = consultationsQuery.lt('created_at', tsEnd)
 
   // payment_date(DATE 컬럼)는 KST 날짜 문자열로 비교
   let paymentsQuery = supabase
@@ -54,8 +64,8 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     .select('id, customer_id, payment_amount, payment_date')
     .limit(5000)
   paymentsQuery = applyClinicFilter(paymentsQuery, ctx)!
-  if (statStart) paymentsQuery = paymentsQuery.gte('payment_date', statStart)
-  if (statEnd) paymentsQuery = paymentsQuery.lte('payment_date', statEnd)
+  if (startKst) paymentsQuery = paymentsQuery.gte('payment_date', startKst)
+  if (endKst) paymentsQuery = paymentsQuery.lte('payment_date', endKst)
 
   const [leadsRes, bookingsRes, consultationsRes, paymentsRes] = await Promise.all([
     leadsQuery,
