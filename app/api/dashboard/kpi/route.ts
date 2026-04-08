@@ -25,7 +25,7 @@ async function fetchMetrics(
   // 범위 패턴: [start, end) — fetchTodaySummary와 동일한 gte/lt 패턴
   const [adStatsRes, leadsRes, paymentsRes, bookingsRes, consultRes, contentBudgetRes] = await Promise.all([
     applyClinicFilter(supabase.from('ad_campaign_stats').select('spend_amount, clicks, impressions').gte('stat_date', statStart).lte('stat_date', statEnd), ctx)!,
-    applyClinicFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end), ctx)!,
+    applyClinicFilter(supabase.from('leads').select('customer_id').gte('created_at', start).lt('created_at', end).limit(5000), ctx)!,
     applyClinicFilter(supabase.from('payments').select('customer_id, payment_amount').gte('payment_date', statStart).lte('payment_date', statEnd), ctx)!,
     applyClinicFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })
       .neq('status', 'cancelled').gte('created_at', start).lt('created_at', end), ctx)!,
@@ -37,11 +37,19 @@ async function fetchMetrics(
   const totalSpend = adStatsRes.data?.reduce((s, r) => s + Number(r.spend_amount), 0) || 0
   const totalClicks = adStatsRes.data?.reduce((s, r) => s + Number(r.clicks || 0), 0) || 0
   const totalImpressions = adStatsRes.data?.reduce((s, r) => s + Number(r.impressions || 0), 0) || 0
-  const totalLeads = leadsRes.count || 0
+  const totalLeads = leadsRes.data?.length || 0
   const totalRevenue = paymentsRes.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
   const bookedCount = bookingsRes.count || 0
   const consultCount = consultRes.count || 0
   const contentBudget = contentBudgetRes.data?.reduce((s, p) => s + (p.budget || 0), 0) || 0
+
+  // 기간 내 리드 고객의 customer_id 집합
+  const leadCustomerIds = new Set(leadsRes.data?.map(l => l.customer_id) || [])
+
+  // 리드 고객의 매출 (ROAS 계산용) — 해당 기간에 인입된 리드에서 발생한 매출만
+  const leadRevenue = paymentsRes.data
+    ?.filter(p => leadCustomerIds.has(p.customer_id))
+    .reduce((s, r) => s + Number(r.payment_amount), 0) || 0
 
   // 결제 완료 고객 수 (distinct customer_id)
   const payingCustomerCount = new Set(paymentsRes.data?.map(p => p.customer_id) || []).size
@@ -55,7 +63,7 @@ async function fetchMetrics(
 
   return {
     cpl: totalLeads > 0 ? Math.round(totalSpend / totalLeads) : 0,
-    roas: totalSpend > 0 ? Number((totalRevenue / totalSpend).toFixed(2)) : 0,
+    roas: totalSpend > 0 ? Number((leadRevenue / totalSpend).toFixed(2)) : 0,
     bookingRate: totalLeads > 0 ? Number(((bookedCount / totalLeads) * 100).toFixed(1)) : 0,
     totalRevenue,
     totalLeads,
