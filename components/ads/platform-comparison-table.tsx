@@ -13,12 +13,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { BarChart2, Lightbulb } from 'lucide-react'
+import { BarChart2, ChevronDown, ChevronRight, Lightbulb } from 'lucide-react'
 
 /** ISO 날짜 → "M/D" 형식 (KST) */
 function fmtShort(iso: string) {
   const d = new Date(iso)
   return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
+}
+
+interface SourceRow {
+  source: string
+  label: string
+  spend: number
+  clicks: number
+  impressions: number
+  leads: number
+  cpl: number
+  cpc: number
+  ctr: number
 }
 
 interface PlatformRow {
@@ -34,6 +46,7 @@ interface PlatformRow {
   ctr: number
   roas: number
   conversionRate: number
+  sources?: SourceRow[]
 }
 
 interface Props {
@@ -45,6 +58,7 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
   const { selectedClinicId } = useClinic()
   const [rows, setRows] = useState<PlatformRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -81,6 +95,10 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
   const minCpl = bestCplChannel?.cpl ?? null
 
   const thClass = 'text-[11px] text-muted-foreground font-medium whitespace-nowrap'
+
+  const toggleExpand = (channel: string) => {
+    setExpandedPlatform(prev => prev === channel ? null : channel)
+  }
 
   return (
     <Card variant="glass" className="p-5">
@@ -120,41 +138,86 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
               <TableBody>
                 {rows.map((row, idx) => {
                   const isLowestCpl = minCpl !== null && row.cpl === minCpl && row.leads > 0
+                  const hasSources = (row.sources?.length ?? 0) > 0
+                  const isExpanded = expandedPlatform === row.channel
 
                   return (
-                    <TableRow
-                      key={row.channel}
-                      className={`border-b border-border/50 dark:border-white/[0.03] ${
-                        idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : ''
-                      }`}
-                    >
-                      <TableCell className="py-2.5">
-                        <ChannelBadge channel={row.channel} />
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        ₩{row.spend.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.impressions > 0 ? row.impressions.toLocaleString() : '-'}
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.leads.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.cpc > 0 ? `₩${row.cpc.toLocaleString()}` : '-'}
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : '-'}
-                      </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
-                        <span className={isLowestCpl ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>
-                          {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
-                        </span>
-                      </TableCell>
-                    </TableRow>
+                    <>
+                      <TableRow
+                        key={row.channel}
+                        className={`border-b border-border/50 dark:border-white/[0.03] ${
+                          idx % 2 === 1 ? 'bg-muted/30 dark:bg-white/[0.01]' : ''
+                        } ${hasSources ? 'cursor-pointer hover:bg-muted/50 dark:hover:bg-white/[0.03]' : ''}`}
+                        onClick={() => hasSources && toggleExpand(row.channel)}
+                      >
+                        <TableCell className="py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            {hasSources && (
+                              isExpanded
+                                ? <ChevronDown size={14} className="text-muted-foreground shrink-0" />
+                                : <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                            )}
+                            <ChannelBadge channel={row.channel} />
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                          ₩{row.spend.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                          {row.impressions > 0 ? row.impressions.toLocaleString() : '-'}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                          {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                          {row.leads.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                          {row.cpc > 0 ? `₩${row.cpc.toLocaleString()}` : '-'}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
+                          {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : '-'}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
+                          <span className={isLowestCpl ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>
+                            {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* 소스별 세분화 하위 행 */}
+                      {isExpanded && row.sources?.map(src => (
+                        <TableRow
+                          key={`${row.channel}-${src.source}`}
+                          className="border-b border-border/30 dark:border-white/[0.02] bg-muted/20 dark:bg-white/[0.015]"
+                        >
+                          <TableCell className="py-2 pl-10">
+                            <span className="text-xs text-muted-foreground">{src.label}</span>
+                          </TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {src.spend > 0 ? `₩${src.spend.toLocaleString()}` : '-'}
+                          </TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {src.impressions > 0 ? src.impressions.toLocaleString() : '-'}
+                          </TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {src.clicks > 0 ? src.clicks.toLocaleString() : '-'}
+                          </TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {src.leads > 0 ? src.leads.toLocaleString() : '-'}
+                          </TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {src.cpc > 0 ? `₩${src.cpc.toLocaleString()}` : '-'}
+                          </TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {src.ctr > 0 ? `${src.ctr.toFixed(2)}%` : '-'}
+                          </TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
+                            {src.cpl > 0 ? `₩${src.cpl.toLocaleString()}` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
                   )
                 })}
               </TableBody>

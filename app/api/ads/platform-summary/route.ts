@@ -3,6 +3,7 @@ import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess, apiErro
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
+import { apiToCreativePlatform, getSourceLabel } from '@/lib/platform'
 
 const logger = createLogger('AdsPlatformSummary')
 
@@ -36,10 +37,10 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   if (emptyCheck === null) return apiSuccess([])
 
   try {
-    // 1. 광고 통계 조회 (platform, spend, clicks, impressions)
+    // 1. 광고 통계 조회 (platform, campaign_type, spend, clicks, impressions)
     let adStatsQuery = supabase
       .from('ad_campaign_stats')
-      .select('platform, spend_amount, clicks, impressions, stat_date')
+      .select('platform, campaign_type, spend_amount, clicks, impressions, stat_date')
     const filteredAdStats = applyClinicFilter(adStatsQuery, { clinicId, assignedClinicIds })
     if (filteredAdStats === null) return apiSuccess([])
     adStatsQuery = filteredAdStats
@@ -85,8 +86,10 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
       return apiError('결제 조회 중 오류가 발생했습니다.', 500)
     }
 
-    // 채널별 광고 지출/클릭/노출 집계 (platform 기준)
-    const adByChannel: Record<string, { spend: number; clicks: number; impressions: number }> = {}
+    // 채널별 광고 지출/클릭/노출 집계 (platform 기준) + 소스별 세분화
+    type AdMetrics = { spend: number; clicks: number; impressions: number }
+    const adByChannel: Record<string, AdMetrics> = {}
+    const adBySource: Record<string, Record<string, AdMetrics>> = {} // channel → source → metrics
     for (const row of adStatsRes.data || []) {
       const channel = normalizeChannel(row.platform)
       if (!adByChannel[channel]) {
@@ -95,15 +98,32 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
       adByChannel[channel].spend += Number(row.spend_amount) || 0
       adByChannel[channel].clicks += Number(row.clicks) || 0
       adByChannel[channel].impressions += Number(row.impressions) || 0
+
+      // 소스별 세분화: platform_prefix + campaign_type → meta_feed, google_search 등
+      const prefix = apiToCreativePlatform(row.platform)
+      const sourceKey = row.campaign_type ? `${prefix}_${row.campaign_type}` : `${prefix}_etc`
+      if (!adBySource[channel]) adBySource[channel] = {}
+      if (!adBySource[channel][sourceKey]) {
+        adBySource[channel][sourceKey] = { spend: 0, clicks: 0, impressions: 0 }
+      }
+      adBySource[channel][sourceKey].spend += Number(row.spend_amount) || 0
+      adBySource[channel][sourceKey].clicks += Number(row.clicks) || 0
+      adBySource[channel][sourceKey].impressions += Number(row.impressions) || 0
     }
 
-    // 채널별 리드 집계 + customer→channel 첫 유입 채널 매핑
+    // 채널별 리드 집계 + 소스별 리드 집계 + customer→channel 첫 유입 채널 매핑
     const leadsByChannel: Record<string, number> = {}
+    const leadsBySource: Record<string, Record<string, number>> = {} // channel → source → count
     const customerToChannel = new Map<number, string>()
     for (const lead of leadsRes.data || []) {
       const channel = normalizeChannel(lead.utm_source)
+      const rawSource = lead.utm_source || 'unknown'
       leadsByChannel[channel] = (leadsByChannel[channel] || 0) + 1
-      // 고객의 첫 번째 리드 채널만 기록 (이미 있으면 덮어쓰지 않음)
+
+      // 소스별 리드 집계
+      if (!leadsBySource[channel]) leadsBySource[channel] = {}
+      leadsBySource[channel][rawSource] = (leadsBySource[channel][rawSource] || 0) + 1
+
       if (!customerToChannel.has(lead.customer_id)) {
         customerToChannel.set(lead.customer_id, channel)
       }
@@ -136,6 +156,29 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
         const revenue = revenueByChannel[channel] || 0
         const payingCustomers = payingCustomersByChannel[channel]?.size || 0
 
+        // 소스별 세분화 데이터 생성
+        const adSources = adBySource[channel] || {}
+        const leadSources = leadsBySource[channel] || {}
+        const allSourceKeys = new Set([...Object.keys(adSources), ...Object.keys(leadSources)])
+        const sources = Array.from(allSourceKeys)
+          .map(src => {
+            const ad = adSources[src] || { spend: 0, clicks: 0, impressions: 0 }
+            const srcLeads = leadSources[src] || 0
+            const label = src.endsWith('_etc') ? '기타' : getSourceLabel(src)
+            return {
+              source: src,
+              label: label === src ? src : label,
+              spend: ad.spend,
+              clicks: ad.clicks,
+              impressions: ad.impressions,
+              leads: srcLeads,
+              cpl: srcLeads > 0 ? Math.round(ad.spend / srcLeads) : 0,
+              cpc: ad.clicks > 0 ? Math.round(ad.spend / ad.clicks) : 0,
+              ctr: ad.impressions > 0 ? Number(((ad.clicks / ad.impressions) * 100).toFixed(2)) : 0,
+            }
+          })
+          .sort((a, b) => b.leads - a.leads || b.spend - a.spend)
+
         return {
           channel,
           spend,
@@ -149,6 +192,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
           ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
           roas: spend > 0 ? Number((revenue / spend).toFixed(2)) : 0,
           conversionRate: leads > 0 ? Number(((payingCustomers / leads) * 100).toFixed(1)) : 0,
+          sources,
         }
       })
       .sort((a, b) => b.leads - a.leads)
