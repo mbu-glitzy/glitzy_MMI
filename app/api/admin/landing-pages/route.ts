@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
-import { sanitizeString, parseId } from '@/lib/security'
+import { sanitizeString, sanitizeUrl, parseId } from '@/lib/security'
 import { createLogger } from '@/lib/logger'
 import fs from 'fs'
 import path from 'path'
@@ -76,7 +76,7 @@ async function generateUniqueLpId(supabase: ReturnType<typeof serverSupabase>): 
 export const POST = withSuperAdmin(async (req: Request) => {
   try {
     const body = await req.json()
-    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id } = body
+    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id, redirect_url } = body
 
     if (!name || !file_name) {
       return apiError('이름과 파일명은 필수입니다.', 400)
@@ -125,6 +125,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
         clinic_id: validClinicId,
         description: description ? sanitizeString(description, 500) : null,
         gtm_id: gtm_id ? sanitizeString(gtm_id, 20) : null,
+        redirect_url: redirect_url ? sanitizeUrl(redirect_url, 2000) || null : null,
         is_active: is_active !== false,
       })
       .select('*, clinic:clinics(id, name)')

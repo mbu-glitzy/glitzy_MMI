@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess, AuthContext } from '@/lib/api-middleware'
-import { sanitizeString, parseId } from '@/lib/security'
+import { sanitizeString, sanitizeUrl, parseId } from '@/lib/security'
 import { archiveBeforeDelete } from '@/lib/archive'
 import { createLogger } from '@/lib/logger'
 import fs from 'fs'
@@ -43,7 +43,7 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
     }
 
     const body = await req.json()
-    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id } = body
+    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id, redirect_url } = body
 
     const supabase = serverSupabase()
 
@@ -103,6 +103,7 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
     if (validClinicId !== undefined) updateData.clinic_id = validClinicId
     if (description !== undefined) updateData.description = description ? sanitizeString(description, 500) : null
     if (gtm_id !== undefined) updateData.gtm_id = gtm_id ? sanitizeString(gtm_id, 20) : null
+    if (redirect_url !== undefined) updateData.redirect_url = redirect_url ? sanitizeUrl(redirect_url, 2000) || null : null
     if (is_active !== undefined) updateData.is_active = is_active
 
     const { data, error } = await supabase

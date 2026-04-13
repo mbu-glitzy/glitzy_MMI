@@ -52,3 +52,4 @@
 | 2026-04-01 | 캘린더 UX 개선: 일간 뷰 10분 단위 슬롯(10:00~19:50), 현재 시간 빨간 구분선+자동 스크롤, 월간/주간 뷰 전체 예약 표시(slice 제한 제거), 취소/노쇼 취소선+투명도 시각 구분, DragOverlay/확인 다이얼로그 디자인 개선 |
 | 2026-04-07 | fix: 시술별 매출 비중 KPI 매출 불일치 수정 — leads 간접 조회(200건 제한)에서 payments 직접 조회로 변경 (`/api/dashboard/treatment-revenue` 신규) |
 | 2026-04-07 | feat: 광고 플랫폼 2계층 구조 도입 — `lib/platform.ts` 중앙 상수, campaign_type 컬럼 추가, platform 값 `meta_ads` 형식 통일, Naver/Kakao/Dable 신규 플랫폼 API 설정 UI |
+| 2026-04-13 | feat: 랜딩페이지 제출 후 리다이렉트 URL 설정 — `landing_pages.redirect_url` 컬럼 추가, 관리 페이지 입력란, `/api/lp/render`에서 `__LP_DATA__.redirectUrl` 주입 후 폼 제출 성공 시 `location.href` 이동 (HTML 파일 무수정) |

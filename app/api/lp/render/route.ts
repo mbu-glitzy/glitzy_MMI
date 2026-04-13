@@ -63,12 +63,14 @@ export async function GET(req: NextRequest) {
 
   // 데이터 주입 (</head> 앞에 스크립트 삽입)
   const clinicName = landingPage.clinic?.name || ''
+  const redirectUrl = landingPage.redirect_url || ''
   const dataScript = `
 <script>
   window.__LP_DATA__ = {
     clinicId: ${landingPage.clinic_id || 'null'},
     landingPageId: ${landingPage.id},
-    clinicName: "${clinicName.replace(/"/g, '\\"')}"
+    clinicName: "${clinicName.replace(/"/g, '\\"')}",
+    redirectUrl: "${redirectUrl.replace(/"/g, '\\"')}"
   };
 </script>`
 
@@ -196,6 +198,10 @@ export async function GET(req: NextRequest) {
           clinic_id: lpData.clinicId || null,
           clinic_name: lpData.clinicName || ''
         });
+        // 리드 제출 성공 후 지정된 URL로 이동 (관리자 설정)
+        if (lpData.redirectUrl) {
+          setTimeout(function() { window.location.href = lpData.redirectUrl; }, 1500);
+        }
       }
       return res;
     });

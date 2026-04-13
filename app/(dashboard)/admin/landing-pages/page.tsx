@@ -62,7 +62,7 @@ export default function LandingPagesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<LandingPage | null>(null)
-  const [form, setForm] = useState({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', is_active: true })
+  const [form, setForm] = useState({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
   const [saving, setSaving] = useState(false)
   const [fileMode, setFileMode] = useState<'select' | 'upload'>('select')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -156,7 +156,7 @@ export default function LandingPagesPage() {
         try { const err = await res.json(); errMsg = err.error || errMsg } catch {}
         throw new Error(errMsg)
       }
-      setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', is_active: true })
+      setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
       setUploadFile(null)
       setFileMode('select')
       setEditing(null)
@@ -181,6 +181,7 @@ export default function LandingPagesPage() {
       clinic_id: lp.clinic_id ? String(lp.clinic_id) : '',
       description: lp.description || '',
       gtm_id: (lp as any).gtm_id || '',
+      redirect_url: (lp as any).redirect_url || '',
       is_active: lp.is_active,
     })
     setDialogOpen(true)
@@ -241,7 +242,7 @@ export default function LandingPagesPage() {
         setDialogOpen(open)
         if (!open) {
           setEditing(null)
-          setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', is_active: true })
+          setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
           setUploadFile(null)
           setFileMode('select')
         }
@@ -371,6 +372,15 @@ export default function LandingPagesPage() {
                 placeholder="GTM-XXXXXXX (미입력 시 기본값 사용)"
               />
               <p className="text-[10px] text-muted-foreground/60">랜딩페이지 서빙 시 자동 삽입됩니다. 비워두면 기본 GTM ID가 적용됩니다.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">제출 후 이동 URL</Label>
+              <Input
+                value={form.redirect_url}
+                onChange={e => setForm(f => ({ ...f, redirect_url: e.target.value }))}
+                placeholder="https://your-clinic.com (미입력 시 이동 없음)"
+              />
+              <p className="text-[10px] text-muted-foreground/60">리드 폼 제출 성공 후 자동 이동할 URL. 비워두면 완료 메시지만 표시됩니다.</p>
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-xs text-muted-foreground">활성화</Label>
