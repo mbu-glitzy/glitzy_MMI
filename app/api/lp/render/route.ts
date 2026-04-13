@@ -170,48 +170,59 @@ export async function GET(req: NextRequest) {
     var eventId = null;
     var isLeadWebhook = typeof url === 'string' && url.indexOf('/api/webhook/lead') !== -1 && opts && opts.method === 'POST';
 
-    // 리드 웹훅 요청 감지: event_id 자동 주입
+    // 리드 웹훅 요청 감지: event_id 자동 주입 + 낙관적 이동
     if (isLeadWebhook) {
+      var bodyObj = null;
       try {
-        var bodyObj = JSON.parse(opts.body);
+        bodyObj = JSON.parse(opts.body);
         if (!bodyObj.event_id) {
           bodyObj.event_id = generateEventId();
         }
         eventId = bodyObj.event_id;
-        // 원본 opts를 변경하지 않도록 새 객체 생성
-        opts = Object.assign({}, opts, { body: JSON.stringify(bodyObj) });
+        // keepalive: 페이지 언로드 후에도 요청 완료 보장
+        opts = Object.assign({}, opts, { body: JSON.stringify(bodyObj), keepalive: true });
       } catch(e) {
-        // body 파싱 실패: event_id를 주입할 수 없으므로 null로 두고 서버 폴백에 맡김
         eventId = null;
       }
-    }
 
-    return _origFetch.call(this, url, opts).then(function(res) {
-      if (isLeadWebhook && res.ok) {
-        var lpData = window.__LP_DATA__ || {};
-        // GTM 커스텀 이벤트 — Meta Pixel, GA4 전환 태그 트리거용
-        // GA4 Enhanced Measurement의 폼 추적은 비활성화 필요 (중복 방지)
-        window.dataLayer.push({
-          event: 'form_submit',
-          lead_event_id: eventId,
-          landing_page_id: lpData.landingPageId || null,
-          clinic_id: lpData.clinicId || null,
-          clinic_name: lpData.clinicName || ''
-        });
-        // 리드 제출 성공 후 지정된 URL로 이동 (관리자 설정)
-        // 500ms 지연: GA4/Meta Pixel 전환 태그의 HTTP 요청 전송 여유 확보
-        if (lpData.redirectUrl) {
-          setTimeout(function() {
-            try {
-              (window.top || window).location.href = lpData.redirectUrl;
-            } catch(e) {
-              window.location.href = lpData.redirectUrl;
-            }
-          }, 500);
+      // 백업: localStorage 큐에 선저장 (keepalive 실패 시 재전송 대상)
+      var queueKey = null;
+      if (bodyObj && window.LeadQueue) {
+        queueKey = window.LeadQueue.save(bodyObj);
+      }
+
+      var lpData = window.__LP_DATA__ || {};
+
+      // GTM dataLayer.push (동기) — 이동 전에 트리거 발화
+      window.dataLayer.push({
+        event: 'form_submit',
+        lead_event_id: eventId,
+        landing_page_id: lpData.landingPageId || null,
+        clinic_id: lpData.clinicId || null,
+        clinic_name: lpData.clinicName || ''
+      });
+
+      // fetch는 fire-and-forget (keepalive로 보장), 응답 성공 시 큐에서 제거
+      var promise = _origFetch.call(this, url, opts).then(function(res) {
+        if (res.ok && queueKey && window.LeadQueue) {
+          window.LeadQueue.remove(queueKey);
+        }
+        return res;
+      });
+
+      // 즉시 이동 (응답 대기 없음)
+      if (lpData.redirectUrl) {
+        try {
+          (window.top || window).location.href = lpData.redirectUrl;
+        } catch(e) {
+          window.location.href = lpData.redirectUrl;
         }
       }
-      return res;
-    });
+
+      return promise;
+    }
+
+    return _origFetch.call(this, url, opts);
   };
 })();
 </script>`
