@@ -165,12 +165,31 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // 제출 성공 오버레이 표시 (일관된 UX, HTML alert 의존 제거)
+  function showSuccessOverlay(hasRedirect) {
+    var overlay = document.createElement('div');
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-live', 'assertive');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#fff;color:#111;border-radius:12px;padding:28px 36px;box-shadow:0 10px 40px rgba(0,0,0,0.25);text-align:center;max-width:320px;';
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:18px;font-weight:700;margin-bottom:8px;';
+    title.textContent = '제출이 완료되었습니다';
+    var desc = document.createElement('div');
+    desc.style.cssText = 'font-size:14px;color:#555;';
+    desc.textContent = hasRedirect ? '잠시 후 페이지로 이동합니다...' : '문의해 주셔서 감사합니다';
+    card.appendChild(title);
+    card.appendChild(desc);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  }
+
   var _origFetch = window.fetch;
   window.fetch = function(url, opts) {
     var eventId = null;
     var isLeadWebhook = typeof url === 'string' && url.indexOf('/api/webhook/lead') !== -1 && opts && opts.method === 'POST';
 
-    // 리드 웹훅 요청 감지: event_id 자동 주입 + 낙관적 이동
     if (isLeadWebhook) {
       var bodyObj = null;
       try {
@@ -202,7 +221,15 @@ export async function GET(req: NextRequest) {
         clinic_name: lpData.clinicName || ''
       });
 
-      // fetch는 fire-and-forget (keepalive로 보장), 응답 성공 시 큐에서 제거
+      // HTML 내부의 alert() 중복 표시 억제 (우리 오버레이로 대체)
+      var _origAlert = window.alert;
+      window.alert = function() {};
+      setTimeout(function() { window.alert = _origAlert; }, 5000);
+
+      // 성공 오버레이 즉시 표시
+      showSuccessOverlay(!!lpData.redirectUrl);
+
+      // fetch fire-and-forget (keepalive로 전송 보장)
       var promise = _origFetch.call(this, url, opts).then(function(res) {
         if (res.ok && queueKey && window.LeadQueue) {
           window.LeadQueue.remove(queueKey);
@@ -210,13 +237,15 @@ export async function GET(req: NextRequest) {
         return res;
       });
 
-      // 즉시 이동 (응답 대기 없음)
+      // 800ms 후 이동 (오버레이 인지 시간 + GTM 전환 태그 전송 여유)
       if (lpData.redirectUrl) {
-        try {
-          (window.top || window).location.href = lpData.redirectUrl;
-        } catch(e) {
-          window.location.href = lpData.redirectUrl;
-        }
+        setTimeout(function() {
+          try {
+            (window.top || window).location.href = lpData.redirectUrl;
+          } catch(e) {
+            window.location.href = lpData.redirectUrl;
+          }
+        }, 800);
       }
 
       return promise;
