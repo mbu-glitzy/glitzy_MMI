@@ -224,29 +224,30 @@ export async function GET(req: NextRequest) {
       // HTML 내부의 alert() 중복 표시 억제 (우리 오버레이로 대체)
       var _origAlert = window.alert;
       window.alert = function() {};
-      setTimeout(function() { window.alert = _origAlert; }, 5000);
+      setTimeout(function() { window.alert = _origAlert; }, 10000);
 
-      // 성공 오버레이 즉시 표시
-      showSuccessOverlay(!!lpData.redirectUrl);
-
-      // fetch fire-and-forget (keepalive로 전송 보장)
+      // fetch — 응답 후 HTML의 버튼 업데이트가 먼저 보이도록 오버레이는 지연 표시
       var promise = _origFetch.call(this, url, opts).then(function(res) {
         if (res.ok && queueKey && window.LeadQueue) {
           window.LeadQueue.remove(queueKey);
         }
+        if (res.ok) {
+          // setTimeout 0 → HTML의 .then 핸들러(버튼 "제출 완료" 변경)가 먼저 실행되도록 다음 태스크로 연기
+          setTimeout(function() {
+            showSuccessOverlay(!!lpData.redirectUrl);
+            if (lpData.redirectUrl) {
+              setTimeout(function() {
+                try {
+                  (window.top || window).location.href = lpData.redirectUrl;
+                } catch(e) {
+                  window.location.href = lpData.redirectUrl;
+                }
+              }, 1200);
+            }
+          }, 50);
+        }
         return res;
       });
-
-      // 800ms 후 이동 (오버레이 인지 시간 + GTM 전환 태그 전송 여유)
-      if (lpData.redirectUrl) {
-        setTimeout(function() {
-          try {
-            (window.top || window).location.href = lpData.redirectUrl;
-          } catch(e) {
-            window.location.href = lpData.redirectUrl;
-          }
-        }, 800);
-      }
 
       return promise;
     }
