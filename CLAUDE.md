@@ -142,7 +142,6 @@ npm run analyze      # 번들 크기 분석
 |------|--------|------|
 | `/api/cron/sync-ads` | 매일 03:00 | 광고 데이터 동기화 |
 | `/api/cron/sync-press` | 매일 00:00 | 언론보도 동기화 |
-| `/api/cron/weekly-report` | 매주 월 09:00 KST | 주간 성과 리포트 SMS |
 
 ## 참조 문서
 
@@ -166,8 +165,8 @@ npm run analyze      # 번들 크기 분석
 
 | 날짜 | 내용 |
 |------|------|
+| 2026-05-04 | 주간 리포트 cron 중지 — `vercel.json`에서 `/api/cron/weekly-report` 항목 제거 (라우트/서비스 코드는 보존) |
 | 2026-04-07 | 광고 플랫폼 2계층 구조: `lib/platform.ts` 중앙 상수, campaign_type 컬럼, platform 값 통일, Naver/Kakao/Dable 신규 |
 | 2026-04-07 | 시술별 매출 비중 KPI 불일치 수정, capi_events FK CASCADE |
 | 2026-04-01 | 캘린더 UX 개선: 일간 10분 슬롯, 현재 시간 구분선, 전체 예약 표시, 취소/노쇼 취소선 시각 구분 |
 | 2026-04-01 | 예약/결제 관리 캘린더 드래그앤드롭 (`@dnd-kit/core`), DateRangePicker 도트 표시, 미래 날짜 허용 |
-| 2026-03-30 | CLAUDE.md 재설계: 200줄 이내 압축, 변경 이력 분리, 디렉토리 구조 압축 |
